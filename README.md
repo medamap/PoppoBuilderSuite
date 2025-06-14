@@ -1,157 +1,157 @@
 # PoppoBuilder Suite
 
-An AI-powered autonomous software development system that leverages Claude Code for intelligent project building and maintenance.
+Claude Codeを活用した自律的ソフトウェア開発システム
 
-## 🎯 Overview
+## 🎯 概要
 
-PoppoBuilder Suite is a self-hosting development automation system designed to:
-- Minimize Claude Code context window usage through focused, single-session tasks
-- Provide GitHub Actions-like CI/CD functionality without the associated costs
-- Enable autonomous project development through multiple specialized AI agents
-- Support self-improvement through dogfooding
+PoppoBuilder Suiteは、以下を実現する自己ホスティング型の開発自動化システムです：
+- 単一セッションのタスクによってClaude Codeのコンテキストウィンドウ使用を最小化
+- GitHub Actionsのような CI/CD 機能をコストなしで提供
+- 複数の専門AIエージェントによる自律的なプロジェクト開発
+- ドッグフーディングによる自己改善をサポート
 
-## 🏗️ Architecture
+## 🏗️ アーキテクチャ
 
 ```
-User Interface Layer:
+ユーザーインターフェース層:
 Claude Code → MCP Interface → CCGM (General Manager)
                     ↓
-            Poppo Repository (State Management)
+            Poppoリポジトリ (状態管理)
                     ↑
-Automation Layer:
-Resident CICD → Agent Orchestra:
-  - CCPM (Project Manager) - Task planning and instruction generation
-  - CCAG (Agent) - Implementation and PR creation
-  - CCRA (Review Agent) - Code review
-  - CCTA (Test Agent) - Testing and validation
-  - CCMA (Merge Agent) - PR merging
+自動化層:
+常駐CICD → エージェントオーケストラ:
+  - CCPM (Project Manager) - タスク計画と指示書生成
+  - CCAG (Agent) - 実装とPR作成
+  - CCRA (Review Agent) - コードレビュー
+  - CCTA (Test Agent) - テストと検証
+  - CCMA (Merge Agent) - PRマージ
 ```
 
-## 📁 Project Structure
+## 📁 プロジェクト構造
 
 ```
 PoppoBuilderSuite/
-├── cicd/               # Resident CI/CD system
-│   ├── scheduler/      # Job scheduling and management
-│   ├── executor/       # Job execution engine
-│   └── monitor/        # Process monitoring
-├── mcp-interface/      # MCP server interface
-│   └── tools/          # MCP tool implementations
-├── agents/             # AI agent implementations
-│   ├── ccgm/          # General Manager
-│   ├── ccpm/          # Project Manager
-│   ├── ccag/          # Implementation Agent
-│   ├── ccra/          # Review Agent
-│   ├── ccta/          # Test Agent
-│   └── ccma/          # Merge Agent
-├── poppo-repo/        # Project state and configuration
-│   ├── config/        # System configuration
-│   ├── projects/      # Managed projects
-│   └── status/        # Runtime status
-└── docs/              # Documentation
+├── cicd/               # 常駐CI/CDシステム
+│   ├── scheduler/      # ジョブスケジューリングと管理
+│   ├── executor/       # ジョブ実行エンジン
+│   └── monitor/        # プロセス監視
+├── mcp-interface/      # MCPサーバーインターフェース
+│   └── tools/          # MCPツール実装
+├── agents/             # AIエージェント実装
+│   ├── ccgm/          # ゼネラルマネージャー
+│   ├── ccpm/          # プロジェクトマネージャー
+│   ├── ccag/          # 実装エージェント
+│   ├── ccra/          # レビューエージェント
+│   ├── ccta/          # テストエージェント
+│   └── ccma/          # マージエージェント
+├── poppo-repo/        # プロジェクト状態と設定
+│   ├── config/        # システム設定
+│   ├── projects/      # 管理対象プロジェクト
+│   └── status/        # 実行時ステータス
+└── docs/              # ドキュメント
 ```
 
-## 🚀 Getting Started
+## 🚀 はじめに
 
-### Prerequisites
-- Node.js 18+ 
+### 前提条件
+- Node.js 18以上
 - Claude Code CLI
 - Git
 
-### Installation
+### インストール
 ```bash
-# Clone the repository
+# リポジトリのクローン
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
 
-# Install dependencies (once package.json is created)
+# 依存関係のインストール（package.json作成後）
 npm install
 
-# Initialize Poppo Repository
+# Poppoリポジトリの初期化
 npm run init
 ```
 
-### Basic Usage
+### 基本的な使い方
 ```bash
-# Start a new project
-claude "Hey Poppo, create a new Express API project"
+# 新しいプロジェクトを開始
+claude "ぽっぽ、新しいExpress APIプロジェクトを作って"
 
-# Check status
-claude "Poppo, what's the current status?"
+# ステータス確認
+claude "ぽっぽ、現在の状況は？"
 
-# Manual trigger
-claude "Poppo, run pending tasks"
+# 手動トリガー
+claude "ぽっぽ、保留中のタスクを実行して"
 ```
 
-## 🔄 Development Workflow
+## 🔄 開発ワークフロー
 
-1. **Feature Development**
+1. **機能開発**
    ```bash
    git checkout develop
    git checkout -b feature/your-feature
-   # Make changes
-   git commit -m "feat: your feature"
+   # 変更を加える
+   git commit -m "feat: 機能追加"
    git push origin feature/your-feature
    ```
 
-2. **Self-Hosting Development**
-   - PoppoBuilder can work on its own codebase
-   - Create issues for self-improvement
-   - Let agents implement enhancements
+2. **セルフホスティング開発**
+   - PoppoBuilderは自身のコードベースで作業可能
+   - 自己改善のためのIssueを作成
+   - エージェントに機能拡張を実装させる
 
-## 🤖 Agent Roles
+## 🤖 エージェントの役割
 
-### CCGM (General Manager)
-- User interaction interface
-- Project configuration management  
-- Status reporting and monitoring
+### CCGM (ゼネラルマネージャー)
+- ユーザーインタラクションインターフェース
+- プロジェクト設定管理
+- ステータスレポートと監視
 
-### CCPM (Project Manager)
-- Task breakdown and planning
-- Instruction document generation
-- Dependency management
+### CCPM (プロジェクトマネージャー)
+- タスクの分解と計画
+- 指示書の生成
+- 依存関係管理
 
-### CCAG (Implementation Agent)
-- Code implementation
-- PR creation
-- Documentation updates
+### CCAG (実装エージェント)
+- コード実装
+- PR作成
+- ドキュメント更新
 
-### CCRA (Review Agent)
-- Code quality checks
-- Best practices enforcement
-- Security review
+### CCRA (レビューエージェント)
+- コード品質チェック
+- ベストプラクティスの適用
+- セキュリティレビュー
 
-### CCTA (Test Agent)
-- Test execution
-- Coverage reporting
-- Performance validation
+### CCTA (テストエージェント)
+- テスト実行
+- カバレッジレポート
+- パフォーマンス検証
 
-### CCMA (Merge Agent)
-- PR merge decisions
-- Conflict resolution
-- Branch management
+### CCMA (マージエージェント)
+- PRマージ判断
+- コンフリクト解決
+- ブランチ管理
 
-## 📈 Roadmap
+## 📈 ロードマップ
 
-### Phase 1: Foundation (Week 1)
-- [ ] Basic CICD scheduler
-- [ ] MCP interface setup
-- [ ] CCPM and CCAG implementation
+### Phase 1: 基盤構築（第1週）
+- [ ] 基本的なCICDスケジューラー
+- [ ] MCPインターフェースのセットアップ
+- [ ] CCPMとCCAGの実装
 
-### Phase 2: Self-Hosting (Week 2)
-- [ ] PoppoBuilder working on itself
-- [ ] Basic automation loop
-- [ ] Status management
+### Phase 2: セルフホスティング（第2週）
+- [ ] PoppoBuilder自身での作業
+- [ ] 基本的な自動化ループ
+- [ ] ステータス管理
 
-### Phase 3: Full Automation (Week 3+)
-- [ ] All agents operational
-- [ ] Complete CI/CD pipeline
-- [ ] Advanced features
+### Phase 3: 完全自動化（第3週以降）
+- [ ] 全エージェントの稼働
+- [ ] 完全なCI/CDパイプライン
+- [ ] 高度な機能
 
-## 🤝 Contributing
+## 🤝 コントリビューション
 
-This project is designed to be self-improving! Create issues for enhancements and let PoppoBuilder implement them.
+このプロジェクトは自己改善型です！機能拡張のIssueを作成して、PoppoBuilderに実装させましょう。
 
-## 📄 License
+## 📄 ライセンス
 
-MIT License - see LICENSE file for details
+MIT License - 詳細はLICENSEファイルを参照

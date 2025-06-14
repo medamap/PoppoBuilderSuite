@@ -1,157 +1,157 @@
-# PoppoBuilder Suite System Architecture
+# PoppoBuilder Suite システムアーキテクチャ
 
-## Core Concept
+## 核心概念
 
-PoppoBuilder Suite is designed to maximize Claude Code's capabilities while minimizing context window usage through a distributed, asynchronous architecture.
+PoppoBuilder Suiteは、分散型非同期アーキテクチャを通じて、Claude Codeの能力を最大化しながらコンテキストウィンドウの使用を最小限に抑えるよう設計されています。
 
-## System Components
+## システムコンポーネント
 
-### 1. User Interface Layer
+### 1. ユーザーインターフェース層
 
-#### MCP Interface
-- Receives commands from Claude Code main session
-- Manages asynchronous job submission
-- Returns job IDs for status tracking
-- Non-blocking operation
+#### MCPインターフェース
+- Claude Codeメインセッションからコマンドを受信
+- 非同期ジョブ送信を管理
+- ステータス追跡用のジョブIDを返す
+- ノンブロッキング操作
 
-#### CCGM (Claude Code General Manager)
-- Project configuration management
-- Status reporting
-- User interaction handling
-- Poppo repository management
+#### CCGM (Claude Code ゼネラルマネージャー)
+- プロジェクト設定管理
+- ステータスレポート
+- ユーザーインタラクション処理
+- Poppoリポジトリ管理
 
-### 2. State Management Layer
+### 2. 状態管理層
 
-#### Poppo Repository
-Central state storage containing:
-- Project configurations
-- Task queues
-- Job status
-- Agent coordination data
-- Build artifacts
+#### Poppoリポジトリ
+以下を含む中央状態ストレージ：
+- プロジェクト設定
+- タスクキュー
+- ジョブステータス
+- エージェント調整データ
+- ビルド成果物
 
-Structure:
+構造：
 ```
 poppo-repo/
 ├── config/
-│   ├── system.json        # System-wide configuration
-│   ├── projects/          # Per-project configurations
-│   └── agents/            # Agent-specific settings
+│   ├── system.json        # システム全体の設定
+│   ├── projects/          # プロジェクト別設定
+│   └── agents/            # エージェント別設定
 ├── status/
-│   ├── jobs.json          # Active job tracking
-│   ├── queue.json         # Pending tasks
-│   └── history/           # Completed job logs
+│   ├── jobs.json          # アクティブジョブ追跡
+│   ├── queue.json         # 保留中のタスク
+│   └── history/           # 完了したジョブログ
 └── projects/
     └── {project-id}/
-        ├── tasks/         # Task definitions
-        ├── issues/        # GitHub issue mirrors
-        └── artifacts/     # Build outputs
+        ├── tasks/         # タスク定義
+        ├── issues/        # GitHub Issueミラー
+        └── artifacts/     # ビルド出力
 ```
 
-### 3. Automation Layer
+### 3. 自動化層
 
-#### Resident CICD
-- Runs as a background process
-- Monitors Poppo repository for new tasks
-- Spawns Claude Code subprocesses for agents
-- Manages process lifecycle
-- Handles job queuing and scheduling
+#### 常駐CICD
+- バックグラウンドプロセスとして実行
+- 新しいタスクのためにPoppoリポジトリを監視
+- エージェント用のClaude Codeサブプロセスを起動
+- プロセスライフサイクルを管理
+- ジョブキューイングとスケジューリングを処理
 
-Key Features:
-- Non-blocking subprocess execution
-- Process health monitoring
-- Resource management
-- Crash recovery
+主要機能：
+- ノンブロッキングサブプロセス実行
+- プロセスヘルス監視
+- リソース管理
+- クラッシュ回復
 
-#### Agent Orchestra
+#### エージェントオーケストラ
 
-**CCPM (Project Manager)**
-- Reads project state from Poppo repository
-- Generates task breakdown
-- Creates instruction documents
-- Updates task queue
+**CCPM (プロジェクトマネージャー)**
+- Poppoリポジトリからプロジェクト状態を読み取る
+- タスク分解を生成
+- 指示書を作成
+- タスクキューを更新
 
-**CCAG (Implementation Agent)**
-- Executes implementation tasks
-- Creates feature branches
-- Generates pull requests
-- Updates task status
+**CCAG (実装エージェント)**
+- 実装タスクを実行
+- フィーチャーブランチを作成
+- プルリクエストを生成
+- タスクステータスを更新
 
-**CCRA (Review Agent)**
-- Reviews pull requests
-- Checks code quality
-- Provides improvement suggestions
-- Updates PR status
+**CCRA (レビューエージェント)**
+- プルリクエストをレビュー
+- コード品質をチェック
+- 改善提案を提供
+- PRステータスを更新
 
-**CCTA (Test Agent)**
-- Runs test suites
-- Validates implementations
-- Reports test results
-- Updates quality metrics
+**CCTA (テストエージェント)**
+- テストスイートを実行
+- 実装を検証
+- テスト結果を報告
+- 品質メトリクスを更新
 
-**CCMA (Merge Agent)**
-- Evaluates merge readiness
-- Handles PR merging
-- Manages branch cleanup
-- Updates project state
+**CCMA (マージエージェント)**
+- マージ準備状況を評価
+- PRマージを処理
+- ブランチクリーンアップを管理
+- プロジェクト状態を更新
 
-## Process Flow
+## プロセスフロー
 
-### 1. Task Submission
+### 1. タスク送信
 ```
-User → Claude Code → MCP → CCGM → Poppo Repository
+ユーザー → Claude Code → MCP → CCGM → Poppoリポジトリ
                               ↓
-                         Task Queue
+                         タスクキュー
 ```
 
-### 2. Task Execution
+### 2. タスク実行
 ```
-CICD Monitor → Detects new task → Spawns appropriate agent
-                                          ↓
-                                   Claude subprocess
-                                          ↓
-                                   Updates Poppo repo
-```
-
-### 3. Status Checking
-```
-User → "Check status" → MCP → Read Poppo repo → Format report
+CICD監視 → 新しいタスクを検出 → 適切なエージェントを起動
                                       ↓
-                               Return to user
+                               Claudeサブプロセス
+                                      ↓
+                               Poppoリポジトリを更新
 ```
 
-## Key Design Decisions
+### 3. ステータス確認
+```
+ユーザー → "ステータス確認" → MCP → Poppoリポジトリを読む → レポートを整形
+                                         ↓
+                                    ユーザーに返す
+```
 
-### 1. Asynchronous Execution
-- MCP returns immediately after job submission
-- No blocking on long-running tasks
-- Status checking is a separate operation
+## 主要な設計決定
 
-### 2. Subprocess Isolation
-- Each agent runs in its own Claude Code process
-- Clean context for each task
-- No context pollution between tasks
+### 1. 非同期実行
+- MCPはジョブ送信後すぐに戻る
+- 長時間実行タスクでブロックしない
+- ステータス確認は別の操作
 
-### 3. File-Based State Management
-- Simple JSON files for state storage
-- Easy debugging and manual intervention
-- No database dependencies
+### 2. サブプロセス分離
+- 各エージェントは独自のClaude Codeプロセスで実行
+- 各タスクのためのクリーンなコンテキスト
+- タスク間のコンテキスト汚染なし
 
-### 4. Self-Hosting Capability
-- PoppoBuilder can work on its own codebase
-- Same workflow for all projects
-- Dogfooding from early stages
+### 3. ファイルベースの状態管理
+- 状態保存にシンプルなJSONファイルを使用
+- デバッグと手動介入が容易
+- データベース依存なし
 
-## Communication Patterns
+### 4. セルフホスティング機能
+- PoppoBuilderは自身のコードベースで作業可能
+- すべてのプロジェクトで同じワークフロー
+- 初期段階からのドッグフーディング
 
-### 1. Agent to Repository
-- Agents read tasks from designated directories
-- Write results to status files
-- Use file locks for coordination
+## 通信パターン
 
-### 2. CICD to Agents
+### 1. エージェントからリポジトリへ
+- エージェントは指定されたディレクトリからタスクを読む
+- ステータスファイルに結果を書き込む
+- 調整のためファイルロックを使用
+
+### 2. CICDからエージェントへ
 ```javascript
-// Spawn pattern
+// 起動パターン
 const agent = spawn('claude', [
   '--dangerously-skip-permissions',
   '--print',
@@ -162,24 +162,24 @@ const agent = spawn('claude', [
 });
 ```
 
-### 3. User to System
-- Natural language commands via Claude Code
-- Structured responses for clarity
-- Progress tracking via job IDs
+### 3. ユーザーからシステムへ
+- Claude Code経由の自然言語コマンド
+- 明確さのための構造化されたレスポンス
+- ジョブID経由の進捗追跡
 
-## Scalability Considerations
+## スケーラビリティの考慮事項
 
-### 1. Parallel Execution
-- Multiple agents can run simultaneously
-- Job dependencies tracked in Poppo repository
-- Resource limits configurable
+### 1. 並列実行
+- 複数のエージェントが同時に実行可能
+- ジョブ依存関係はPoppoリポジトリで追跡
+- リソース制限は設定可能
 
-### 2. Queue Management
-- Priority-based task scheduling
-- Dependency resolution
-- Retry mechanisms
+### 2. キュー管理
+- 優先度ベースのタスクスケジューリング
+- 依存関係解決
+- リトライメカニズム
 
-### 3. Performance Optimization
-- Minimal context per agent session
-- Efficient state updates
-- Lazy loading of project data
+### 3. パフォーマンス最適化
+- エージェントセッションごとの最小コンテキスト
+- 効率的な状態更新
+- プロジェクトデータの遅延読み込み

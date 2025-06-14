@@ -1,153 +1,153 @@
-# PoppoBuilder Suite Implementation Plan
+# PoppoBuilder Suite 実装計画
 
-## Overview
+## 概要
 
-This document outlines the phased implementation approach for PoppoBuilder Suite, focusing on rapid MVP delivery and self-hosting capabilities.
+この文書では、PoppoBuilder Suiteの段階的な実装アプローチを概説し、迅速なMVP提供とセルフホスティング機能に焦点を当てます。
 
-## Phase 1: Minimal Viable Product (Week 1)
+## フェーズ1: 最小実行可能製品（第1週）
 
-### Goals
-- Basic task execution capability
-- Simple state management
-- Manual testing workflow
+### 目標
+- 基本的なタスク実行機能
+- シンプルな状態管理
+- 手動テストワークフロー
 
-### Deliverables
+### 成果物
 
-#### 1.1 Basic CICD Scheduler
+#### 1.1 基本的なCICDスケジューラー
 ```
 cicd/
-├── scheduler.js        # Main scheduler loop
-├── job-manager.js      # Job lifecycle management
-└── process-spawn.js    # Claude subprocess handling
+├── scheduler.js        # メインスケジューラーループ
+├── job-manager.js      # ジョブライフサイクル管理
+└── process-spawn.js    # Claudeサブプロセス処理
 ```
 
-Key Features:
-- Poll Poppo repository every 30 seconds
-- Spawn Claude subprocesses for tasks
-- Track process status
-- Basic error handling
+主な機能:
+- 30秒ごとにPoppoリポジトリをポーリング
+- タスク用のClaudeサブプロセスを起動
+- プロセス状態を追跡
+- 基本的なエラー処理
 
-#### 1.2 Minimal Poppo Repository
+#### 1.2 最小限のPoppoリポジトリ
 ```
 poppo-repo/
-├── config.json         # System configuration
-├── tasks/              # Task queue
-├── status/             # Job status tracking
-└── results/            # Job outputs
+├── config.json         # システム設定
+├── tasks/              # タスクキュー
+├── status/             # ジョブ状態追跡
+└── results/            # ジョブ出力
 ```
 
-#### 1.3 Simple CCPM Implementation
-- Read task requests
-- Generate basic instruction documents
-- Update task queue
+#### 1.3 シンプルなCCPM実装
+- タスクリクエストの読み取り
+- 基本的な指示書の生成
+- タスクキューの更新
 
-#### 1.4 Simple CCAG Implementation  
-- Execute implementation tasks
-- Create files
-- Basic error reporting
+#### 1.4 シンプルなCCAG実装
+- 実装タスクの実行
+- ファイル作成
+- 基本的なエラー報告
 
-### Success Criteria
-- Can submit a task via MCP
-- Task gets executed by CCAG
-- Result is retrievable
+### 成功基準
+- MCPを介してタスクを送信できる
+- タスクがCCAGによって実行される
+- 結果が取得できる
 
-## Phase 2: Self-Hosting Bootstrap (Week 2)
+## フェーズ2: セルフホスティングブートストラップ（第2週）
 
-### Goals
-- PoppoBuilder working on its own codebase
-- GitHub integration
-- Basic PR workflow
+### 目標
+- PoppoBuilderが自身のコードベースで動作
+- GitHub連携
+- 基本的なPRワークフロー
 
-### Deliverables
+### 成果物
 
-#### 2.1 CCGM Implementation
-- Project initialization
-- Configuration management
-- Status reporting
-- Issue creation from tasks
+#### 2.1 CCGM実装
+- プロジェクト初期化
+- 設定管理
+- ステータスレポート
+- タスクからのIssue作成
 
-#### 2.2 Enhanced CCAG
-- Git operations (branch, commit, push)
-- PR creation
-- Self-modification capability
+#### 2.2 拡張CCAG
+- Git操作（ブランチ、コミット、プッシュ）
+- PR作成
+- 自己修正機能
 
-#### 2.3 Task Dependency System
-- Task ordering
-- Dependency resolution
-- Parallel execution where possible
+#### 2.3 タスク依存関係システム
+- タスク順序付け
+- 依存関係解決
+- 可能な限り並列実行
 
-### Success Criteria
-- PoppoBuilder can add features to itself
-- PRs are created automatically
-- Basic development loop established
+### 成功基準
+- PoppoBuilderが自身に機能を追加できる
+- PRが自動的に作成される
+- 基本的な開発ループが確立される
 
-## Phase 3: Full Automation (Week 3-4)
+## フェーズ3: 完全自動化（第3-4週）
 
-### Goals
-- Complete agent ensemble
-- Automated review and merge
-- Production-ready system
+### 目標
+- 完全なエージェントアンサンブル
+- 自動レビューとマージ
+- 本番環境対応システム
 
-### Deliverables
+### 成果物
 
-#### 3.1 CCRA (Review Agent)
-- PR review capability
-- Code quality checks
-- Feedback generation
+#### 3.1 CCRA（レビューエージェント）
+- PRレビュー機能
+- コード品質チェック
+- フィードバック生成
 
-#### 3.2 CCTA (Test Agent)
-- Test execution
-- Coverage reporting
-- Performance validation
+#### 3.2 CCTA（テストエージェント）
+- テスト実行
+- カバレッジレポート
+- パフォーマンス検証
 
-#### 3.3 CCMA (Merge Agent)
-- Merge decision logic
-- Conflict detection
-- Branch management
+#### 3.3 CCMA（マージエージェント）
+- マージ判定ロジック
+- コンフリクト検出
+- ブランチ管理
 
-#### 3.4 Advanced CICD Features
-- Resource management
-- Priority queuing
-- Failure recovery
-- Performance monitoring
+#### 3.4 高度なCICD機能
+- リソース管理
+- 優先度キューイング
+- 障害回復
+- パフォーマンス監視
 
-### Success Criteria
-- Full automated development pipeline
-- Self-improving system
-- Production stability
+### 成功基準
+- 完全に自動化された開発パイプライン
+- 自己改善型システム
+- 本番環境の安定性
 
-## Implementation Guidelines
+## 実装ガイドライン
 
-### 1. Start Simple
-- Use JSON files for all data storage
-- Avoid premature optimization
-- Focus on working end-to-end flow
+### 1. シンプルに始める
+- すべてのデータストレージにJSONファイルを使用
+- 早すぎる最適化を避ける
+- エンドツーエンドのフローに焦点を当てる
 
-### 2. Iterative Development
-- Each component should work standalone
-- Test manually before automating
-- Document as you go
+### 2. 反復的な開発
+- 各コンポーネントは単独で動作すべき
+- 自動化前に手動でテスト
+- 進めながらドキュメント化
 
-### 3. Self-Hosting Priority
-- As soon as basic CCPM/CCAG work, use them
-- Create issues for remaining features
-- Let the system build itself
+### 3. セルフホスティング優先
+- 基本的なCCPM/CCAGが動作したら、すぐに使用
+- 残りの機能のIssueを作成
+- システムに自身を構築させる
 
-### 4. Error Handling
-- Fail gracefully
-- Log everything
-- Make debugging easy
+### 4. エラー処理
+- 優雅に失敗
+- すべてをログに記録
+- デバッグを容易に
 
-## Technical Decisions
+## 技術的決定
 
-### Language Choice
-- **CICD System**: Node.js (for process management)
-- **Configuration**: JSON (simple and universal)
-- **Agent Communication**: File-based (simple and debuggable)
+### 言語選択
+- **CICDシステム**: Node.js（プロセス管理のため）
+- **設定**: JSON（シンプルで汎用的）
+- **エージェント通信**: ファイルベース（シンプルでデバッグ可能）
 
-### Process Management
+### プロセス管理
 ```javascript
-// Example subprocess spawn
+// サブプロセス起動の例
 const { spawn } = require('child_process');
 
 function runAgent(agentType, instruction) {
@@ -161,14 +161,14 @@ function runAgent(agentType, instruction) {
     stdio: ['ignore', 'pipe', 'pipe']
   });
   
-  subprocess.unref(); // Allow parent to exit
+  subprocess.unref(); // 親プロセスの終了を許可
   return subprocess.pid;
 }
 ```
 
-### State Management
+### 状態管理
 ```javascript
-// Simple file-based state
+// シンプルなファイルベースの状態
 const state = {
   jobs: {},
   queue: [],
@@ -185,36 +185,36 @@ const state = {
 };
 ```
 
-## Risk Mitigation
+## リスク軽減
 
-### 1. Subprocess Management
-- Track PIDs for cleanup
-- Implement timeout mechanisms
-- Handle zombie processes
+### 1. サブプロセス管理
+- クリーンアップのためのPID追跡
+- タイムアウトメカニズムの実装
+- ゾンビプロセスの処理
 
-### 2. State Corruption
-- Atomic file writes
-- Backup before updates
-- Recovery procedures
+### 2. 状態の破損
+- アトミックなファイル書き込み
+- 更新前のバックアップ
+- 回復手順
 
-### 3. Infinite Loops
-- Task limits per day
-- Circular dependency detection
-- Manual override capability
+### 3. 無限ループ
+- 1日あたりのタスク制限
+- 循環依存関係の検出
+- 手動オーバーライド機能
 
-## Metrics for Success
+## 成功のための指標
 
-### Phase 1
-- Time to execute first task: < 5 minutes
-- Task success rate: > 80%
-- System setup time: < 30 minutes
+### フェーズ1
+- 最初のタスク実行時間: 5分未満
+- タスク成功率: 80%以上
+- システムセットアップ時間: 30分未満
 
-### Phase 2  
-- Self-modification success rate: > 70%
-- PR creation success: > 90%
-- Autonomous operation time: > 4 hours
+### フェーズ2
+- 自己修正成功率: 70%以上
+- PR作成成功率: 90%以上
+- 自律動作時間: 4時間以上
 
-### Phase 3
-- Full pipeline completion: < 1 hour
-- Merge success rate: > 85%
-- System stability: > 24 hours continuous operation
+### フェーズ3
+- 完全なパイプライン完了: 1時間未満
+- マージ成功率: 85%以上
+- システム安定性: 24時間以上の連続動作

@@ -1,35 +1,35 @@
-# PoppoBuilder Suite Quick Start Guide
+# PoppoBuilder Suite クイックスタートガイド
 
-## Prerequisites
+## 前提条件
 
-- Node.js 18 or higher
-- Claude Code CLI installed and configured
-- Git configured with GitHub access
-- macOS, Linux, or WSL2 on Windows
+- Node.js 18以上
+- Claude Code CLI がインストール・設定済み
+- GitHub アクセス権限を持つ Git 設定
+- macOS、Linux、またはWindows上のWSL2
 
-## Initial Setup
+## 初期セットアップ
 
-### 1. Clone the Repository
+### 1. リポジトリのクローン
 
 ```bash
-cd ~/Projects  # or your preferred directory
+cd ~/Projects  # または任意のディレクトリ
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
 ```
 
-### 2. Install Dependencies (once available)
+### 2. 依存関係のインストール（利用可能になり次第）
 
 ```bash
 npm install
 ```
 
-### 3. Initialize Poppo Repository
+### 3. Poppoリポジトリの初期化
 
 ```bash
-# Create necessary directories
+# 必要なディレクトリを作成
 mkdir -p poppo-repo/{config,tasks,status,results,projects}
 
-# Create initial configuration
+# 初期設定を作成
 cat > poppo-repo/config/system.json << EOF
 {
   "version": "1.0.0",
@@ -49,118 +49,118 @@ cat > poppo-repo/config/system.json << EOF
 EOF
 ```
 
-### 4. Start the CICD Service
+### 4. CICDサービスの起動
 
 ```bash
-# In one terminal
+# ターミナルで実行
 node cicd/scheduler.js
 
-# You should see:
+# 以下のような出力が表示されます：
 # [CICD] PoppoBuilder CICD starting...
 # [CICD] Polling interval: 30 seconds
 # [CICD] Waiting for tasks...
 ```
 
-## Basic Usage
+## 基本的な使い方
 
-### 1. Submit Your First Task
+### 1. 最初のタスクを登録
 
-In Claude Code:
+Claude Codeで：
 ```
-Hey Poppo, create a new task to add a hello world endpoint to the API
-```
-
-This will:
-1. MCP receives the command
-2. CCGM creates a task in poppo-repo/tasks/
-3. CICD picks up the task
-4. CCPM generates instructions
-5. CCAG implements the change
-
-### 2. Check Status
-
-```
-Poppo, what's the current status?
+ぽっぽ、APIに hello world エンドポイントを追加するタスクを作成して
 ```
 
-Response will show:
-- Active jobs
-- Queued tasks  
-- Recent completions
-- Any errors
+これにより：
+1. MCPがコマンドを受信
+2. CCGMがpoppo-repo/tasks/にタスクを作成
+3. CICDがタスクを検出
+4. CCPMが指示書を生成
+5. CCAGが変更を実装
 
-### 3. View Results
-
-```
-Poppo, show me the result of task-001
-```
-
-## Working with Projects
-
-### 1. Initialize a New Project
+### 2. ステータス確認
 
 ```
-Poppo, initialize project "my-api" with Express and TypeScript
+ぽっぽ、現在の状況は？
 ```
 
-### 2. Add Features
+以下の情報が表示されます：
+- アクティブなジョブ
+- キューにあるタスク
+- 最近の完了タスク
+- エラー情報
+
+### 3. 結果の確認
 
 ```
-Poppo, add user authentication to my-api project
+ぽっぽ、task-001の結果を見せて
 ```
 
-### 3. Run Tests
+## プロジェクトの操作
+
+### 1. 新しいプロジェクトの初期化
 
 ```
-Poppo, run tests for my-api project
+ぽっぽ、ExpressとTypeScriptで「my-api」プロジェクトを初期化して
 ```
 
-## Self-Hosting Development
-
-### 1. Create Enhancement Issue
+### 2. 機能の追加
 
 ```
-Poppo, create issue: Add JSON schema validation to task files
+ぽっぽ、my-apiプロジェクトにユーザー認証を追加して
 ```
 
-### 2. Let PoppoBuilder Implement It
+### 3. テストの実行
 
 ```
-Poppo, work on issue #1
+ぽっぽ、my-apiプロジェクトのテストを実行して
 ```
 
-### 3. Review and Merge
+## セルフホスティング開発
+
+### 1. 機能改善のIssue作成
 
 ```
-Poppo, show me PR for issue #1
+ぽっぽ、Issue作成：タスクファイルにJSONスキーマ検証を追加
 ```
 
-## Troubleshooting
+### 2. PoppoBuilderに実装させる
 
-### CICD Not Picking Up Tasks
+```
+ぽっぽ、Issue #1に取り組んで
+```
 
-1. Check if CICD is running
-2. Verify task file is in correct format
-3. Check logs in `cicd/logs/`
+### 3. レビューとマージ
 
-### Agent Subprocess Fails
+```
+ぽっぽ、Issue #1のPRを見せて
+```
 
-1. Check agent output in `poppo-repo/results/`
-2. Verify Claude Code CLI is working
-3. Check instruction format
+## トラブルシューティング
 
-### State Corruption
+### CICDがタスクを検出しない場合
 
-1. Stop CICD
-2. Check `poppo-repo/status/state.json`
-3. Fix or restore from backup
-4. Restart CICD
+1. CICDが実行中か確認
+2. タスクファイルが正しい形式か確認
+3. `cicd/logs/`のログを確認
 
-## Advanced Usage
+### エージェントのサブプロセスが失敗する場合
 
-### Custom Agent Configuration
+1. `poppo-repo/results/`でエージェント出力を確認
+2. Claude Code CLIが動作しているか確認
+3. 指示書の形式を確認
 
-Edit `poppo-repo/config/agents/{agent-name}.json`:
+### 状態が破損した場合
+
+1. CICDを停止
+2. `poppo-repo/status/state.json`を確認
+3. 修正またはバックアップから復元
+4. CICDを再起動
+
+## 高度な使い方
+
+### カスタムエージェント設定
+
+`poppo-repo/config/agents/{エージェント名}.json`を編集：
 
 ```json
 {
@@ -172,35 +172,35 @@ Edit `poppo-repo/config/agents/{agent-name}.json`:
 }
 ```
 
-### Priority Tasks
+### 優先タスク
 
-Add priority flag when creating tasks:
-
-```
-Poppo, urgent: fix the production bug in error handling
-```
-
-### Batch Operations
-
-Submit multiple related tasks:
+タスク作成時に優先フラグを追加：
 
 ```
-Poppo, batch tasks:
-1. Update all dependencies
-2. Run security audit
-3. Fix any vulnerabilities found
+ぽっぽ、緊急：本番環境のエラーハンドリングのバグを修正して
 ```
 
-## Best Practices
+### バッチ操作
 
-1. **Keep Tasks Focused**: One feature per task
-2. **Use Clear Descriptions**: Be specific about requirements
-3. **Check Status Regularly**: Monitor long-running tasks
-4. **Review PRs**: Even with automation, human review is valuable
-5. **Backup State**: Regular backups of poppo-repo
+関連する複数のタスクを一括登録：
 
-## Next Steps
+```
+ぽっぽ、バッチタスク：
+1. すべての依存関係を更新
+2. セキュリティ監査を実行
+3. 見つかった脆弱性を修正
+```
 
-- Read the [Architecture Overview](../architecture/system-overview.md)
-- Learn about [Agent Roles](../architecture/agents.md)
-- Contribute to PoppoBuilder itself!
+## ベストプラクティス
+
+1. **タスクは集中的に**: 1つの機能につき1タスク
+2. **明確な説明を使用**: 要件について具体的に記述
+3. **定期的にステータス確認**: 長時間実行タスクを監視
+4. **PRをレビュー**: 自動化されていても人間のレビューは重要
+5. **状態をバックアップ**: poppo-repoの定期バックアップ
+
+## 次のステップ
+
+- [アーキテクチャ概要](../architecture/system-overview.md)を読む
+- [エージェントの役割](../architecture/agents.md)について学ぶ
+- PoppoBuilder自体に貢献する！
