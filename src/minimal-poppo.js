@@ -56,6 +56,9 @@ async function processIssue(issue) {
   const issueNumber = issue.number;
   console.log(`\nIssue #${issueNumber} の処理開始: ${issue.title}`);
 
+  // 処理開始前に処理済みとして記録（二重起動防止）
+  processedIssues.add(issueNumber);
+
   try {
     // processingラベルを追加
     await github.addLabels(issueNumber, ['processing']);
@@ -100,9 +103,6 @@ async function processIssue(issue) {
     // completedラベルを追加、processingを削除
     await github.removeLabels(issueNumber, ['processing']);
     await github.addLabels(issueNumber, ['completed']);
-
-    // 処理済みとして記録
-    processedIssues.add(issueNumber);
     
     console.log(`Issue #${issueNumber} の処理完了`);
 
@@ -113,8 +113,9 @@ async function processIssue(issue) {
     const errorComment = `## エラーが発生しました\n\n\`\`\`\n${error.message}\n\`\`\``;
     await github.addComment(issueNumber, errorComment);
     
-    // processingラベルを削除
+    // processingラベルを削除（エラー時は処理済みリストから削除して再試行可能に）
     await github.removeLabels(issueNumber, ['processing']);
+    processedIssues.delete(issueNumber);
   }
 }
 
