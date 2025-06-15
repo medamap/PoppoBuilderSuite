@@ -29,7 +29,7 @@ function shouldProcessIssue(issue) {
   }
 
   // 作者のIssueかチェック
-  if (issue.user.login !== config.github.owner) {
+  if (issue.author.login !== config.github.owner) {
     return false;
   }
 

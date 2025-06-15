@@ -13,7 +13,7 @@ class GitHubClient {
     try {
       const { state = 'open', labels = [] } = options;
       
-      let cmd = `gh issue list --repo ${this.owner}/${this.repo} --json number,title,body,labels,user,createdAt,updatedAt --state ${state}`;
+      let cmd = `gh issue list --repo ${this.owner}/${this.repo} --json number,title,body,labels,author,createdAt,updatedAt --state ${state}`;
       
       if (labels.length > 0) {
         cmd += ` --label "${labels.join(',')}"`;
