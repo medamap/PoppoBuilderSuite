@@ -67,6 +67,9 @@ cd PoppoBuilderSuite
 # 依存関係のインストール（package.json作成後）
 npm install
 
+# GitHubラベルの初期設定
+npm run setup
+
 # Poppoリポジトリの初期化
 npm run init
 ```

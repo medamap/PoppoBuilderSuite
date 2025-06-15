@@ -5,6 +5,7 @@
   "main": "src/minimal-poppo.js",
   "scripts": {
     "start": "node src/minimal-poppo.js",
+    "setup": "node scripts/setup-labels.js",
     "test": "echo \"Error: no test specified yet\" && exit 1"
   },
   "keywords": [
