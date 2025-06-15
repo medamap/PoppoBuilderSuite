@@ -1,0 +1,13 @@
+{
+  "github": {
+    "owner": "medamap",
+    "repo": "PoppoBuilderSuite"
+  },
+  "claude": {
+    "maxConcurrent": 2,
+    "timeout": 300000
+  },
+  "polling": {
+    "interval": 30000
+  }
+}
