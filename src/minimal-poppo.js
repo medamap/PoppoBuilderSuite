@@ -70,7 +70,23 @@ async function processIssue(issue) {
       },
       context: {
         repository: `${config.github.owner}/${config.github.repo}`,
-        workingDirectory: process.cwd()
+        workingDirectory: process.cwd(),
+        defaultBranch: 'work/poppo-builder',
+        systemPrompt: `
+重要: あなたは PoppoBuilder の自動実行エージェントです。
+以下のルールに従ってください：
+
+1. デフォルトの作業ブランチは 'work/poppo-builder' です
+2. 作業開始時は必ず:
+   - git fetch origin
+   - git checkout -B work/poppo-builder origin/develop
+   - git pull origin work/poppo-builder || true
+3. "developにマージ" や "mainにマージ" と言われたら、
+   デフォルトで work/poppo-builder からのマージとして扱う
+4. 明示的に別ブランチが指定された場合のみ、そのブランチを使用
+
+現在のタスク: Issue #${issueNumber}
+`
       }
     };
 

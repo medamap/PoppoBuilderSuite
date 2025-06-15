@@ -37,9 +37,25 @@ package.jsonのscriptsセクションに以下を追加してください：
 ### 3. 処理の流れ
 1. PoppoBuilderがIssueを検出
 2. `processing`ラベルを追加
-3. Claudeで処理を実行
+3. Claudeで処理を実行（`work/poppo-builder`ブランチで作業）
 4. 結果をIssueコメントで報告
 5. `completed`ラベルを追加
+
+### 4. ブランチ戦略
+すべての自動処理は `work/poppo-builder` ブランチで実行されます。
+
+#### マージの例
+```
+# Issue例1
+Title: developにマージして
+Body: 最小限実装をマージしてください
+→ work/poppo-builder から develop へマージ
+
+# Issue例2  
+Title: mainにPR作成
+Body: リリース準備のPRを作成してください
+→ work/poppo-builder から main へのPR作成
+```
 
 ## 設定
 `config/config.json`で設定変更可能：
