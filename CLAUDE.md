@@ -768,5 +768,236 @@ node test/test-timeout-controller.js
 - **英語版**: `docs/features/dynamic-timeout_en.md`
 - **テストコード**: `test/test-timeout-controller.js`
 
+## 📊 トレーサビリティ機能Phase 1-2実装 (2025/6/16 Issue #25)
+
+### 実装概要
+Issue #25「トレーサビリティ機能 Phase 2: 変更影響分析の実装」により、Phase 1で実装されていなかった基本機能と、Phase 2の変更影響分析機能を一度に実装しました。
+
+### 実装内容
+
+#### 1. **Phase 1: 基本機能の実装**
+
+##### トレーサビリティマネージャー (`src/traceability-manager.js`)
+- ID自動採番システム（PBS-REQ-001形式）
+- 双方向リンク管理（implements, references等）
+- YAMLベースのデータ永続化（`.poppo/traceability.yaml`）
+- 整合性チェック機能
+- トレーサビリティマトリックス生成
+- アイテムの追加・更新・削除
+
+##### CLIツール (`scripts/trace.js`)
+```bash
+# 基本コマンド
+npm run trace add <phase> <title>     # アイテム追加
+npm run trace link <from> <to> [type]  # リンク作成
+npm run trace list [phase]             # 一覧表示
+npm run trace matrix                   # マトリックス生成
+npm run trace check                    # 整合性チェック
+```
+
+#### 2. **Phase 2: 変更影響分析の実装**
+
+##### 影響分析エンジン (`src/impact-analyzer.js`)
+- 変更時の影響範囲自動分析
+- 影響度レベル判定（High/Medium/Low）
+  - フェーズ間の関係による影響度
+  - リンクタイプによる影響度
+  - 距離による影響度の減衰
+- 更新必要箇所の特定
+- 推奨アクションの生成
+- 詳細影響分析レポート生成
+
+##### 拡張CLIコマンド
+```bash
+# 影響分析コマンド
+npm run trace impact <id> [change-type]  # 影響分析実行
+npm run trace analyze <id>                # 総合影響分析
+npm run trace delete <id>                 # 削除（影響確認付き）
+npm run trace update <id> <field> <value> # アイテム更新
+```
+
+### テスト実行結果
+```bash
+# Phase 1機能テスト
+npm run trace add REQ "トレーサビリティ機能の実装"
+# → PBS-REQ-001
+npm run trace add SPEC "ID採番とシンプルなリンク管理"
+# → PBS-SPEC-001
+npm run trace link PBS-SPEC-001 PBS-REQ-001
+# → リンク作成成功
+
+# Phase 2機能テスト
+npm run trace impact PBS-REQ-001 modify
+# → 影響アイテム数: 4 (High: 4件)
+npm run trace impact PBS-SPEC-001 delete
+# → 削除影響の詳細レポート生成
+```
+
+### 動作確認済み項目
+- ✅ ID自動採番とアイテム管理
+- ✅ 双方向リンクの作成と管理
+- ✅ YAMLファイルへの永続化
+- ✅ トレーサビリティマトリックス生成
+- ✅ 整合性チェック（テストがない実装の警告等）
+- ✅ 変更影響分析（modify/delete/add）
+- ✅ 影響度レベルの適切な判定
+- ✅ 詳細影響分析レポートの生成
+
+### 関連ファイル
+- **基本実装**: `src/traceability-manager.js`
+- **影響分析**: `src/impact-analyzer.js`
+- **CLIツール**: `scripts/trace.js`
+- **データ保存**: `.poppo/traceability.yaml`
+- **使用ガイド**: `docs/guides/traceability-guide.md`
+- **英語版ガイド**: `docs/guides/traceability-guide_en.md`
+
+### 今後の拡張（Phase 3-4）
+- GitHubとの連携（Issue/PR番号の関連付け）
+- 高度な可視化（依存関係グラフ）
+- Webベースのダッシュボード
+- 変更履歴の追跡とバージョン管理
+
+## 🏗️ エージェント分離アーキテクチャ Phase 1実装 (2025/6/16 Issue #27)
+
+### 実装概要
+Issue #27「エージェント分離アーキテクチャの実装（CCPM, CCAG等）」により、単一プロセスで行っていた処理を機能別エージェントに分離する基盤を実装しました。
+
+### 実装内容
+
+#### 1. **エージェント基盤クラス** (`agents/shared/agent-base.js`)
+- すべてのエージェントが継承する基底クラス
+- メッセージングシステム（ファイルベース）
+- ハートビート機能
+- タスク管理機能
+- 自動ポーリング機能
+
+#### 2. **CCPMエージェント** (`agents/ccpm/index.js`)
+Code Change Process Manager - コードレビュー専門エージェント
+- **機能**:
+  - コードレビュー（静的解析 + Claude分析）
+  - リファクタリング提案
+  - セキュリティ監査
+- **特徴**:
+  - パターンベースの問題検出
+  - Claudeによる高度な分析
+  - 詳細なレビュー結果の生成
+
+#### 3. **CCAGエージェント** (`agents/ccag/index.js`)
+Code Change Assistant Generator - ドキュメント生成専門エージェント
+- **機能**:
+  - APIドキュメント生成
+  - コメント作成
+  - README更新
+  - ドキュメント翻訳（日英）
+- **特徴**:
+  - 多言語対応（ja/en）
+  - テンプレートベース生成
+  - Claudeによる自然な文章生成
+
+#### 4. **エージェントコーディネーター** (`agents/core/agent-coordinator.js`)
+- エージェントのライフサイクル管理
+- タスクの振り分けと負荷分散
+- エージェント間通信の調整
+- ヘルスチェックと自動再起動
+
+#### 5. **統合インターフェース** (`src/agent-integration.js`)
+- minimal-poppo.jsとの統合
+- Issueからタスクタイプへのマッピング
+- 結果の統合とレポート生成
+
+### ディレクトリ構造
+```
+agents/
+├── core/               # コーディネーター
+│   └── agent-coordinator.js
+├── ccpm/              # Code Change Process Manager
+│   └── index.js
+├── ccag/              # Code Change Assistant Generator
+│   └── index.js
+└── shared/            # 共有コンポーネント
+    └── agent-base.js
+
+messages/              # エージェント間通信用
+├── core/
+│   ├── inbox/
+│   └── outbox/
+├── ccpm/
+│   ├── inbox/
+│   └── outbox/
+└── ccag/
+    ├── inbox/
+    └── outbox/
+```
+
+### 設定 (`config/config.json`)
+```json
+"agentMode": {
+  "enabled": false,    // デフォルトは無効
+  "pollingInterval": 3000,
+  "autoRestart": true,
+  "taskMapping": {
+    "labels": { ... },
+    "keywords": { ... }
+  }
+}
+```
+
+### 使用方法
+
+#### 1. **エージェントモードでの起動**
+```bash
+npm run start:agents
+# または
+node scripts/start-agents.js
+```
+
+#### 2. **通常モードでの起動**（従来通り）
+```bash
+npm start
+```
+
+#### 3. **テスト実行**
+```bash
+node test/test-agent-mode.js
+```
+
+### 動作確認済み項目
+- ✅ エージェント基盤クラスの実装
+- ✅ CCPM/CCAGエージェントの実装
+- ✅ ファイルベースメッセージング
+- ✅ エージェント間通信プロトコル
+- ✅ タスク振り分けと負荷分散
+- ✅ ハートビートによる死活監視
+- ✅ エラー時の自動再起動
+- ✅ 既存システムとの統合
+
+### 技術的な詳細
+
+#### メッセージングシステム
+- **Phase 1**: ファイルベース（JSON）
+- **ポーリング間隔**: 3秒（コーディネーター）、5秒（エージェント）
+- **メッセージ形式**: 標準化されたJSONフォーマット
+- **非同期処理**: Promise/async-awaitベース
+
+#### タスクマッピング
+- **ラベルベース**: `review` → `code-review`タスク
+- **キーワードベース**: 本文に「レビュー」→ `code-review`タスク
+- **複数タスク**: 1つのIssueから複数のタスクを生成可能
+
+### 今後の拡張（Phase 2-4）
+- **Phase 2**: メッセージキュー導入（Redis/RabbitMQ）
+- **Phase 3**: 動的スケーリング機能
+- **Phase 4**: Docker/Kubernetes対応
+
+### 関連ドキュメント
+- **アーキテクチャ設計**: `docs/architecture/agent-separation.md`
+- **通信プロトコル**: `docs/design/agent-communication-protocol.md`
+
+### 注意事項
+- エージェントモードはデフォルトで無効
+- 有効化するには`config.json`で`agentMode.enabled: true`に設定
+- または`npm run start:agents`で一時的に有効化して起動
+- エージェントプロセスは自動的に子プロセスとして管理される
+
 ---
-最終更新: 2025/6/16 - タイムアウト管理の動的制御機能実装完了（Issue #26）
+最終更新: 2025/6/16 - エージェント分離アーキテクチャ Phase 1実装完了（Issue #27）

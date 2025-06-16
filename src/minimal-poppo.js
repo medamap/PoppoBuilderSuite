@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
 const ProcessManager = require('./process-manager');
+const IndependentProcessManager = require('./independent-process-manager');
 const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
 const Logger = require('./logger');
@@ -27,11 +28,12 @@ const taskQueue = new TaskQueue({
   maxConcurrent: config.claude.maxConcurrent,
   maxQueueSize: config.taskQueue?.maxQueueSize || 100 
 });
-const processManager = new ProcessManager(config.claude, rateLimiter, logger);
+// 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
+const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger);
 const configLoader = new ConfigLoader();
 
-// ダッシュボードサーバーの初期化
-const dashboardServer = new DashboardServer(config, processManager.getStateManager(), logger);
+// ダッシュボードサーバーの初期化（独立プロセス方式では簡易的に動作）
+const dashboardServer = new DashboardServer(config, null, logger);
 
 // 処理済みIssueを記録（メモリ内）
 const processedIssues = new Set();
@@ -120,53 +122,23 @@ async function processIssue(issue) {
       }
     };
 
-    // Claudeで実行
+    // Claudeで実行（独立プロセス方式）
     logger.logIssue(issueNumber, 'EXECUTE_START', { instruction });
+    
+    // dogfoodingかどうかを判定
+    const isDogfooding = labels.includes('task:dogfooding');
+    instruction.issue.type = isDogfooding ? 'dogfooding' : 'normal';
+    
     const result = await processManager.execute(`issue-${issueNumber}`, instruction);
-    logger.logIssue(issueNumber, 'EXECUTE_SUCCESS', { outputLength: result.output.length });
+    logger.logIssue(issueNumber, 'INDEPENDENT_STARTED', { 
+      taskId: result.taskId,
+      pid: result.pid 
+    });
 
-    // 結果をコメント
-    const comment = `## 実行完了\n\n${result.output}`;
-    await github.addComment(issueNumber, comment);
-
-    // processingを削除、awaiting-responseラベルを追加（コメント対応機能のため）
-    await github.removeLabels(issueNumber, ['processing']);
+    console.log(`Issue #${issueNumber} を独立プロセス (${result.taskId}) として開始`);
+    console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
     
-    // コメント対応機能が有効な場合はawaiting-responseを追加、無効な場合はcompletedを追加
-    if (config.commentHandling && config.commentHandling.enabled) {
-      await github.addLabels(issueNumber, ['awaiting-response']);
-      logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'awaiting-response' });
-    } else {
-      await github.addLabels(issueNumber, ['completed']);
-      logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'completed' });
-    }
-    
-    console.log(`Issue #${issueNumber} の処理完了`);
-
-    // dogfoodingタスク完了時は自己再起動をスケジュール（ワンショット方式）
-    // 最新のラベル情報を取得してdogfooding判定
-    const currentIssue = await github.getIssue(issueNumber);
-    const currentLabels = currentIssue.labels.map(l => l.name);
-    
-    if (currentLabels.includes('task:dogfooding')) {
-      console.log('🔧 DOGFOODINGタスク完了 - 30秒後に再起動をスケジュール...');
-      
-      try {
-        // ワンショット再起動スケジューラーを起動
-        const { spawn } = require('child_process');
-        const child = spawn('node', ['scripts/restart-scheduler.js', '--oneshot', '30'], {
-          detached: true,
-          stdio: 'ignore',
-          cwd: process.cwd()
-        });
-        child.unref();
-        
-        console.log('再起動スケジューラーを起動しました (PID: ' + child.pid + ')');
-      } catch (error) {
-        console.error('再起動スケジューラー起動エラー:', error.message);
-        // エラーが発生してもawiting-responseラベルは残る（コメント機能継続）
-      }
-    }
+    // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
     logger.logIssue(issueNumber, 'ERROR', { 
@@ -320,39 +292,25 @@ async function processComment(issue, comment) {
       }
     };
 
-    // Claudeで実行
+    // Claudeで実行（独立プロセス方式）
     logger.logIssue(issueNumber, 'COMMENT_EXECUTE_START', { 
       commentId: comment.id,
       conversationLength: conversation.length 
     });
+    
+    instruction.issue.type = 'comment';
+    instruction.issue.isCompletion = isCompletionComment(comment);
+    
     const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction);
-    logger.logIssue(issueNumber, 'COMMENT_EXECUTE_SUCCESS', { 
-      outputLength: result.output.length 
+    logger.logIssue(issueNumber, 'COMMENT_INDEPENDENT_STARTED', { 
+      taskId: result.taskId,
+      pid: result.pid 
     });
 
-    // 結果をコメント
-    const responseComment = `## 実行完了\n\n${result.output}`;
-    await github.addComment(issueNumber, responseComment);
-
-    // processingを削除
-    await github.removeLabels(issueNumber, ['processing']);
+    console.log(`Issue #${issueNumber} のコメントを独立プロセス (${result.taskId}) として開始`);
+    console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
     
-    // 完了判定
-    if (isCompletionComment(comment)) {
-      // 完了キーワードが含まれている場合
-      await github.addLabels(issueNumber, ['completed']);
-      logger.logIssue(issueNumber, 'COMMENT_COMPLETED', { 
-        reason: 'completion_keyword' 
-      });
-      console.log(`Issue #${issueNumber} のコメント処理完了（完了キーワード検出）`);
-    } else {
-      // 続けて対話する場合
-      await github.addLabels(issueNumber, ['awaiting-response']);
-      logger.logIssue(issueNumber, 'COMMENT_AWAITING', { 
-        commentCount: processedComments.get(issueNumber)?.size || 1 
-      });
-      console.log(`Issue #${issueNumber} のコメント処理完了（応答待ち）`);
-    }
+    // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
     logger.logIssue(issueNumber, 'COMMENT_ERROR', { 
@@ -494,19 +452,99 @@ async function handleTaskError(task, error) {
 }
 
 /**
+ * 完了したタスクをチェック（独立プロセス方式）
+ */
+async function checkCompletedTasks() {
+  try {
+    const completedResults = await processManager.pollCompletedTasks();
+    
+    for (const result of completedResults || []) {
+      console.log(`🎯 完了タスク ${result.taskId} の後処理開始`);
+      
+      // GitHubコメント投稿
+      const issueNumber = result.taskInfo.issueNumber;
+      if (issueNumber && result.success) {
+        const comment = `## 実行完了\n\n${result.output}`;
+        await github.addComment(issueNumber, comment);
+        
+        // ラベル更新
+        await github.removeLabels(issueNumber, ['processing']);
+        
+        if (config.commentHandling && config.commentHandling.enabled) {
+          await github.addLabels(issueNumber, ['awaiting-response']);
+          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'awaiting-response' });
+        } else {
+          await github.addLabels(issueNumber, ['completed']);
+          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'completed' });
+        }
+        
+        console.log(`✅ Issue #${issueNumber} の後処理完了`);
+        
+        // タスクタイプに応じた後処理
+        if (result.taskInfo.type === 'dogfooding') {
+          console.log('🔧 DOGFOODINGタスク完了 - 30秒後に再起動をスケジュール...');
+          
+          try {
+            const { spawn } = require('child_process');
+            const child = spawn('node', ['scripts/restart-scheduler.js', '--oneshot', '30'], {
+              detached: true,
+              stdio: 'ignore',
+              cwd: process.cwd()
+            });
+            child.unref();
+            
+            console.log('再起動スケジューラーを起動しました (PID: ' + child.pid + ')');
+          } catch (error) {
+            console.error('再起動スケジューラー起動エラー:', error.message);
+          }
+        } else if (result.taskInfo.type === 'comment') {
+          // コメント処理の場合は完了判定を行う
+          const isCompletion = result.taskInfo.isCompletion || false;
+          
+          if (isCompletion) {
+            // 完了キーワードが含まれている場合
+            await github.addLabels(issueNumber, ['completed']);
+            logger.logIssue(issueNumber, 'COMMENT_COMPLETED', { 
+              reason: 'completion_keyword' 
+            });
+            console.log(`Issue #${issueNumber} のコメント処理完了（完了キーワード検出）`);
+          } else {
+            // 続けて対話する場合
+            await github.addLabels(issueNumber, ['awaiting-response']);
+            logger.logIssue(issueNumber, 'COMMENT_AWAITING', { 
+              commentCount: 1 
+            });
+            console.log(`Issue #${issueNumber} のコメント処理完了（応答待ち）`);
+          }
+        }
+      } else if (issueNumber && !result.success) {
+        // エラー時の処理
+        const errorComment = `## エラーが発生しました\n\n\`\`\`\n${result.error}\n\`\`\`\n\n詳細なログは確認してください。`;
+        await github.addComment(issueNumber, errorComment);
+        await github.removeLabels(issueNumber, ['processing']);
+        
+        console.log(`❌ Issue #${issueNumber} でエラーが発生`);
+      }
+    }
+  } catch (error) {
+    console.error('完了タスクチェックエラー:', error.message);
+  }
+}
+
+/**
  * メインループ
  */
 async function mainLoop() {
   console.log('PoppoBuilder 最小限実装 起動');
   console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
   
-  // 動的タイムアウト機能の状態表示
+  // 独立プロセス方式の状態表示
+  console.log('🔄 独立プロセス方式: 有効（PoppoBuilder再起動時もタスクが継続）');
+  
   if (config.dynamicTimeout?.enabled) {
     console.log('✅ 動的タイムアウト機能: 有効');
-    const timeoutStats = processManager.getTimeoutController().getStatistics();
-    console.log('📊 タイムアウト統計:', JSON.stringify(timeoutStats, null, 2));
   } else {
-    console.log('❌ 動的タイムアウト機能: 無効（固定タイムアウト使用）');
+    console.log('❌ 動的タイムアウト機能: 無効（固定24時間タイムアウト使用）');
   }
   
   // レート制限の初期チェック
@@ -561,6 +599,9 @@ async function mainLoop() {
       
       // キューからタスクを処理
       await processQueuedTasks();
+      
+      // 完了したタスクをポーリングチェック
+      await checkCompletedTasks();
       
       // キューの状態を表示
       const queueStatus = taskQueue.getStatus();

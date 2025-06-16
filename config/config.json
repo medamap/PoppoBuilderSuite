@@ -47,7 +47,7 @@
     }
   },
   "dynamicTimeout": {
-    "enabled": true,
+    "enabled": false,
     "minTimeout": 600000,
     "maxTimeout": 86400000,
     "timeoutProfiles": {
@@ -61,6 +61,30 @@
     "complexityFactors": {
       "enableLearning": true,
       "learningWeight": 0.5
+    }
+  },
+  "agentMode": {
+    "enabled": false,
+    "pollingInterval": 3000,
+    "autoRestart": true,
+    "taskMapping": {
+      "labels": {
+        "review": ["code-review"],
+        "documentation": ["generate-docs", "update-readme"],
+        "security": ["security-audit"],
+        "refactor": ["refactoring-suggestion"],
+        "dogfooding": ["code-review", "generate-docs"]
+      },
+      "keywords": {
+        "レビュー": ["code-review"],
+        "review": ["code-review"],
+        "ドキュメント": ["generate-docs"],
+        "document": ["generate-docs"],
+        "セキュリティ": ["security-audit"],
+        "security": ["security-audit"],
+        "リファクタリング": ["refactoring-suggestion"],
+        "refactor": ["refactoring-suggestion"]
+      }
     }
   }
 }

@@ -5,6 +5,7 @@
   "main": "src/minimal-poppo.js",
   "scripts": {
     "start": "node src/minimal-poppo.js",
+    "start:agents": "node scripts/start-agents.js",
     "restart-scheduler": "node scripts/restart-scheduler.js",
     "setup": "node scripts/setup-labels.js",
     "dashboard": "open http://localhost:3001",
@@ -25,6 +26,7 @@
   "dependencies": {
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
-    "ws": "^8.18.2"
+    "ws": "^8.18.2",
+    "uuid": "^9.0.1"
   }
 }
