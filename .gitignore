@@ -41,6 +41,8 @@ poppo-repo/jobs/
 poppo-repo/results/
 cicd/logs/
 cicd/pids/
+logs/
+temp/
 
 # Temporary files
 *.tmp

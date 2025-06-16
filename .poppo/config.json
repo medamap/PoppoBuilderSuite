@@ -1,0 +1,10 @@
+{
+  "language": {
+    "primary": "ja",
+    "fallback": "en"
+  },
+  "systemPrompt": {
+    "enforceLanguage": true,
+    "customInstructions": ""
+  }
+}

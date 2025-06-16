@@ -3,204 +3,233 @@
 ## 前提条件
 
 - Node.js 18以上
-- Claude Code CLI がインストール・設定済み
-- GitHub アクセス権限を持つ Git 設定
-- macOS、Linux、またはWindows上のWSL2
+- Claude CLI がインストール・設定済み
+- GitHub CLI (`gh`) がインストール・認証済み
+- Git
 
 ## 初期セットアップ
 
-### 1. リポジトリのクローン
+詳細なセットアップ手順は[インストールガイド](../INSTALL.md)を参照してください。
+
+### 1. クイックセットアップ
 
 ```bash
-cd ~/Projects  # または任意のディレクトリ
+# リポジトリのクローン
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
-```
 
-### 2. 依存関係のインストール（利用可能になり次第）
-
-```bash
+# 依存関係のインストール
 npm install
-```
 
-### 3. Poppoリポジトリの初期化
+# 環境変数設定
+cp .env.example .env
+# .envファイルを編集してGitHub設定を記入
 
-```bash
-# 必要なディレクトリを作成
-mkdir -p poppo-repo/{config,tasks,status,results,projects}
+# GitHubラベルの初期設定
+node scripts/setup-labels.js
 
-# 初期設定を作成
-cat > poppo-repo/config/system.json << EOF
-{
-  "version": "1.0.0",
-  "cicd": {
-    "pollInterval": 30000,
-    "maxConcurrentJobs": 3,
-    "defaultTimeout": 300000
-  },
-  "agents": {
-    "ccpm": { "enabled": true },
-    "ccag": { "enabled": true },
-    "ccra": { "enabled": false },
-    "ccta": { "enabled": false },
-    "ccma": { "enabled": false }
-  }
-}
-EOF
-```
-
-### 4. CICDサービスの起動
-
-```bash
-# ターミナルで実行
-node cicd/scheduler.js
-
-# 以下のような出力が表示されます：
-# [CICD] PoppoBuilder CICD starting...
-# [CICD] Polling interval: 30 seconds
-# [CICD] Waiting for tasks...
+# PoppoBuilder起動
+npm start
 ```
 
 ## 基本的な使い方
 
-### 1. 最初のタスクを登録
+### 1. 通常タスクの実行
 
-Claude Codeで：
-```
-ぽっぽ、APIに hello world エンドポイントを追加するタスクを作成して
+GitHub Issueを作成してタスクを実行：
+```bash
+gh issue create \
+  --title "タスクのタイトル" \
+  --body "実行したい内容の説明" \
+  --label "task:misc" \
+  --repo owner/repo
 ```
 
-これにより：
-1. MCPがコマンドを受信
-2. CCGMがpoppo-repo/tasks/にタスクを作成
-3. CICDがタスクを検出
-4. CCPMが指示書を生成
-5. CCAGが変更を実装
+例：
+```bash
+gh issue create \
+  --title "データベース接続設定を教えて" \
+  --body "PostgreSQLへの接続方法を説明してください" \
+  --label "task:misc" \
+  --repo medamap/my-project
+```
 
 ### 2. ステータス確認
 
-```
-ぽっぽ、現在の状況は？
-```
+```bash
+# 実行中のIssueを確認
+gh issue list --label "processing" --repo owner/repo
 
-以下の情報が表示されます：
-- アクティブなジョブ
-- キューにあるタスク
-- 最近の完了タスク
-- エラー情報
+# コメント待機中のIssueを確認
+gh issue list --label "awaiting-response" --repo owner/repo
 
-### 3. 結果の確認
-
-```
-ぽっぽ、task-001の結果を見せて
+# ログを確認
+tail -f logs/poppo-$(date +%Y-%m-%d).log
 ```
 
-## プロジェクトの操作
+### 3. コメントでの対話
 
-### 1. 新しいプロジェクトの初期化
+PoppoBuilderが初回処理後、コメントで続けて質問できます：
+```bash
+# 追加の質問
+gh issue comment <issue-number> \
+  --body "追加の質問をここに記載" \
+  --repo owner/repo
 
-```
-ぽっぽ、ExpressとTypeScriptで「my-api」プロジェクトを初期化して
-```
-
-### 2. 機能の追加
-
-```
-ぽっぽ、my-apiプロジェクトにユーザー認証を追加して
-```
-
-### 3. テストの実行
-
-```
-ぽっぽ、my-apiプロジェクトのテストを実行して
+# 完了を伝える
+gh issue comment <issue-number> \
+  --body "ありがとうございました" \
+  --repo owner/repo
 ```
 
-## セルフホスティング開発
+## Dogfooding（自己改善）タスク
 
-### 1. 機能改善のIssue作成
+PoppoBuilder自体の機能を改善するタスク：
 
+### 1. 機能追加のIssue作成
+
+```bash
+gh issue create \
+  --title "PoppoBuilder機能追加: XXX機能" \
+  --body "機能の詳細説明..." \
+  --label "task:dogfooding" \
+  --repo medamap/PoppoBuilderSuite
 ```
-ぽっぽ、Issue作成：タスクファイルにJSONスキーマ検証を追加
+
+### 2. Dogfoodingの特別動作
+
+`task:dogfooding`ラベル付きIssueでは：
+- CLAUDE.mdを自動的に参照
+- 実装後にCLAUDE.mdを更新
+- 完了時に30秒後の自動再起動をスケジュール
+
+### 3. 自動再起動の確認
+
+```bash
+# 再起動ログの確認
+tail -f logs/restart-$(date +%Y-%m-%d).log
+
+# PoppoBuilderプロセスの監視
+watch -n 1 'ps aux | grep PoppoBuilder-Main | grep -v grep'
 ```
 
-### 2. PoppoBuilderに実装させる
+## 言語設定の変更
 
-```
-ぽっぽ、Issue #1に取り組んで
+PoppoBuilderの応答言語を変更する場合：
+
+### 1. 設定ファイルの編集
+
+`.poppo/config.json`を作成または編集：
+```json
+{
+  "language": "en"  // "ja" または "en"
+}
 ```
 
-### 3. レビューとマージ
+### 2. PoppoBuilderの再起動
 
-```
-ぽっぽ、Issue #1のPRを見せて
+```bash
+# 現在のプロセスを停止
+ps aux | grep PoppoBuilder-Main
+kill <PID>
+
+# 再起動
+npm start
 ```
 
 ## トラブルシューティング
 
-### CICDがタスクを検出しない場合
+### Issueが検出されない場合
 
-1. CICDが実行中か確認
-2. タスクファイルが正しい形式か確認
-3. `cicd/logs/`のログを確認
+1. 正しいラベルが付与されているか確認
+2. PoppoBuilderが実行中か確認
+3. ログを確認：`tail -f logs/poppo-$(date +%Y-%m-%d).log`
 
-### エージェントのサブプロセスが失敗する場合
+### Claude CLIがハングアップする場合
 
-1. `poppo-repo/results/`でエージェント出力を確認
-2. Claude Code CLIが動作しているか確認
-3. 指示書の形式を確認
+1. Claude CLIが最新版であることを確認
+2. APIキーが正しく設定されているか確認
+3. プロセスログを確認：`tail -f logs/processes-$(date +%Y-%m-%d).log`
 
-### 状態が破損した場合
+### コメントへの返信がない場合
 
-1. CICDを停止
-2. `poppo-repo/status/state.json`を確認
-3. 修正またはバックアップから復元
-4. CICDを再起動
+1. `awaiting-response`ラベルが付いているか確認
+2. コメントがIssue作成者からのものか確認
+3. コメント監視ログを確認
 
 ## 高度な使い方
 
-### カスタムエージェント設定
+### システム設定のカスタマイズ
 
-`poppo-repo/config/agents/{エージェント名}.json`を編集：
+`config/config.json`を編集して動作を調整：
 
 ```json
 {
-  "timeout": 600000,
-  "retries": 3,
-  "environment": {
-    "CUSTOM_VAR": "value"
+  "github": {
+    "owner": "your-username",
+    "repo": "your-repo"
+  },
+  "polling": {
+    "interval": 60000  // 1分ごとにチェック
+  },
+  "claude": {
+    "maxConcurrent": 2,
+    "timeout": 43200000  // 12時間に短縮
+  },
+  "commentHandling": {
+    "enabled": true,
+    "maxCommentCount": 20,  // 最大コメント数を増やす
+    "completionKeywords": [
+      "ありがとう", "完了", "終了", "OK",
+      "thanks", "done", "finished", "closed"
+    ]
   }
 }
 ```
 
-### 優先タスク
+### 複数プロジェクトの管理
 
-タスク作成時に優先フラグを追加：
+別のプロジェクト用にPoppoBuilderを設定：
 
+```bash
+# 別ディレクトリにクローン
+cd ~/Projects/AnotherProject
+git clone https://github.com/medamap/PoppoBuilderSuite.git poppo-for-project
+cd poppo-for-project
+
+# 環境変数を設定
+cp .env.example .env
+# GITHUB_OWNERとGITHUB_REPOをターゲットプロジェクトに設定
+
+# 起動
+npm start
 ```
-ぽっぽ、緊急：本番環境のエラーハンドリングのバグを修正して
-```
 
-### バッチ操作
+### バッチ処理
 
-関連する複数のタスクを一括登録：
+複数の関連Issueを一度に作成：
 
-```
-ぽっぽ、バッチタスク：
-1. すべての依存関係を更新
-2. セキュリティ監査を実行
-3. 見つかった脆弱性を修正
+```bash
+# スクリプトでバッチ作成
+for task in "テスト追加" "ドキュメント更新" "リファクタリング"; do
+  gh issue create \
+    --title "$task" \
+    --body "$taskの詳細" \
+    --label "task:misc" \
+    --repo owner/repo
+done
 ```
 
 ## ベストプラクティス
 
-1. **タスクは集中的に**: 1つの機能につき1タスク
-2. **明確な説明を使用**: 要件について具体的に記述
-3. **定期的にステータス確認**: 長時間実行タスクを監視
-4. **PRをレビュー**: 自動化されていても人間のレビューは重要
-5. **状態をバックアップ**: poppo-repoの定期バックアップ
+1. **Issueの説明は具体的に**: 何をしてほしいか明確に記述
+2. **適切なラベルを使用**: `task:misc`または`task:dogfooding`
+3. **ログを定期的に確認**: 長時間実行タスクを監視
+4. **コメントで対話**: 追加情報や質問をコメントで伝える
+5. **完了キーワードを使用**: "ありがとう"等でタスクを終了
 
 ## 次のステップ
 
-- [アーキテクチャ概要](../architecture/system-overview.md)を読む
-- [エージェントの役割](../architecture/agents.md)について学ぶ
-- PoppoBuilder自体に貢献する！
+- [インストールガイド](../INSTALL.md)で詳細な設定を確認
+- [セットアップガイド](../setup-guide.md)でカスタマイズ方法を学ぶ
+- PoppoBuilder自体を改善するIssueを作成！

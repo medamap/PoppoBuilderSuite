@@ -5,9 +5,19 @@
   },
   "claude": {
     "maxConcurrent": 2,
-    "timeout": 300000
+    "timeout": 86400000
   },
   "polling": {
     "interval": 30000
+  },
+  "commentHandling": {
+    "enabled": true,
+    "completionKeywords": [
+      "ありがとう", "ありがとうございます", "ありがとうございました",
+      "完了", "OK", "ok", "了解", "承知",
+      "thank you", "thanks", "done", "complete"
+    ],
+    "maxCommentCount": 10,
+    "timeoutHours": 24
   }
 }

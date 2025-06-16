@@ -32,8 +32,16 @@ class GitHubClient {
    */
   addComment(issueNumber, body) {
     try {
-      const escapedBody = body.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-      execSync(`gh issue comment ${issueNumber} --repo ${this.owner}/${this.repo} --body "${escapedBody}"`);
+      // ファイル経由でコメントを投稿（特殊文字対応）
+      const fs = require('fs');
+      const path = require('path');
+      const tempFile = path.join(__dirname, '../temp', `comment-${issueNumber}-${Date.now()}.txt`);
+      
+      fs.writeFileSync(tempFile, body, 'utf8');
+      execSync(`gh issue comment ${issueNumber} --repo ${this.owner}/${this.repo} --body-file "${tempFile}"`);
+      
+      // 一時ファイルを削除
+      fs.unlinkSync(tempFile);
       return true;
     } catch (error) {
       console.error(`Failed to add comment to issue #${issueNumber}:`, error.message);
@@ -79,6 +87,33 @@ class GitHubClient {
     } catch (error) {
       console.error(`Failed to close issue #${issueNumber}:`, error.message);
       return false;
+    }
+  }
+
+  /**
+   * Issueの詳細を取得
+   */
+  getIssue(issueNumber) {
+    try {
+      const output = execSync(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json number,title,body,labels,author,createdAt,updatedAt`).toString();
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to get issue #${issueNumber}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Issueのコメントリストを取得
+   */
+  listComments(issueNumber) {
+    try {
+      const output = execSync(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json comments`).toString();
+      const data = JSON.parse(output);
+      return data.comments || [];
+    } catch (error) {
+      console.error(`Failed to list comments for issue #${issueNumber}:`, error.message);
+      return [];
     }
   }
 }
