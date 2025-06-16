@@ -7,10 +7,12 @@ const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
 const ProcessManager = require('./process-manager');
-const RateLimiter = require('./rate-limiter');
+const EnhancedRateLimiter = require('./enhanced-rate-limiter');
+const TaskQueue = require('./task-queue');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const RestartScheduler = require('../scripts/restart-scheduler');
+const DashboardServer = require('../dashboard/server/index');
 
 // 設定読み込み
 const config = JSON.parse(
@@ -20,15 +22,35 @@ const config = JSON.parse(
 // インスタンス作成
 const logger = new Logger();
 const github = new GitHubClient(config.github);
-const rateLimiter = new RateLimiter();
+const rateLimiter = new EnhancedRateLimiter(config.rateLimiting || {});
+const taskQueue = new TaskQueue({ 
+  maxConcurrent: config.claude.maxConcurrent,
+  maxQueueSize: config.taskQueue?.maxQueueSize || 100 
+});
 const processManager = new ProcessManager(config.claude, rateLimiter, logger);
 const configLoader = new ConfigLoader();
+
+// ダッシュボードサーバーの初期化
+const dashboardServer = new DashboardServer(config, processManager.getStateManager(), logger);
 
 // 処理済みIssueを記録（メモリ内）
 const processedIssues = new Set();
 
 // 処理済みコメントを記録（メモリ内）
 const processedComments = new Map(); // issueNumber -> Set(commentIds)
+
+// タスクキューイベントハンドラー
+taskQueue.on('taskEnqueued', (task) => {
+  logger.logSystem('QUEUE_ENQUEUED', { taskId: task.id, priority: task.priority });
+});
+
+taskQueue.on('taskStarted', ({ taskId, processInfo }) => {
+  logger.logSystem('QUEUE_TASK_STARTED', { taskId, processInfo });
+});
+
+taskQueue.on('taskCompleted', ({ taskId, success, duration }) => {
+  logger.logSystem('QUEUE_TASK_COMPLETED', { taskId, success, duration });
+});
 
 /**
  * Issueが処理対象かチェック
@@ -380,11 +402,18 @@ async function checkComments() {
           }
           processedComments.get(issue.number).add(commentId);
           
-          // コメントを処理
-          if (processManager.canExecute()) {
-            processComment(issue, { ...comment, id: commentId }); // awaitしない（並行実行）
-          } else {
-            console.log('最大同時実行数に達しています（コメント処理）');
+          // コメントをタスクキューに追加
+          try {
+            const taskId = taskQueue.enqueue({
+              type: 'comment',
+              issue: issue,
+              comment: { ...comment, id: commentId },
+              issueNumber: issue.number,
+              labels: issue.labels.map(l => l.name)
+            });
+            console.log(`💬 Issue #${issue.number} のコメントをキューに追加 (タスクID: ${taskId})`);
+          } catch (error) {
+            console.error(`コメントのキュー追加エラー:`, error.message);
           }
         }
       }
@@ -395,18 +424,101 @@ async function checkComments() {
 }
 
 /**
+ * タスクキューからタスクを処理
+ */
+async function processQueuedTasks() {
+  while (taskQueue.canExecute() && taskQueue.getQueueSize() > 0) {
+    const task = taskQueue.dequeue();
+    if (!task) break;
+    
+    // レート制限チェック
+    const rateLimitStatus = await rateLimiter.isRateLimited();
+    if (rateLimitStatus.limited) {
+      // レート制限中はタスクをキューに戻す
+      taskQueue.enqueue(task);
+      console.log(`⏸️  レート制限中: ${rateLimitStatus.api} API`);
+      break;
+    }
+    
+    // タスク実行開始
+    taskQueue.startTask(task.id, { type: task.type, issueNumber: task.issueNumber });
+    
+    try {
+      if (task.type === 'issue') {
+        processIssue(task.issue).then(() => {
+          taskQueue.completeTask(task.id, true);
+          rateLimiter.resetRetryState(task.id);
+        }).catch((error) => {
+          console.error(`タスク ${task.id} エラー:`, error.message);
+          taskQueue.completeTask(task.id, false);
+          
+          // リトライ判定
+          handleTaskError(task, error);
+        });
+      } else if (task.type === 'comment') {
+        processComment(task.issue, task.comment).then(() => {
+          taskQueue.completeTask(task.id, true);
+          rateLimiter.resetRetryState(task.id);
+        }).catch((error) => {
+          console.error(`コメントタスク ${task.id} エラー:`, error.message);
+          taskQueue.completeTask(task.id, false);
+          
+          // リトライ判定
+          handleTaskError(task, error);
+        });
+      }
+    } catch (error) {
+      console.error(`タスク処理エラー:`, error.message);
+      taskQueue.completeTask(task.id, false);
+    }
+  }
+}
+
+/**
+ * タスクエラーのハンドリング
+ */
+async function handleTaskError(task, error) {
+  // レート制限エラーの場合
+  if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
+    try {
+      await rateLimiter.waitWithBackoff(task.id, 'rate limit error');
+      // リトライのためタスクを再キュー
+      task.attempts = (task.attempts || 0) + 1;
+      if (task.attempts <= 5) {
+        taskQueue.enqueue(task);
+      }
+    } catch (retryError) {
+      console.error(`タスク ${task.id} の最大リトライ回数に到達`);
+    }
+  }
+}
+
+/**
  * メインループ
  */
 async function mainLoop() {
   console.log('PoppoBuilder 最小限実装 起動');
   console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
+  
+  // 動的タイムアウト機能の状態表示
+  if (config.dynamicTimeout?.enabled) {
+    console.log('✅ 動的タイムアウト機能: 有効');
+    const timeoutStats = processManager.getTimeoutController().getStatistics();
+    console.log('📊 タイムアウト統計:', JSON.stringify(timeoutStats, null, 2));
+  } else {
+    console.log('❌ 動的タイムアウト機能: 無効（固定タイムアウト使用）');
+  }
+  
+  // レート制限の初期チェック
+  await rateLimiter.preflightCheck();
 
   while (true) {
     try {
       // レート制限チェック
-      if (rateLimiter.isRateLimited()) {
-        const remaining = Math.ceil(rateLimiter.getRemainingTime() / 1000);
-        console.log(`レート制限中... 残り${remaining}秒`);
+      const rateLimitStatus = await rateLimiter.isRateLimited();
+      if (rateLimitStatus.limited) {
+        const waitSeconds = Math.ceil(rateLimitStatus.waitTime / 1000);
+        console.log(`⚠️  ${rateLimitStatus.api.toUpperCase()} APIレート制限中... 残り${waitSeconds}秒`);
         await rateLimiter.waitForReset();
         continue;
       }
@@ -428,19 +540,34 @@ async function mainLoop() {
           new Date(a.createdAt) - new Date(b.createdAt)
         );
 
-        // 実行可能な分だけ処理
+        // Issueをタスクキューに追加
         for (const issue of targetIssues) {
-          if (processManager.canExecute()) {
-            processIssue(issue); // awaitしない（並行実行）
-          } else {
-            console.log('最大同時実行数に達しています');
-            break;
+          try {
+            const taskId = taskQueue.enqueue({
+              type: 'issue',
+              issue: issue,
+              issueNumber: issue.number,
+              labels: issue.labels.map(l => l.name)
+            });
+            console.log(`📋 Issue #${issue.number} をキューに追加 (タスクID: ${taskId})`);
+          } catch (error) {
+            console.error(`Issue #${issue.number} のキュー追加エラー:`, error.message);
           }
         }
       }
 
       // コメント処理（コメント対応機能が有効な場合）
       await checkComments();
+      
+      // キューからタスクを処理
+      await processQueuedTasks();
+      
+      // キューの状態を表示
+      const queueStatus = taskQueue.getStatus();
+      if (queueStatus.queued > 0 || queueStatus.running > 0) {
+        console.log(`📊 キュー状態: 実行中=${queueStatus.running}, 待機中=${queueStatus.queued}`);
+        console.log(`   優先度別: ${JSON.stringify(queueStatus.queuesByPriority)}`);
+      }
 
     } catch (error) {
       console.error('メインループエラー:', error.message);
@@ -456,8 +583,12 @@ async function mainLoop() {
 process.on('SIGINT', () => {
   console.log('\n\n終了します...');
   processManager.killAll();
+  dashboardServer.stop();
   process.exit(0);
 });
+
+// ダッシュボードサーバーを起動
+dashboardServer.start();
 
 // 開始
 mainLoop().catch(console.error);

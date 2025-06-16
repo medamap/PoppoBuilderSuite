@@ -1,4 +1,6 @@
 const { spawn } = require('child_process');
+const ProcessStateManager = require('./process-state-manager');
+const TimeoutController = require('./timeout-controller');
 
 /**
  * Claude CLIプロセスの管理
@@ -9,6 +11,9 @@ class ProcessManager {
     this.rateLimiter = rateLimiter;
     this.logger = logger;
     this.runningProcesses = new Map();
+    this.stateManager = new ProcessStateManager(logger);
+    this.timeoutController = new TimeoutController(config.dynamicTimeout || {}, logger);
+    this.processStartTimes = new Map();
   }
 
   /**
@@ -21,8 +26,9 @@ class ProcessManager {
   /**
    * 実行可能かチェック
    */
-  canExecute() {
-    return !this.rateLimiter.isRateLimited() && 
+  async canExecute() {
+    const rateLimitStatus = await this.rateLimiter.isRateLimited();
+    return !rateLimitStatus.limited && 
            this.getRunningCount() < this.config.maxConcurrent;
   }
 
@@ -30,7 +36,7 @@ class ProcessManager {
    * Claudeを実行
    */
   async execute(taskId, instruction) {
-    if (!this.canExecute()) {
+    if (!await this.canExecute()) {
       throw new Error('Cannot execute: rate limited or max concurrent reached');
     }
 
@@ -78,8 +84,24 @@ class ProcessManager {
         '--print'
       ];
 
+      // 動的タイムアウトの計算
+      let timeout = this.config.timeout; // デフォルト値
+      let timeoutInfo = null;
+      
+      if (this.config.dynamicTimeout?.enabled && instruction.issue) {
+        timeoutInfo = this.timeoutController.calculateTimeout(instruction.issue);
+        timeout = timeoutInfo.timeout;
+        console.log(`[${taskId}] 動的タイムアウト: ${Math.round(timeout / 60000)}分`);
+        console.log(`[${taskId}] 理由: ${timeoutInfo.reasoning}`);
+      }
+      
       console.log(`[${taskId}] Claude実行開始`);
       console.log(`[${taskId}] プロセス識別: PoppoBuilder-Claude-${taskId}`);
+      
+      // プロセス開始を記録
+      const issueNumber = instruction.issue?.number || 0;
+      this.stateManager.recordProcessStart(taskId, issueNumber, 'claude-cli');
+      this.processStartTimes.set(taskId, Date.now());
       
       if (this.logger) {
         this.logger.logProcess(taskId, 'START', { 
@@ -106,6 +128,10 @@ class ProcessManager {
       process.stdout.on('data', (data) => {
         const chunk = data.toString();
         stdout += chunk;
+        
+        // プロセス出力を更新
+        this.stateManager.updateProcessOutput(taskId, stdout);
+        
         if (this.logger) {
           this.logger.logProcess(taskId, 'STDOUT', { chunk });
         }
@@ -122,6 +148,10 @@ class ProcessManager {
       process.on('error', (error) => {
         this.runningProcesses.delete(taskId);
         console.error(`[${taskId}] プロセスエラー:`, error.message);
+        
+        // プロセスエラーを記録
+        this.stateManager.recordProcessEnd(taskId, 'error', -1);
+        
         if (this.logger) {
           this.logger.logProcess(taskId, 'ERROR', { 
             error: error.message,
@@ -134,6 +164,20 @@ class ProcessManager {
       process.on('exit', (code) => {
         this.runningProcesses.delete(taskId);
         console.log(`[${taskId}] Claude実行完了 (code: ${code})`);
+        
+        // 実行時間の計算
+        const startTime = this.processStartTimes.get(taskId);
+        const executionTime = startTime ? Date.now() - startTime : 0;
+        this.processStartTimes.delete(taskId);
+        
+        // プロセス終了を記録
+        const status = code === 0 ? 'completed' : 'error';
+        this.stateManager.recordProcessEnd(taskId, status, code);
+        
+        // 実行履歴を記録（動的タイムアウトが有効な場合）
+        if (this.config.dynamicTimeout?.enabled && instruction.issue) {
+          this.timeoutController.recordExecution(taskId, instruction.issue, executionTime, status);
+        }
         
         // 指示ファイルを削除
         try {
@@ -175,9 +219,23 @@ class ProcessManager {
           console.log(`[${taskId}] タイムアウト`);
           process.kill('SIGTERM');
           this.runningProcesses.delete(taskId);
+          
+          // 実行時間の計算
+          const startTime = this.processStartTimes.get(taskId);
+          const executionTime = startTime ? Date.now() - startTime : 0;
+          this.processStartTimes.delete(taskId);
+          
+          // タイムアウトを記録
+          this.stateManager.recordProcessEnd(taskId, 'timeout', -2);
+          
+          // 実行履歴を記録（動的タイムアウトが有効な場合）
+          if (this.config.dynamicTimeout?.enabled && instruction.issue) {
+            this.timeoutController.recordExecution(taskId, instruction.issue, executionTime, 'timeout');
+          }
+          
           reject(new Error('Process timeout'));
         }
-      }, this.config.timeout);
+      }, timeout);
     });
   }
 
@@ -188,8 +246,25 @@ class ProcessManager {
     for (const [taskId, process] of this.runningProcesses) {
       console.log(`[${taskId}] プロセス強制終了`);
       process.kill('SIGTERM');
+      
+      // 強制終了を記録
+      this.stateManager.recordProcessEnd(taskId, 'killed', -3);
     }
     this.runningProcesses.clear();
+  }
+  
+  /**
+   * プロセス状態マネージャーを取得
+   */
+  getStateManager() {
+    return this.stateManager;
+  }
+  
+  /**
+   * タイムアウトコントローラーを取得
+   */
+  getTimeoutController() {
+    return this.timeoutController;
   }
 }
 

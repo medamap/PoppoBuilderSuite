@@ -19,5 +19,48 @@
     ],
     "maxCommentCount": 10,
     "timeoutHours": 24
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "host": "localhost",
+    "updateInterval": 5000,
+    "authentication": {
+      "enabled": false,
+      "username": "admin",
+      "password": "changeme"
+    }
+  },
+  "rateLimiting": {
+    "initialBackoffDelay": 1000,
+    "maxBackoffDelay": 300000,
+    "backoffMultiplier": 2,
+    "backoffJitter": 0.1
+  },
+  "taskQueue": {
+    "maxQueueSize": 100,
+    "priorityLevels": {
+      "dogfooding": 100,
+      "high": 75,
+      "normal": 50,
+      "low": 25
+    }
+  },
+  "dynamicTimeout": {
+    "enabled": true,
+    "minTimeout": 600000,
+    "maxTimeout": 86400000,
+    "timeoutProfiles": {
+      "misc": 1800000,
+      "dogfooding": 7200000,
+      "documentation": 3600000,
+      "complex": 21600000,
+      "feature": 7200000,
+      "bug": 3600000
+    },
+    "complexityFactors": {
+      "enableLearning": true,
+      "learningWeight": 0.5
+    }
   }
 }

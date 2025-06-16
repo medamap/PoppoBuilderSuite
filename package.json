@@ -7,6 +7,8 @@
     "start": "node src/minimal-poppo.js",
     "restart-scheduler": "node scripts/restart-scheduler.js",
     "setup": "node scripts/setup-labels.js",
+    "dashboard": "open http://localhost:3001",
+    "trace": "node scripts/trace.js",
     "test": "echo \"Error: no test specified yet\" && exit 1"
   },
   "keywords": [
@@ -20,6 +22,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "express": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "ws": "^8.18.2"
+  }
 }

@@ -362,5 +362,411 @@ Issue #18のコメントで指示されたドキュメント整備を実施し�
 - コメント対応機能とDogfooding自動再起動機能を全ドキュメントに反映
 - トラブルシューティングを充実化（解決済み問題も明記）
 
+## 🎯 develop/mainブランチへのマージ完了 (2025/6/16)
+
+### マージ内容
+Issue #18の会話履歴に基づいて、以下のマージを実行しました：
+
+1. **work/poppo-builder → develop**
+   - コミット: bc54ce7
+   - 内容: コメント対応機能の実装とドキュメント整備
+   - Fast-forwardマージ
+
+2. **develop → main**
+   - コミット: bc54ce7
+   - 内容: 同上
+   - Fast-forwardマージ
+
+### マージされた主な変更
+- コメント追記対応機能の実装
+- Dogfooding自動再起動機能の実装
+- 言語設定機能の実装
+- インストールガイドの作成（日本語版・英語版）
+- 全ドキュメントの最新化と英語版作成
+
+### ブランチ状態
+- work/poppo-builder: origin/work/poppo-builderと同期
+- develop: origin/developと同期
+- main: origin/mainと同期
+
+すべてのブランチが最新状態でプッシュ済みです。
+
+## 📊 トレーサビリティ機能Phase 1実装 (2025/6/16 Issue #19)
+
+### 実装内容
+Issue #19「進捗を進めてください」の指示により、未実装機能の中からトレーサビリティ機能Phase 1を実装しました。
+
+#### 1. **トレーサビリティマネージャー** (`src/traceability-manager.js`)
+- ID自動採番システム（PBS-REQ-001形式）
+- 双方向リンク管理（implements, references等）
+- YAMLベースのデータ永続化
+- 整合性チェック機能
+
+#### 2. **CLIツール** (`scripts/trace.js`)
+```bash
+# 使用例
+npm run trace add REQ "新機能の要求"        # アイテム追加
+npm run trace link PBS-SPEC-001 PBS-REQ-001 # リンク作成
+npm run trace matrix                         # マトリックス生成
+npm run trace check                          # 整合性チェック
+```
+
+#### 3. **実装したフェーズ**
+- REQ（要求定義）
+- SPEC（要件定義）
+- HLD（概要設計）
+- DLD（詳細設計）
+- IMP（実装）
+- TEST（テスト）
+
+### テスト実行結果
+```bash
+# テストデータの作成
+npm run trace add REQ "トレーサビリティ機能の実装"
+npm run trace add SPEC "ID採番とシンプルなリンク管理"
+npm run trace add IMP "トレーサビリティマネージャーの実装"
+npm run trace link PBS-SPEC-001 PBS-REQ-001
+npm run trace link PBS-IMP-001 PBS-SPEC-001
+
+# マトリックス生成結果
+PBS-REQ-001 (REQ) → PBS-SPEC-001 (SPEC) → PBS-IMP-001 (IMP)
+```
+
+### データ保存場所
+- `.poppo/traceability.yaml` - トレーサビリティデータ
+- `traceability-matrix.md` - 生成されたマトリックス
+
+### 関連ドキュメント
+- **要求定義**: `docs/requirements/traceability-requirements.md`
+- **使用ガイド**: `docs/guides/traceability-guide.md`
+- **英語版ガイド**: `docs/guides/traceability-guide_en.md`
+
+### 今後の拡張（Phase 2-4）
+- 変更影響分析
+- GitHubとの連携（Issue/PR番号の関連付け）
+- 高度な可視化（依存関係グラフ）
+- Webベースのダッシュボード
+
+### 動作確認方法
+```bash
+# 新しいターミナルで実行
+npm run trace list    # 登録済みアイテム確認
+npm run trace matrix  # マトリックス生成
+npm run trace check   # 整合性チェック（テストがない実装の警告等）
+```
+
+## 📋 Dogfoodingタスク用Issue登録 (2025/6/16 Issue #22)
+
+### 実施内容
+Issue #22「issueを登録してください」の指示により、まだ進めていない進捗から5つのdogfooding用Issueを作成しました。
+
+#### 登録したIssue
+1. **Issue #23: プロセス管理ダッシュボードの実装**
+   - 実行中プロセスのリアルタイム監視・制御
+   - Webベースのダッシュボード機能
+   - プロセスの健全性可視化
+
+2. **Issue #24: レート制限対応の強化**
+   - GitHub/Claude APIのレート制限動的監視
+   - 自動バックオフとリトライ戦略
+   - 優先度付きキュー管理（dogfoodingタスク優先）
+
+3. **Issue #25: トレーサビリティ機能 Phase 2: 変更影響分析の実装**
+   - 変更時の影響範囲自動分析
+   - 関連実装・テスト・ドキュメントの特定
+   - 影響度レベル表示（High/Medium/Low）
+
+4. **Issue #26: タイムアウト管理の動的制御機能**
+   - タスク種類・複雑度に応じた動的タイムアウト
+   - 実行履歴に基づく学習型調整
+   - dogfoodingタスクには十分な時間を確保
+
+5. **Issue #27: エージェント分離アーキテクチャの実装（CCPM, CCAG等）**
+   - 機能別エージェントへの分離（コードレビュー、ドキュメント生成等）
+   - メッセージキューによる非同期通信
+   - 水平スケーリング対応
+
+### 選定基準
+- PoppoBuilderの自己改善（dogfooding）に役立つ機能を優先
+- 実装の難易度と重要度のバランスを考慮
+- システムの安定性・効率性・品質向上に寄与する機能
+
+### 次のステップ
+これらのIssueは`task:dogfooding`ラベルが付けられており、PoppoBuilderが順次処理していきます。各Issueの実装により、PoppoBuilder自身の機能が段階的に強化されていきます。
+
+## 📊 プロセス管理ダッシュボード実装 (2025/6/16 Issue #23)
+
+### 実装概要
+Issue #23「プロセス管理ダッシュボードの実装」により、実行中のPoppoBuilderプロセスやClaude CLIプロセスをリアルタイムで監視・制御できるWebベースのダッシュボード機能を実装しました。
+
+### 実装内容
+
+#### 1. **プロセス状態管理** (`src/process-state-manager.js`)
+- プロセスの実行状態をJSON形式で記録・管理
+- 5秒間隔でメトリクス（CPU、メモリ、経過時間）を更新
+- 24時間以上前の古いプロセス情報を自動クリーンアップ
+- システム全体の統計情報を提供
+
+#### 2. **ダッシュボードサーバー** (`dashboard/server/index.js`)
+- Express.js + WebSocketによるリアルタイム通信
+- REST APIエンドポイント：
+  - `/api/processes` - 全プロセス一覧
+  - `/api/processes/running` - 実行中プロセス一覧
+  - `/api/processes/:id` - プロセス詳細
+  - `/api/system/stats` - システム統計
+  - `/api/health` - ヘルスチェック
+
+#### 3. **ダッシュボードUI** (`dashboard/client/`)
+- リアルタイムプロセス監視画面
+- システム状態の可視化（正常/エラー/待機中）
+- プロセスごとの詳細表示（Issue番号、状態、CPU/メモリ使用率、経過時間）
+- WebSocketによる自動更新（5秒間隔）
+- レスポンシブデザイン対応
+
+#### 4. **プロセスマネージャー統合** (`src/process-manager.js`)
+- プロセスの開始/終了/エラーを自動記録
+- タイムアウトやエラー状態も適切に記録
+- プロセス出力をリアルタイムで更新
+
+#### 5. **設定追加** (`config/config.json`)
+```json
+"dashboard": {
+  "enabled": true,
+  "port": 3001,
+  "host": "localhost",
+  "updateInterval": 5000,
+  "authentication": {
+    "enabled": false,
+    "username": "admin",
+    "password": "changeme"
+  }
+}
+```
+
+### 動作確認方法
+
+1. **PoppoBuilderの起動**
+```bash
+npm start
+# ダッシュボードサーバーも自動的に起動します
+```
+
+2. **ダッシュボードへのアクセス**
+```bash
+npm run dashboard  # ブラウザでhttp://localhost:3001を開く
+# または直接アクセス: http://localhost:3001
+```
+
+3. **動作確認**
+- プロセス一覧にPoppoBuilder-Mainが表示される
+- 新しいIssueを作成すると、Claude CLIプロセスがリアルタイムで表示される
+- プロセスの状態変化（実行中→完了）が自動更新される
+
+### 今後の拡張予定（Phase 2-3）
+- プロセスの停止・再起動機能の実装
+- 詳細なCPU/メモリメトリクスの収集
+- ログ検索・フィルタ機能
+- アラート通知機能
+- 認証機能の有効化
+
+### 関連ファイル
+- **設計書**: `docs/design/process-dashboard-design.md`
+- **検討事項**: `docs/considerations/process-management-dashboard.md`
+
+### 技術的な詳細
+- プロセス状態は`logs/process-state.json`に永続化
+- WebSocket切断時は自動再接続（5秒後）
+- Express.jsサーバーはポート3001で起動
+- PoppoBuilder終了時にダッシュボードサーバーも自動停止
+
+## 🚀 レート制限対応の強化実装 (2025/6/16 Issue #24)
+
+### 実装概要
+Issue #24「レート制限対応の強化」により、GitHub APIとClaude APIのレート制限を動的に監視し、自動バックオフ、リトライ戦略、優先度付きキュー管理を実装しました。
+
+### 実装内容
+
+#### 1. **GitHub APIレート制限監視** (`src/github-rate-limiter.js`)
+- `gh api rate_limit`を使用してレート制限状態を取得
+- 使用率80%超で警告表示
+- API呼び出し前の事前チェック機能
+- リセット時刻までの自動待機
+
+#### 2. **統合レート制限管理** (`src/enhanced-rate-limiter.js`)
+- GitHub APIとClaude APIの両方を一元管理
+- エクスポネンシャルバックオフ戦略の実装
+  - 初期遅延: 1秒、最大遅延: 5分、倍率: 2倍
+  - ジッター（0-10%）でランダム性を追加
+- 最大5回までの自動リトライ
+
+#### 3. **優先度付きタスクキュー** (`src/task-queue.js`)
+- 4段階の優先度レベル
+  - DOGFOODING: 100（最優先）
+  - HIGH: 75
+  - NORMAL: 50
+  - LOW: 25
+- dogfoodingタスクを自動的に最優先処理
+- キューイベント（enqueued, started, completed）の発火
+- 統計情報の収集（待機時間、処理数など）
+
+#### 4. **GitHubクライアントの更新** (`src/github-client.js`)
+- すべてのAPIメソッドを非同期化
+- レート制限チェック付きの`executeWithRateLimit`メソッド追加
+- API呼び出し前の自動待機処理
+
+#### 5. **メインループの改良** (`src/minimal-poppo.js`)
+- タスクキューベースの処理に変更
+- レート制限中はタスクをキューに戻す
+- キューの状態をリアルタイム表示
+- エラー時の自動バックオフとリトライ
+
+#### 6. **設定ファイルの拡張** (`config/config.json`)
+```json
+"rateLimiting": {
+  "initialBackoffDelay": 1000,
+  "maxBackoffDelay": 300000,
+  "backoffMultiplier": 2,
+  "backoffJitter": 0.1
+},
+"taskQueue": {
+  "maxQueueSize": 100,
+  "priorityLevels": {
+    "dogfooding": 100,
+    "high": 75,
+    "normal": 50,
+    "low": 25
+  }
+}
+```
+
+### テスト方法
+
+1. **レート制限機能のテスト**
+```bash
+node test/test-rate-limiting.js
+```
+
+2. **実際の動作確認**
+```bash
+# PoppoBuilderを起動
+npm start
+
+# 複数のdogfoodingタスクを作成
+gh issue create --title "テスト1" --body "test" --label "task:dogfooding" --repo medamap/PoppoBuilderSuite
+gh issue create --title "テスト2" --body "test" --label "task:misc" --repo medamap/PoppoBuilderSuite
+
+# ログでキューの優先度処理を確認
+tail -f logs/poppo-$(date +%Y-%m-%d).log | grep -E "(QUEUE_|優先度|レート制限)"
+```
+
+3. **GitHub APIレート制限の確認**
+```bash
+gh api rate_limit
+```
+
+### 技術的な詳細
+
+- **バックオフ計算**: `遅延 = 前回遅延 × 倍率 + ジッター`
+- **優先度判定**: `task:dogfooding`ラベルは自動的に最高優先度
+- **レート制限監視**: 1分ごとに最新情報を自動取得
+- **キューサイズ制限**: デフォルト100タスク（設定変更可能）
+
+### 動作確認済み項目
+- ✅ GitHub APIレート制限の動的取得
+- ✅ エクスポネンシャルバックオフの計算
+- ✅ dogfoodingタスクの優先処理
+- ✅ レート制限エラー時の自動リトライ
+- ✅ キューの状態表示とイベント発火
+
+### 関連ドキュメント
+- **機能説明**: `docs/features/rate-limiting.md`
+- **テストスクリプト**: `test/test-rate-limiting.js`
+
+### 今後の改善予定
+- APIコール数の予測機能
+- 複数GitHubトークンのサポート
+- より詳細なメトリクス収集
+- ダッシュボードでのレート制限状態表示
+
+## ⏱️ タイムアウト管理の動的制御機能実装 (2025/6/16 Issue #26)
+
+### 実装概要
+Issue #26「タイムアウト管理の動的制御機能」により、従来の24時間固定タイムアウトを、タスクの種類や複雑度に応じて動的に調整する機能を実装しました。
+
+### 実装内容
+
+#### 1. **タイムアウトコントローラー** (`src/timeout-controller.js`)
+- タスク複雑度の自動判定アルゴリズム
+  - 本文長、コードブロック数、リンク数、画像数などを分析
+  - simple/moderate/complexの3段階で判定
+- タスクタイプ別のデフォルトタイムアウト設定
+- 実行履歴に基づく学習型タイムアウト調整
+- タイムアウト延長リクエスト機能（50%延長）
+
+#### 2. **プロセスマネージャーの拡張** (`src/process-manager.js`)
+- TimeoutControllerの統合
+- 動的タイムアウトの計算と適用
+- 実行時間の記録と履歴への保存
+- タイムアウト理由の詳細ログ出力
+
+#### 3. **設定ファイルの拡張** (`config/config.json`)
+```json
+"dynamicTimeout": {
+  "enabled": true,
+  "minTimeout": 600000,      // 10分
+  "maxTimeout": 86400000,    // 24時間
+  "timeoutProfiles": {
+    "misc": 1800000,         // 30分
+    "dogfooding": 7200000,   // 2時間
+    "documentation": 3600000, // 1時間
+    "complex": 21600000,     // 6時間
+    "feature": 7200000,      // 2時間
+    "bug": 3600000           // 1時間
+  }
+}
+```
+
+#### 4. **実行履歴の管理**
+- `logs/execution-history.json`に実行履歴を保存
+- タスクタイプ別の統計情報を収集
+- 成功率、平均実行時間、タイムアウト率を計算
+
+### テスト結果
+```bash
+node test/test-timeout-controller.js
+
+# 結果例：
+# シンプルなタスク: 24分（基本30分 × 0.8）
+# 複雑なタスク: 720分（基本360分 × 2.0）
+# 学習後の調整: 21分（履歴15分と設定30分の中間値）
+```
+
+### 動作確認方法
+1. **PoppoBuilder起動時の統計表示**
+```
+✅ 動的タイムアウト機能: 有効
+📊 タイムアウト統計: {
+  "taskTypes": {...},
+  "overallStats": {...}
+}
+```
+
+2. **タスク処理時のログ**
+```
+[issue-123] 動的タイムアウト: 45分
+[issue-123] 理由: タスクタイプ 'dogfooding' の基本タイムアウト: 120分, 複雑度レベル 'simple' による調整: x0.8
+```
+
+### 効果
+- ✅ 簡単なタスクは素早く処理（リソース効率向上）
+- ✅ 複雑なタスクには十分な時間を確保
+- ✅ 実行履歴による最適化
+- ✅ dogfoodingタスクには適切な時間を自動設定
+
+### 関連ドキュメント
+- **機能説明**: `docs/features/dynamic-timeout.md`
+- **英語版**: `docs/features/dynamic-timeout_en.md`
+- **テストコード**: `test/test-timeout-controller.js`
+
 ---
-最終更新: 2025/6/16 - ドキュメント最新化完了（Issue #18）
+最終更新: 2025/6/16 - タイムアウト管理の動的制御機能実装完了（Issue #26）

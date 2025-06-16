@@ -1,15 +1,29 @@
 const { execSync } = require('child_process');
+const GitHubRateLimiter = require('./github-rate-limiter');
 
 class GitHubClient {
   constructor(config) {
     this.owner = config.owner;
     this.repo = config.repo;
+    this.rateLimiter = new GitHubRateLimiter();
+  }
+
+  /**
+   * レート制限チェック付きでコマンドを実行
+   */
+  async executeWithRateLimit(command, requiredCalls = 1) {
+    // レート制限チェック
+    if (!await this.rateLimiter.canMakeAPICalls(requiredCalls)) {
+      await this.rateLimiter.waitForReset();
+    }
+    
+    return execSync(command).toString();
   }
 
   /**
    * Issueリストを取得
    */
-  listIssues(options = {}) {
+  async listIssues(options = {}) {
     try {
       const { state = 'open', labels = [] } = options;
       
@@ -19,7 +33,7 @@ class GitHubClient {
         cmd += ` --label "${labels.join(',')}"`;
       }
       
-      const output = execSync(cmd).toString();
+      const output = await this.executeWithRateLimit(cmd, 1);
       return JSON.parse(output);
     } catch (error) {
       console.error('Failed to list issues:', error.message);
@@ -30,7 +44,7 @@ class GitHubClient {
   /**
    * Issueにコメントを追加
    */
-  addComment(issueNumber, body) {
+  async addComment(issueNumber, body) {
     try {
       // ファイル経由でコメントを投稿（特殊文字対応）
       const fs = require('fs');
@@ -38,7 +52,7 @@ class GitHubClient {
       const tempFile = path.join(__dirname, '../temp', `comment-${issueNumber}-${Date.now()}.txt`);
       
       fs.writeFileSync(tempFile, body, 'utf8');
-      execSync(`gh issue comment ${issueNumber} --repo ${this.owner}/${this.repo} --body-file "${tempFile}"`);
+      await this.executeWithRateLimit(`gh issue comment ${issueNumber} --repo ${this.owner}/${this.repo} --body-file "${tempFile}"`, 1);
       
       // 一時ファイルを削除
       fs.unlinkSync(tempFile);
@@ -52,10 +66,10 @@ class GitHubClient {
   /**
    * Issueにラベルを追加
    */
-  addLabels(issueNumber, labels) {
+  async addLabels(issueNumber, labels) {
     try {
       const labelsStr = labels.join(',');
-      execSync(`gh issue edit ${issueNumber} --repo ${this.owner}/${this.repo} --add-label "${labelsStr}"`);
+      await this.executeWithRateLimit(`gh issue edit ${issueNumber} --repo ${this.owner}/${this.repo} --add-label "${labelsStr}"`, 1);
       return true;
     } catch (error) {
       console.error(`Failed to add labels to issue #${issueNumber}:`, error.message);
@@ -66,10 +80,10 @@ class GitHubClient {
   /**
    * Issueからラベルを削除
    */
-  removeLabels(issueNumber, labels) {
+  async removeLabels(issueNumber, labels) {
     try {
       const labelsStr = labels.join(',');
-      execSync(`gh issue edit ${issueNumber} --repo ${this.owner}/${this.repo} --remove-label "${labelsStr}"`);
+      await this.executeWithRateLimit(`gh issue edit ${issueNumber} --repo ${this.owner}/${this.repo} --remove-label "${labelsStr}"`, 1);
       return true;
     } catch (error) {
       console.error(`Failed to remove labels from issue #${issueNumber}:`, error.message);
@@ -80,9 +94,9 @@ class GitHubClient {
   /**
    * Issueをクローズ
    */
-  closeIssue(issueNumber) {
+  async closeIssue(issueNumber) {
     try {
-      execSync(`gh issue close ${issueNumber} --repo ${this.owner}/${this.repo}`);
+      await this.executeWithRateLimit(`gh issue close ${issueNumber} --repo ${this.owner}/${this.repo}`, 1);
       return true;
     } catch (error) {
       console.error(`Failed to close issue #${issueNumber}:`, error.message);
@@ -93,9 +107,9 @@ class GitHubClient {
   /**
    * Issueの詳細を取得
    */
-  getIssue(issueNumber) {
+  async getIssue(issueNumber) {
     try {
-      const output = execSync(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json number,title,body,labels,author,createdAt,updatedAt`).toString();
+      const output = await this.executeWithRateLimit(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json number,title,body,labels,author,createdAt,updatedAt`, 1);
       return JSON.parse(output);
     } catch (error) {
       console.error(`Failed to get issue #${issueNumber}:`, error.message);
@@ -106,9 +120,9 @@ class GitHubClient {
   /**
    * Issueのコメントリストを取得
    */
-  listComments(issueNumber) {
+  async listComments(issueNumber) {
     try {
-      const output = execSync(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json comments`).toString();
+      const output = await this.executeWithRateLimit(`gh issue view ${issueNumber} --repo ${this.owner}/${this.repo} --json comments`, 1);
       const data = JSON.parse(output);
       return data.comments || [];
     } catch (error) {

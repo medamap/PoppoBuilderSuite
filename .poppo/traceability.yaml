@@ -1,0 +1,85 @@
+items:
+  PBS-REQ-001:
+    id: PBS-REQ-001
+    phase: REQ
+    title: トレーサビリティ機能の実装
+    description: ''
+    status: active
+    created: '2025-06-16T04:36:22.341Z'
+    updated: '2025-06-16T04:37:20.475Z'
+    links:
+      implements: []
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+      implemented_by:
+        - PBS-SPEC-001
+        - PBS-SPEC-002
+  PBS-SPEC-001:
+    id: PBS-SPEC-001
+    phase: SPEC
+    title: ID採番とシンプルなリンク管理
+    description: ''
+    status: active
+    created: '2025-06-16T04:36:29.063Z'
+    updated: '2025-06-16T04:37:26.609Z'
+    links:
+      implements:
+        - PBS-REQ-001
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+      implemented_by:
+        - PBS-IMP-001
+  PBS-SPEC-002:
+    id: PBS-SPEC-002
+    phase: SPEC
+    title: 変更影響分析機能
+    description: ''
+    status: active
+    created: '2025-06-16T04:36:35.689Z'
+    updated: '2025-06-16T04:37:31.964Z'
+    links:
+      implements:
+        - PBS-REQ-001
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+      implemented_by:
+        - PBS-IMP-002
+  PBS-IMP-001:
+    id: PBS-IMP-001
+    phase: IMP
+    title: トレーサビリティマネージャーの実装
+    description: ''
+    status: active
+    created: '2025-06-16T04:36:42.295Z'
+    updated: '2025-06-16T04:37:26.609Z'
+    links:
+      implements:
+        - PBS-SPEC-001
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+  PBS-IMP-002:
+    id: PBS-IMP-002
+    phase: IMP
+    title: 影響分析エンジンの実装
+    description: ''
+    status: active
+    created: '2025-06-16T04:36:48.671Z'
+    updated: '2025-06-16T04:37:31.964Z'
+    links:
+      implements:
+        - PBS-SPEC-002
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+metadata:
+  lastUpdated: '2025-06-16T04:37:31.964Z'
+  version: '1.0'
