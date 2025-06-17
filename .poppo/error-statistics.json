@@ -1,0 +1,579 @@
+{
+  "overall": {
+    "totalErrors": 80,
+    "uniqueErrors": 2,
+    "firstSeen": "2025-06-16T23:42:01.783Z",
+    "lastSeen": "2025-06-16T23:42:01.800Z"
+  },
+  "byCategory": {
+    "Type Error": {
+      "count": 79,
+      "firstSeen": "2025-06-16T23:42:01.784Z",
+      "lastSeen": "2025-06-16T23:42:01.800Z",
+      "severityDistribution": {
+        "high": 79
+      }
+    },
+    "Reference Error": {
+      "count": 1,
+      "firstSeen": "2025-06-16T23:42:01.785Z",
+      "lastSeen": "2025-06-16T23:42:01.785Z",
+      "severityDistribution": {
+        "medium": 1
+      }
+    }
+  },
+  "bySeverity": {
+    "critical": 0,
+    "high": 79,
+    "medium": 1,
+    "low": 0
+  },
+  "byHour": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    80,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "byDay": [
+    0,
+    0,
+    80,
+    0,
+    0,
+    0,
+    0
+  ],
+  "trends": [
+    {
+      "category": "Overall",
+      "trend": "increasing",
+      "rate": 5.333333333333333,
+      "recentCount": 80,
+      "message": "全体のエラーのエラーが533%増加傾向です"
+    },
+    {
+      "category": "Type Error",
+      "trend": "increasing",
+      "rate": 5.266666666666667,
+      "recentCount": 79,
+      "message": "Type Errorのエラーが527%増加傾向です"
+    }
+  ],
+  "dailyData": {
+    "2025-06-16": {
+      "total": 80,
+      "byCategory": {
+        "Type Error": 79,
+        "Reference Error": 1
+      },
+      "bySeverity": {
+        "high": 79,
+        "medium": 1
+      },
+      "errors": [
+        {
+          "hash": "error001",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.784Z"
+        },
+        {
+          "hash": "error002",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.785Z"
+        },
+        {
+          "hash": "error003",
+          "category": "Reference Error",
+          "severity": "medium",
+          "timestamp": "2025-06-16T23:42:01.785Z"
+        },
+        {
+          "hash": "trend-2025-06-16-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.785Z"
+        },
+        {
+          "hash": "trend-2025-06-16-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.785Z"
+        },
+        {
+          "hash": "trend-2025-06-16-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.785Z"
+        },
+        {
+          "hash": "trend-2025-06-16-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-16-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-15-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-15-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-15-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-15-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.786Z"
+        },
+        {
+          "hash": "trend-2025-06-15-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-15-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-15-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-14-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-14-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-14-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-14-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.787Z"
+        },
+        {
+          "hash": "trend-2025-06-14-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-14-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-14-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-14-7",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-14-8",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-13-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-13-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-13-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.788Z"
+        },
+        {
+          "hash": "trend-2025-06-13-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-7",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-8",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-9",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.789Z"
+        },
+        {
+          "hash": "trend-2025-06-13-10",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.790Z"
+        },
+        {
+          "hash": "trend-2025-06-12-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-7",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-8",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-9",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-10",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-11",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.791Z"
+        },
+        {
+          "hash": "trend-2025-06-12-12",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.792Z"
+        },
+        {
+          "hash": "trend-2025-06-11-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.792Z"
+        },
+        {
+          "hash": "trend-2025-06-11-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.792Z"
+        },
+        {
+          "hash": "trend-2025-06-11-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.792Z"
+        },
+        {
+          "hash": "trend-2025-06-11-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.792Z"
+        },
+        {
+          "hash": "trend-2025-06-11-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.793Z"
+        },
+        {
+          "hash": "trend-2025-06-11-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.793Z"
+        },
+        {
+          "hash": "trend-2025-06-11-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.795Z"
+        },
+        {
+          "hash": "trend-2025-06-11-7",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.795Z"
+        },
+        {
+          "hash": "trend-2025-06-11-8",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.795Z"
+        },
+        {
+          "hash": "trend-2025-06-11-9",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.795Z"
+        },
+        {
+          "hash": "trend-2025-06-11-10",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-11-11",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-11-12",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-11-13",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-11-14",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-10-0",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.796Z"
+        },
+        {
+          "hash": "trend-2025-06-10-1",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-2",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-3",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-4",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-5",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-6",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.797Z"
+        },
+        {
+          "hash": "trend-2025-06-10-7",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.798Z"
+        },
+        {
+          "hash": "trend-2025-06-10-8",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.798Z"
+        },
+        {
+          "hash": "trend-2025-06-10-9",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.798Z"
+        },
+        {
+          "hash": "trend-2025-06-10-10",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.798Z"
+        },
+        {
+          "hash": "trend-2025-06-10-11",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.799Z"
+        },
+        {
+          "hash": "trend-2025-06-10-12",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.799Z"
+        },
+        {
+          "hash": "trend-2025-06-10-13",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.799Z"
+        },
+        {
+          "hash": "trend-2025-06-10-14",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.799Z"
+        },
+        {
+          "hash": "trend-2025-06-10-15",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.799Z"
+        },
+        {
+          "hash": "trend-2025-06-10-16",
+          "category": "Type Error",
+          "severity": "high",
+          "timestamp": "2025-06-16T23:42:01.800Z"
+        }
+      ]
+    }
+  },
+  "lastUpdated": "2025-06-16T23:42:01.800Z"
+}

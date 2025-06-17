@@ -2,6 +2,18 @@
 
 GitHub IssueとClaude CLIを連携した自動タスク処理システム
 
+## 🎭 システムファミリー
+
+PoppoBuilder Suiteは複数の協調システムで構成されています：
+
+- **PoppoBuilder（ぽっぽちゃん）** 🚂 - メインの自動タスク処理システム
+- **MedamaRepair（目玉さん）** 👁️ - PoppoBuilderの監視・自動復旧システム
+- **MeraCleaner（メラさん）** 🔥 - エラーコメント分析・整理システム
+- **CCLAエージェント（クララちゃん）** 🤖 - エラーログ収集・自動修復エージェント
+- **CCAGエージェント（カグラちゃん）** 📝 - ドキュメント生成・多言語対応エージェント
+- **CCPMエージェント（ドレミちゃん）** 🔍 - コードレビュー・リファクタリング提案エージェント
+- **MirinOrphanManager（ミリンちゃん）** 🎋 - 孤児Issue検出・管理システム
+
 ## 🎯 概要
 
 PoppoBuilder Suiteは、GitHub IssueとClaude CLIを連携した自動タスク処理システムです：

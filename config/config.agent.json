@@ -13,9 +13,18 @@
   "commentHandling": {
     "enabled": true,
     "completionKeywords": [
-      "ありがとう", "ありがとうございます", "ありがとうございました",
-      "完了", "OK", "ok", "了解", "承知",
-      "thank you", "thanks", "done", "complete"
+      "ありがとう",
+      "ありがとうございます",
+      "ありがとうございました",
+      "完了",
+      "OK",
+      "ok",
+      "了解",
+      "承知",
+      "thank you",
+      "thanks",
+      "done",
+      "complete"
     ],
     "maxCommentCount": 10,
     "timeoutHours": 24
@@ -69,29 +78,62 @@
     "autoRestart": true,
     "taskMapping": {
       "labels": {
-        "review": ["code-review"],
-        "documentation": ["generate-docs", "update-readme"],
-        "security": ["security-audit"],
-        "refactor": ["refactoring-suggestion"],
-        "dogfooding": ["code-review", "generate-docs"]
+        "review": [
+          "code-review"
+        ],
+        "documentation": [
+          "generate-docs",
+          "update-readme"
+        ],
+        "security": [
+          "security-audit"
+        ],
+        "refactor": [
+          "refactoring-suggestion"
+        ],
+        "dogfooding": [
+          "code-review",
+          "generate-docs"
+        ]
       },
       "keywords": {
-        "レビュー": ["code-review"],
-        "review": ["code-review"],
-        "ドキュメント": ["generate-docs"],
-        "document": ["generate-docs"],
-        "セキュリティ": ["security-audit"],
-        "security": ["security-audit"],
-        "リファクタリング": ["refactoring-suggestion"],
-        "refactor": ["refactoring-suggestion"]
+        "レビュー": [
+          "code-review"
+        ],
+        "review": [
+          "code-review"
+        ],
+        "ドキュメント": [
+          "generate-docs"
+        ],
+        "document": [
+          "generate-docs"
+        ],
+        "セキュリティ": [
+          "security-audit"
+        ],
+        "security": [
+          "security-audit"
+        ],
+        "リファクタリング": [
+          "refactoring-suggestion"
+        ],
+        "refactor": [
+          "refactoring-suggestion"
+        ]
       }
     }
   },
   "errorLogCollection": {
     "enabled": true,
     "pollingInterval": 300000,
-    "logSources": ["poppo-*.log"],
-    "errorLevels": ["ERROR", "FATAL"],
+    "logSources": [
+      "poppo-*.log"
+    ],
+    "errorLevels": [
+      "ERROR",
+      "FATAL"
+    ],
     "labels": {
       "bug": "task:bug",
       "defect": "task:defect",
@@ -105,7 +147,13 @@
       "enableRollback": true,
       "dryRun": false,
       "confidenceThreshold": 0.8,
-      "repairablePatterns": ["EP001", "EP002", "EP003", "EP004", "EP010"],
+      "repairablePatterns": [
+        "EP001",
+        "EP002",
+        "EP003",
+        "EP004",
+        "EP010"
+      ],
       "autoCreatePR": true,
       "requireValidation": true,
       "learningEnabled": true

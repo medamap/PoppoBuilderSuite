@@ -1,0 +1,17 @@
+{
+  "type": "HEARTBEAT",
+  "agent": "CCLA",
+  "status": "running",
+  "timestamp": "2025-06-16T16:00:16.222Z",
+  "metrics": {
+    "cpuUsage": 0,
+    "memoryUsage": 4,
+    "activeTasks": 0,
+    "tasksCompleted": 0,
+    "tasksFailed": 0,
+    "uptime": 60
+  },
+  "id": "dbb8ce61-929f-44fe-b47f-b56f93165316",
+  "from": "CCLA",
+  "to": "core"
+}

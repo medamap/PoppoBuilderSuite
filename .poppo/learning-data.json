@@ -1,0 +1,52 @@
+{
+  "71cbecb3": {
+    "firstSeen": 1750117531074,
+    "lastSeen": 1750117534666,
+    "occurrences": 4,
+    "repairs": {
+      "attempted": 0,
+      "successful": 0,
+      "failed": 0
+    },
+    "errorSamples": [
+      {
+        "hash": "test123",
+        "message": "TypeError: Cannot read property 'name' of undefined",
+        "stackTrace": [
+          "at test.js:10:5"
+        ],
+        "timestamp": 1750117531074
+      },
+      {
+        "hash": "test123",
+        "message": "TypeError: Cannot read property 'name' of undefined",
+        "stackTrace": [
+          "at test.js:10:5"
+        ],
+        "timestamp": 1750117531074
+      },
+      {
+        "hash": "test123",
+        "message": "TypeError: Cannot read property 'name' of undefined",
+        "stackTrace": [
+          "at test.js:10:5"
+        ],
+        "timestamp": 1750117531075
+      },
+      {
+        "hash": "repair123",
+        "message": "TypeError: Cannot read property 'name' of undefined",
+        "stackTrace": [
+          "at getUser (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test-repair-file.js:4:14)",
+          "at test.js:10:5"
+        ],
+        "timestamp": 1750117534666
+      }
+    ],
+    "metadata": {
+      "category": "Type Error",
+      "level": "ERROR",
+      "pattern": null
+    }
+  }
+}

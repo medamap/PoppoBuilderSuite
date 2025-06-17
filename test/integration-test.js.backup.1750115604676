@@ -1,0 +1,6 @@
+
+function processData(data) {
+  console.log(data.items.length);
+}
+
+processData(null);

@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+
+/**
+ * ダッシュボードが無効な場合のテスト
+ */
+
+const DashboardServer = require('../dashboard/server/index');
+const ProcessStateManager = require('../src/process-state-manager');
+const Logger = require('../src/logger');
+
+console.log('=== ダッシュボード無効化テスト ===\n');
+
+// テスト用の設定（ダッシュボード無効）
+const testConfig = {
+  dashboard: {
+    enabled: false,
+    port: 3001,
+    host: 'localhost',
+    updateInterval: 5000
+  }
+};
+
+// 依存関係の初期化
+const logger = new Logger();
+const processStateManager = new ProcessStateManager(logger);
+
+console.log('1. DashboardServerインスタンスを作成（dashboard.enabled = false）');
+const dashboardServer = new DashboardServer(testConfig, processStateManager, logger);
+
+console.log('\n2. start()メソッドを呼び出し');
+dashboardServer.start();
+
+console.log('\n3. notifyProcessEvent()メソッドを呼び出し');
+dashboardServer.notifyProcessEvent({ type: 'test', data: 'test event' });
+
+console.log('\n4. stop()メソッドを呼び出し');
+dashboardServer.stop();
+
+console.log('\n✅ テスト完了 - エラーが発生しなければ成功です');
+
+// プロセス状態管理を停止
+processStateManager.stop();
+
+process.exit(0);
