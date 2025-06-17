@@ -11,7 +11,12 @@
     "dashboard": "open http://localhost:3001",
     "trace": "node scripts/trace.js",
     "audit": "node scripts/audit.js",
-    "test": "echo \"Error: no test specified yet\" && exit 1"
+    "test": "mocha test/**/*.test.js --timeout 10000",
+    "config": "node scripts/poppo-config.js",
+    "config:show": "node scripts/poppo-config.js show",
+    "config:hierarchy": "node scripts/poppo-config.js hierarchy",
+    "config:validate": "node scripts/poppo-config.js validate",
+    "config:env": "node scripts/poppo-config.js env"
   },
   "keywords": [
     "ai",
@@ -27,7 +32,12 @@
   "dependencies": {
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
-    "ws": "^8.18.2",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "chai": "^5.2.0",
+    "mocha": "^11.6.0",
+    "sinon": "^21.0.0"
   }
 }

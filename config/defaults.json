@@ -1,0 +1,50 @@
+{
+  "language": {
+    "primary": "ja",
+    "fallback": "en"
+  },
+  "systemPrompt": {
+    "enforceLanguage": true,
+    "customInstructions": ""
+  },
+  "github": {
+    "pollingInterval": 60000,
+    "maxCommentsPerIssue": 100,
+    "maxIssuesPerRun": 10
+  },
+  "claude": {
+    "maxConcurrent": 2,
+    "defaultTimeout": 600000,
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "queue": {
+    "maxQueueSize": 100,
+    "taskTimeout": 3600000,
+    "cleanupInterval": 300000
+  },
+  "logging": {
+    "level": "info",
+    "maxFiles": 30,
+    "maxSize": "10M"
+  },
+  "rateLimit": {
+    "requestsPerMinute": 30,
+    "burstLimit": 5
+  },
+  "dynamicTimeout": {
+    "enabled": true,
+    "minTimeout": 300000,
+    "maxTimeout": 1800000,
+    "scaleFactor": 1.5
+  },
+  "errorCollection": {
+    "enabled": true,
+    "collectInterval": 300000,
+    "maxErrorsPerIssue": 50
+  },
+  "notifications": {
+    "enabled": false,
+    "providers": []
+  }
+}
