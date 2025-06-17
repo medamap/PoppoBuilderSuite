@@ -863,11 +863,85 @@ npm run trace impact PBS-SPEC-001 delete
 - **使用ガイド**: `docs/guides/traceability-guide.md`
 - **英語版ガイド**: `docs/guides/traceability-guide_en.md`
 
-### 今後の拡張（Phase 3-4）
-- GitHubとの連携（Issue/PR番号の関連付け）
+### 今後の拡張（Phase 4）
 - 高度な可視化（依存関係グラフ）
 - Webベースのダッシュボード
 - 変更履歴の追跡とバージョン管理
+
+## 🔗 トレーサビリティ機能 Phase 3: GitHub連携実装 (2025/6/17 Issue #52)
+
+### 実装概要
+Issue #52「高度なトレーサビリティ機能 Phase 3: GitHub連携の実装」により、トレーサビリティアイテムとGitHub Issue/PRを自動的に連携させる機能を実装しました。
+
+### 実装内容
+
+#### 1. **GitHub同期モジュール** (`src/traceability-github-sync.js`)
+- PBS-XXX-nnn形式のID自動抽出（正規表現パターン）
+- Issue/PR番号の抽出（#123、PR #123形式）
+- GitHub CLI（`gh`コマンド）を使用したIssue/PR情報取得
+- トレーサビリティアイテムへのGitHubメタデータ追加
+- 双方向リンクの管理
+
+#### 2. **CLIツールの拡張** (`scripts/trace.js`)
+新しいGitHubサブコマンドを追加：
+```bash
+npm run trace github sync              # すべてのIssueを同期
+npm run trace github sync-issue <number> # 特定のIssueを同期
+npm run trace github sync-pr <number>   # 特定のPRを同期
+npm run trace github link <item-id> <issue-number> # 手動リンク
+npm run trace github report            # 同期レポート生成
+npm run trace github commits [limit]   # コミットメッセージからID抽出
+```
+
+#### 3. **自動コメント投稿機能**
+- Issue/PRにトレーサビリティ情報をコメントとして投稿
+- リンクされたアイテムの詳細情報を含む
+- マークダウン形式でフォーマット
+
+#### 4. **同期レポート機能**
+- GitHub連携済みアイテムの統計情報
+- 関連Issue/PR総数の表示
+- 連携詳細の一覧
+
+### テスト結果
+- ✅ ID抽出機能: PBS-XXX-nnn形式の正確な抽出
+- ✅ Issue/PR番号抽出: #123、PR #123形式の認識
+- ✅ 手動リンク機能: Issue #52への正常なリンク作成
+- ✅ コメント投稿: Issue #52へのトレーサビリティ情報投稿成功
+- ✅ 同期レポート: 統計情報の正確な生成
+
+### 実際の使用例
+```bash
+# Issue #52を同期
+npm run trace github sync-issue 52
+# → PBS-REQ-001とPBS-SPEC-001がIssue #52にリンクされました
+
+# コメント投稿付きリンク
+npm run trace github link PBS-REQ-001 52
+# → Issue #52にトレーサビリティ情報がコメント投稿されました
+```
+
+### データ構造の拡張
+`.poppo/traceability.yaml`に`github`フィールドを追加：
+```yaml
+PBS-REQ-001:
+  # 既存フィールド
+  github:
+    issues: [52]
+    prs: []
+    commits: []
+```
+
+### 関連ドキュメント
+- **使用ガイド**: `docs/guides/traceability-github-guide.md`
+- **英語版ガイド**: `docs/guides/traceability-github-guide_en.md`
+- **テストスクリプト**: `test/test-github-sync.js`
+
+### 今後の改善予定
+- コメント重複投稿の防止機能
+- PR内のコミットメッセージからの自動ID抽出
+- Webhookによるリアルタイム同期
+- より詳細なGitHubメタデータの保存
 
 ## 🏗️ エージェント分離アーキテクチャ Phase 1実装 (2025/6/16 Issue #27)
 
@@ -1626,5 +1700,229 @@ node test/test-phase3-auto-repair.js
 - より複雑な修復戦略の追加
 - 修復成功率の向上
 
+## 🌐 マルチプロジェクト対応とグローバルキュー管理実装 (2025/6/17 Issue #53)
+
+### 実装概要
+Issue #53「マルチプロジェクト対応とグローバルキュー管理の実装」により、PoppoBuilderを複数のGitHubプロジェクトで同時に使用できるようにし、プロジェクト間でタスクの優先度制御を行うグローバルキュー管理機能を実装しました。
+
+### 実装内容
+
+#### 1. **グローバルキューマネージャー** (`src/global-queue-manager.js`)
+- 複数プロジェクトのタスクを統一管理
+- 優先度ベースのタスクスケジューリング
+- プロジェクト優先度とタスク優先度の複合計算（70:30の比率）
+- タスクの状態管理（queued/processing/completed/failed）
+- リトライ機能（最大3回）
+- 統計情報の収集とレポート
+- データ永続化（`~/.poppo-builder/global-queue.json`）
+
+#### 2. **プロジェクトマネージャー** (`src/project-manager.js`)
+- プロジェクトの自動検出と登録
+- GitHubリポジトリ情報の自動取得
+- プロジェクト設定管理（`.poppo/project.json`）
+- タスクのスキャンとエンキュー
+- プロジェクト優先度の動的更新
+- リソース使用状況の監視
+- プロジェクト健全性の自動計算
+
+#### 3. **システムデーモン** (`src/poppo-daemon.js`)
+- バックグラウンドサービスとして常駐
+- ワーカープロセスのライフサイクル管理
+- REST APIサーバー（ポート3003）
+- PIDファイル管理
+- シグナルハンドリング（SIGINT, SIGTERM, SIGHUP）
+- 自動ワーカー再起動機能
+- メンテナンスタスクの定期実行
+
+#### 4. **ワーカープロセス** (`src/poppo-worker.js`)
+- プロジェクト専用のタスク処理プロセス
+- デーモンAPIとの通信
+- 動的タイムアウト設定
+- グレースフルシャットダウン
+- エラーハンドリングとリトライ
+
+#### 5. **CLIツール** (`scripts/poppo-cli.js`)
+```bash
+# デーモン管理
+poppo daemon --start/--stop/--status/--restart
+
+# プロジェクト管理
+poppo project -r <path>             # 登録
+poppo project -u <id>               # 削除
+poppo project -l                    # 一覧
+poppo project -s <id>               # スキャン
+poppo project -p <id> <priority>    # 優先度設定
+
+# キュー管理
+poppo queue -s                      # ステータス表示
+
+# ワーカー管理
+poppo worker -l                     # 一覧表示
+
+# ダッシュボード
+poppo dashboard                     # ブラウザで開く
+```
+
+#### 6. **統合ダッシュボードの拡張** (`dashboard/`)
+- マルチプロジェクト専用ビュー（`multi-project.html`）
+- プロジェクト別統計表示
+- グローバルキューの可視化
+- ワーカープロセスの監視
+- リアルタイム更新（WebSocket）
+- レスポンシブデザイン
+
+### 設定ファイル
+
+#### `config/daemon-config.json`（新規）
+```json
+{
+  "port": 3003,
+  "host": "localhost",
+  "dataDir": "~/.poppo-builder",
+  "maxWorkers": 10,
+  "maxQueueSize": 1000,
+  "workerTimeout": 3600000,
+  "pollInterval": 5000
+}
+```
+
+#### `config/config.json`（更新）
+```json
+{
+  "multiProject": {
+    "enabled": false,
+    "daemonUrl": "http://localhost:3003"
+  }
+}
+```
+
+### 技術的な詳細
+
+#### プロジェクト優先度計算
+```javascript
+effectivePriority = projectPriority * 0.7 + taskPriority * 0.3
+```
+
+#### データ保存場所
+- グローバルキュー: `~/.poppo-builder/global-queue.json`
+- プロジェクト情報: `~/.poppo-builder/projects.json`
+- プロジェクト設定: `<project-path>/.poppo/project.json`
+
+#### ワーカー管理
+- 最大ワーカー数: 10（設定可能）
+- アイドルタイムアウト: 1時間
+- 自動再起動: 異常終了時に5秒後
+
+### テスト方法
+
+1. **基本テスト**
+```bash
+node test/test-multi-project.js
+```
+
+2. **手動テスト手順**
+```bash
+# デーモン起動
+npm run poppo daemon --start
+
+# プロジェクト登録
+npm run poppo project -r .
+
+# タスクスキャン
+npm run poppo project -s <project-id>
+
+# ダッシュボード確認
+npm run poppo dashboard
+```
+
+### 動作確認済み項目
+- ✅ グローバルキューマネージャーの初期化
+- ✅ プロジェクトの登録・削除
+- ✅ 優先度ベースのタスクソート
+- ✅ ワーカープロセスの起動・停止
+- ✅ タスクの処理とステータス更新
+- ✅ 統計情報の収集
+- ✅ ダッシュボードでの可視化
+- ✅ CLIツールの全コマンド
+
+### 関連ドキュメント
+- **使用ガイド**: `docs/guides/multi-project-guide.md`
+- **英語版ガイド**: `docs/guides/multi-project-guide_en.md`
+- **テストスクリプト**: `test/test-multi-project.js`
+
+### 今後の改善予定
+- systemdサービスファイルの作成
+- Dockerコンテナ化
+- 認証機能の実装
+- Webhookによるリアルタイム同期
+- プロジェクト間の依存関係管理
+
 ---
-最終更新: 2025/6/16 - エラーログ収集機能 Phase 3自動修復機能の拡張実装完了（Issue #38）
+最終更新: 2025/6/17 - マルチプロジェクト対応とグローバルキュー管理実装完了（Issue #53）
+
+## 🔧 エラーログ収集機能 Phase 3自動修復機能の確認 (2025/6/17 Issue #38)
+
+### 実装状況確認
+Issue #38「エラーログ収集機能 Phase 3の実装 - 自動修復機能」の実装確認を行いました。
+
+### 確認結果
+すべての機能が既に実装済みであることを確認しました：
+
+#### 実装済み機能
+- ✅ **学習型エラーパターン認識エンジン** (`agents/ccla/learning-recognizer.js`)
+  - エラーの発生回数と修復成功率の追跡
+  - 3回以上発生、成功率80%以上のパターンを学習対象として認識
+  - 信頼度の動的調整（成功で増加、失敗で減少）
+  - 学習データの永続化（`.poppo/learning-data.json`）
+  - 複数の引数形式に対応（後方互換性維持）
+
+- ✅ **自動PR作成機能** (`agents/ccla/pr-creator.js`)
+  - 修復成功時の自動Pull Request作成
+  - ブランチ管理（`auto-repair/`プレフィックス）
+  - 詳細な修復内容とテスト結果を含むPR本文生成
+  - GitHub CLI（`gh`コマンド）との統合
+  - ロールバック手順の記載
+
+- ✅ **修復戦略システム** (`agents/ccla/repair-strategies/`)
+  - EP001: 高度なnullチェック戦略（`null-check.js`）
+  - EP004: 設定ファイル自動作成（`file-not-found.js`）
+  - EP010: JSONエラー修正（`json-parse.js`）
+  - 戦略レジストリと動的ロードシステム（`index.js`）
+
+- ✅ **統合実装**
+  - `agents/ccla/repairer.js`: 学習エンジンとPR作成機能の統合
+  - `agents/ccla/index.js`: CCLAエージェントへの自動修復フロー実装
+  - `config/config.json`: `autoCreatePR: true`, `learningEnabled: true`設定済み
+
+#### テスト結果
+```bash
+# Phase 3統合テスト実行
+node test/test-phase3-auto-repair.js
+
+=== Phase 3 自動修復機能統合テスト ===
+✓ 学習エンジン: 正常動作（エラー記録、信頼度計算）
+✓ PR作成機能: 環境チェック成功
+✓ 修復戦略: EP001, EP004, EP010ロード成功
+✓ 統合動作: 修復試行成功（ドライランモード）
+
+成功: 12
+失敗: 0
+成功率: 100.0%
+```
+
+### 動作確認方法
+```bash
+# エージェントモードで起動（自動修復機能有効）
+npm run start:agents
+
+# 設定確認（config.jsonで以下が有効になっていることを確認）
+# errorLogCollection.autoRepair.enabled: true
+# errorLogCollection.autoRepair.autoCreatePR: true
+# errorLogCollection.autoRepair.learningEnabled: true
+```
+
+### まとめ
+Issue #38で要求されたすべての機能（学習型エラーパターン認識、自動PR作成、修復戦略システム）が既に実装されており、統合テストも成功しています。Phase 3の自動修復機能は完全に動作可能な状態です。
+
+---
+最終更新: 2025/6/17 - エラーログ収集機能 Phase 3自動修復機能の確認完了（Issue #38）
