@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "AI-powered autonomous software development system",
   "main": "src/minimal-poppo.js",
+  "bin": {
+    "poppo": "./scripts/poppo-process.js"
+  },
   "scripts": {
     "start": "node src/minimal-poppo.js",
     "start:agents": "node scripts/start-agents.js",
@@ -16,7 +19,14 @@
     "config:show": "node scripts/poppo-config.js show",
     "config:hierarchy": "node scripts/poppo-config.js hierarchy",
     "config:validate": "node scripts/poppo-config.js validate",
-    "config:env": "node scripts/poppo-config.js env"
+    "config:env": "node scripts/poppo-config.js env",
+    "poppo": "node scripts/poppo-process.js",
+    "poppo:status": "node scripts/poppo-process.js status",
+    "poppo:help": "node scripts/poppo-process.js help",
+    "analytics": "node scripts/poppo-analytics.js",
+    "analytics:report": "node scripts/poppo-analytics.js report",
+    "analytics:stats": "node scripts/poppo-analytics.js stats",
+    "analytics:archive": "node scripts/poppo-analytics.js archive"
   },
   "keywords": [
     "ai",
@@ -30,6 +40,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "better-sqlite3": "^11.10.0",
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
     "uuid": "^9.0.1",
@@ -38,6 +49,7 @@
   "devDependencies": {
     "chai": "^5.2.0",
     "mocha": "^11.6.0",
-    "sinon": "^21.0.0"
+    "sinon": "^21.0.0",
+    "sinon-chai": "^4.0.0"
   }
 }

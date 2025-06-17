@@ -110,6 +110,13 @@ class Logger {
   debug(category, message, data) {
     this.log('DEBUG', category, message, data);
   }
+
+  /**
+   * システムログ（InfoレベルでSYSTEMカテゴリ）
+   */
+  logSystem(event, data) {
+    this.log('INFO', 'SYSTEM', event, data);
+  }
 }
 
 module.exports = Logger;

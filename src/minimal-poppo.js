@@ -15,10 +15,54 @@ const ConfigLoader = require('./config-loader');
 const RestartScheduler = require('../scripts/restart-scheduler');
 const DashboardServer = require('../dashboard/server/index');
 
-// 設定読み込み
-const config = JSON.parse(
+// ConfigLoaderで階層的に設定を読み込み
+const configLoader = new ConfigLoader();
+const poppoConfig = configLoader.loadConfig();
+
+// メイン設定ファイルも読み込み（後方互換性のため）
+const mainConfig = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf-8')
 );
+
+// 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
+const config = {
+  ...mainConfig,
+  language: poppoConfig.language || mainConfig.language,
+  systemPrompt: poppoConfig.systemPrompt || mainConfig.systemPrompt,
+  // 環境変数やプロジェクト設定で上書き可能な項目
+  github: {
+    ...mainConfig.github,
+    ...(poppoConfig.github || {})
+  },
+  claude: {
+    ...mainConfig.claude,
+    ...(poppoConfig.claude || {})
+  },
+  rateLimiting: {
+    ...mainConfig.rateLimiting,
+    ...(poppoConfig.rateLimit || {})
+  },
+  taskQueue: {
+    ...mainConfig.taskQueue,
+    ...(poppoConfig.queue || {})
+  },
+  logging: {
+    ...mainConfig.logging,
+    ...(poppoConfig.logging || {})
+  },
+  dynamicTimeout: {
+    ...mainConfig.dynamicTimeout,
+    ...(poppoConfig.dynamicTimeout || {})
+  },
+  errorCollection: {
+    ...mainConfig.errorCollection,
+    ...(poppoConfig.errorCollection || {})
+  },
+  notifications: {
+    ...mainConfig.notifications,
+    ...(poppoConfig.notifications || {})
+  }
+};
 
 // インスタンス作成
 const logger = new Logger();
@@ -30,7 +74,6 @@ const taskQueue = new TaskQueue({
 });
 // 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
 const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger);
-const configLoader = new ConfigLoader();
 
 // ダッシュボードサーバーの初期化（独立プロセス方式では簡易的に動作）
 const dashboardServer = new DashboardServer(config, null, logger);
@@ -536,6 +579,10 @@ async function checkCompletedTasks() {
  */
 async function mainLoop() {
   console.log('PoppoBuilder 最小限実装 起動');
+  
+  // 設定階層情報を表示
+  configLoader.displayConfigHierarchy();
+  
   console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
   
   // 独立プロセス方式の状態表示

@@ -22,11 +22,16 @@
         "hash": "error001",
         "timestamp": "2025-06-16 10:00:00",
         "similarity": 1
+      },
+      {
+        "hash": "error001",
+        "timestamp": "2025-06-16 10:00:00",
+        "similarity": 1
       }
     ],
     "createdAt": "2025-06-16 10:00:00",
     "lastOccurrence": "2025-06-16 10:00:00",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "issueUrl": null,
     "status": "open"
   },
@@ -47,11 +52,16 @@
         "hash": "error002",
         "timestamp": "2025-06-16 10:05:00",
         "similarity": 1
+      },
+      {
+        "hash": "error002",
+        "timestamp": "2025-06-16 10:05:00",
+        "similarity": 1
       }
     ],
     "createdAt": "2025-06-16 10:05:00",
     "lastOccurrence": "2025-06-16 10:05:00",
-    "occurrenceCount": 1,
+    "occurrenceCount": 2,
     "issueUrl": null,
     "status": "open"
   },
@@ -72,11 +82,16 @@
         "hash": "error003",
         "timestamp": "2025-06-16 10:10:00",
         "similarity": 1
+      },
+      {
+        "hash": "error003",
+        "timestamp": "2025-06-16 10:10:00",
+        "similarity": 1
       }
     ],
     "createdAt": "2025-06-16 10:10:00",
     "lastOccurrence": "2025-06-16 10:10:00",
-    "occurrenceCount": 1,
+    "occurrenceCount": 2,
     "issueUrl": null,
     "status": "open"
   }

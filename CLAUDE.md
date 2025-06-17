@@ -74,6 +74,14 @@ npm run start:agents
 
 # ダッシュボード確認
 npm run dashboard
+
+# プロセスモニター (NEW!)
+npm run poppo:status        # 実行中のプロセス一覧
+npm run poppo:help          # ヘルプ表示
+poppo status --json         # JSON形式で出力
+poppo kill <task-id>        # タスクを停止
+poppo logs <task-id>        # タスクのログ表示
+poppo logs <task-id> -f     # リアルタイムログ追跡
 ```
 
 ### デバッグ
@@ -112,5 +120,162 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - [アーキテクチャ概要](docs/architecture/system-overview.md)
 - [トラブルシューティング](docs/INSTALL.md#トラブルシューティング)
 
+## 📋 最近のdogfooding Issue実装状況 (2025/6/17)
+
+### Issue #63: プロセス管理ダッシュボードのログ検索・フィルタ機能実装 ✅
+**実装完了**: 設計書に基づいてPhase 3のログ検索・フィルタ機能を実装しました。
+
+**実装内容**:
+- **ログ検索API** (`dashboard/server/api/logs.js`)
+  - キーワード、日時範囲、レベル、プロセスID、Issue番号での検索
+  - ログファイル一覧取得
+  - ログ統計情報の取得
+  - CSV/JSON形式でのエクスポート機能
+- **フロントエンドUI** 
+  - 検索フォーム（キーワード、レベル、Issue番号、日時範囲）
+  - 検索結果の表示（ページネーション対応）
+  - リアルタイムフィルタリング機能
+  - エクスポートボタン（CSV/JSON選択可能）
+- **テスト** (`test/dashboard-log-search.test.js`)
+  - 12個のユニットテストを作成し、全て合格
+
+**使用方法**:
+1. ダッシュボードを起動: `npm run dashboard`
+2. ログ検索セクションで条件を入力して検索
+3. 結果をCSVまたはJSON形式でエクスポート可能
+
+### Issue #64: PoppoBuilder設定の階層管理機能の完全実装 ✅
+**実装完了**: 設計書に基づいて完全な階層設定管理システムを実装しました。
+
+**実装内容**:
+1. **システムデフォルト設定** (`config/defaults.json`)
+   - 全設定項目のデフォルト値を定義
+   
+2. **環境変数による設定上書き** (`POPPO_*`)
+   - 環境変数の自動検出と型変換（真偽値、数値、JSON）
+   - ネストされた設定への対応（例: `POPPO_LANGUAGE_PRIMARY`）
+   
+3. **設定の完全な階層管理** (`src/config-loader.js`)
+   - 優先順位: 環境変数 > プロジェクト > グローバル > システムデフォルト
+   - 深いマージ処理で設定を統合
+   
+4. **設定バリデーション機能**
+   - 必須項目チェック（`language.primary`）
+   - 値の範囲チェック（`claude.maxConcurrent`: 1-10）
+   - 妥当性検証（タイムアウト値の整合性など）
+   
+5. **設定管理CLI** (`scripts/poppo-config.js`)
+   - `npm run config:show` - 現在の設定表示
+   - `npm run config:hierarchy` - 階層情報表示
+   - `npm run config:validate` - バリデーション実行
+   - `npm run config:env` - 環境変数一覧
+   - `npm run config get/set` - 設定の取得/更新
+   
+6. **ドキュメント** (`docs/config-management.md`)
+   - 詳細な使用方法とベストプラクティス
+
+**テスト方法**:
+```bash
+# 設定階層の確認
+npm run config:hierarchy
+
+# 環境変数での上書きテスト
+export POPPO_LANGUAGE_PRIMARY=en
+export POPPO_CLAUDE_MAXCONCURRENT=3
+npm run config:show
+
+# テストコード実行
+node test/test-config-loader.js
+```
+
+### Issue #65: CLIベースのプロセスモニター実装 ✅
+**実装完了**: PoppoBuilderのCLIコマンドとしてプロセス管理機能を実装しました。
+
+**実装内容**:
+1. **CLIスクリプト** (`scripts/poppo-process.js`)
+   - `poppo status` - 実行中のプロセス一覧表示（メモリ使用量、実行時間付き）
+   - `poppo kill <task-id>` - タスクの安全な停止（確認プロンプト、強制終了オプション）
+   - `poppo logs <task-id>` - タスク別ログ表示（リアルタイム追跡、レベルフィルタ）
+   
+2. **機能詳細**:
+   - プロセス情報の取得（PID、メモリ、状態）
+   - カラー出力対応（エラー=赤、警告=黄、情報=緑）
+   - JSON出力オプション（`--json`）
+   - ログのリアルタイム追跡（`-f`オプション）
+   - ログレベルフィルタ（`-l error/warn/info`）
+   
+3. **統合**:
+   - package.jsonにbinフィールド追加（グローバルインストール対応）
+   - npm scriptsで簡単実行（`npm run poppo:status`）
+   
+4. **テスト** (`test/poppo-process-cli.test.js`)
+   - 25個のユニットテストを作成し、全て合格
+
+**使用方法**:
+```bash
+# プロセス状態確認
+npm run poppo:status
+poppo status --json
+
+# タスクの停止
+poppo kill issue-65 -f    # 強制停止
+
+# ログ表示
+poppo logs issue-65        # 静的表示
+poppo logs issue-65 -f     # リアルタイム追跡
+poppo logs issue-65 -l error -n 50  # エラーのみ50行まで
+```
+
+### Issue #66: プロセス実行履歴の保存とパフォーマンス分析機能 ✅
+**実装完了**: SQLiteデータベースを使用した実行履歴の永続化とパフォーマンス分析機能を実装しました。
+
+**実装内容**:
+1. **データベース管理** (`src/database-manager.js`)
+   - SQLiteによる実行履歴の永続保存
+   - プロセス開始/終了時刻、実行時間、結果の記録
+   - メモリ使用量、CPU使用率の記録（将来拡張可能）
+   - エラー情報とスタックトレースの保存
+
+2. **パフォーマンス分析API** (`dashboard/server/api/analytics.js`)
+   - `/api/analytics/history` - 実行履歴の取得（フィルタ、ページネーション対応）
+   - `/api/analytics/statistics/:taskType` - タスクタイプ別統計
+   - `/api/analytics/trends/:taskType` - パフォーマンストレンド
+   - `/api/analytics/export` - CSV/JSON形式でのエクスポート
+   - `/api/analytics/summary/generate` - レポート生成
+   - `/api/analytics/archive` - 古いデータのアーカイブ
+
+3. **ダッシュボードUI** 
+   - 統計情報タブ（成功率、平均実行時間、リソース使用量）
+   - トレンドグラフ（Chart.js使用）
+   - 実行履歴一覧（フィルタリング、ソート機能）
+   - エクスポート機能
+
+4. **CLIツール** (`scripts/poppo-analytics.js`)
+   - `npm run analytics:report` - レポート生成
+   - `npm run analytics:stats claude-cli` - 統計表示
+   - `npm run analytics:archive` - データアーカイブ
+
+5. **テスト** (`test/database-manager.test.js`)
+   - 13個のユニットテストを作成し、全て合格
+
+**使用方法**:
+```bash
+# レポート生成
+npm run analytics:report daily
+
+# 統計情報表示
+npm run analytics:stats claude-cli
+
+# データアーカイブ（30日以上前のデータ）
+npm run analytics:archive 30
+
+# ダッシュボードで確認
+npm run dashboard
+# → パフォーマンス分析タブで視覚的に確認可能
+```
+
+### 残りのdogfooding Issue (未実装)
+1. **Issue #67**: 通知機能の単体テスト・統合テスト実装
+
 ---
-最終更新: 2025/6/17 - CLAUDE.mdをスリム化、実装履歴を別ファイルに分離
+最終更新: 2025/6/17 - Issue #66実装完了（プロセス実行履歴の保存とパフォーマンス分析機能）

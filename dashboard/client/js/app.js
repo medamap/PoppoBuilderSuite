@@ -27,13 +27,36 @@ class DashboardApp {
       processListContainer: document.getElementById('processListContainer'),
       logContainer: document.getElementById('logContainer'),
       processDetailModal: document.getElementById('processDetailModal'),
-      processDetailContent: document.getElementById('processDetailContent')
+      processDetailContent: document.getElementById('processDetailContent'),
+      // ログ検索関連
+      searchKeyword: document.getElementById('searchKeyword'),
+      searchLevel: document.getElementById('searchLevel'),
+      searchIssueNumber: document.getElementById('searchIssueNumber'),
+      searchStartDate: document.getElementById('searchStartDate'),
+      searchEndDate: document.getElementById('searchEndDate'),
+      searchBtn: document.getElementById('searchBtn'),
+      clearSearchBtn: document.getElementById('clearSearchBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      searchResults: document.getElementById('searchResults')
     };
   }
 
   bindEvents() {
     this.elements.refreshBtn.addEventListener('click', () => this.refresh());
     this.elements.stopAllBtn.addEventListener('click', () => this.stopAllProcesses());
+    
+    // ログ検索関連イベント
+    this.elements.searchBtn.addEventListener('click', () => this.searchLogs());
+    this.elements.clearSearchBtn.addEventListener('click', () => this.clearSearch());
+    this.elements.exportBtn.addEventListener('click', () => this.exportLogs());
+    
+    // Enterキーで検索実行
+    this.elements.searchKeyword.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') this.searchLogs();
+    });
+    this.elements.searchIssueNumber.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') this.searchLogs();
+    });
     
     // モーダル閉じる
     const closeBtn = this.elements.processDetailModal.querySelector('.close');
@@ -200,6 +223,11 @@ class DashboardApp {
   }
 
   addLog(message, level = 'info') {
+    // フィルタリングチェック
+    if (this.logFilter && !this.logFilter(message)) {
+      return;
+    }
+    
     const timestamp = new Date().toLocaleTimeString('ja-JP');
     const logEntry = document.createElement('div');
     logEntry.className = 'log-entry';
@@ -271,6 +299,167 @@ class DashboardApp {
   refresh() {
     this.addLog('データを更新しています...', 'info');
     this.loadInitialData();
+  }
+
+  async searchLogs() {
+    const params = new URLSearchParams();
+    
+    const keyword = this.elements.searchKeyword.value.trim();
+    if (keyword) params.append('keyword', keyword);
+    
+    const level = this.elements.searchLevel.value;
+    if (level) params.append('level', level);
+    
+    const issueNumber = this.elements.searchIssueNumber.value;
+    if (issueNumber) params.append('issueNumber', issueNumber);
+    
+    const startDate = this.elements.searchStartDate.value;
+    if (startDate) params.append('startDate', startDate);
+    
+    const endDate = this.elements.searchEndDate.value;
+    if (endDate) params.append('endDate', endDate);
+    
+    params.append('limit', '100');
+    
+    try {
+      this.addLog('ログを検索中...', 'info');
+      const response = await fetch(`${this.apiUrl}/logs/search?${params}`);
+      const result = await response.json();
+      
+      this.displaySearchResults(result);
+      this.addLog(`${result.total}件のログが見つかりました`, 'info');
+    } catch (error) {
+      this.addLog('ログ検索に失敗しました', 'error');
+      console.error('Failed to search logs:', error);
+    }
+  }
+  
+  displaySearchResults(result) {
+    const statsDiv = this.elements.searchResults.querySelector('.search-stats');
+    const listDiv = this.elements.searchResults.querySelector('.search-result-list');
+    
+    // 統計情報を表示
+    statsDiv.innerHTML = `
+      検索結果: ${result.logs.length}件 / 全${result.total}件
+      ${result.hasMore ? ' (さらに結果があります)' : ''}
+    `;
+    
+    // 検索結果を表示
+    if (result.logs.length === 0) {
+      listDiv.innerHTML = '<div class="loading">該当するログが見つかりませんでした</div>';
+      return;
+    }
+    
+    listDiv.innerHTML = result.logs.map(log => {
+      const timestamp = new Date(log.timestamp).toLocaleString('ja-JP');
+      return `
+        <div class="search-result-item">
+          <div class="search-result-header">
+            <span class="search-result-timestamp">${timestamp}</span>
+            <span class="search-result-level level-${log.level}">${log.level}</span>
+          </div>
+          <div class="search-result-meta">
+            <span>プロセス: ${log.processId}</span>
+            ${log.issueNumber ? `<span>Issue: #${log.issueNumber}</span>` : ''}
+          </div>
+          <div class="search-result-message">${this.escapeHtml(log.message)}</div>
+        </div>
+      `;
+    }).join('');
+    
+    // リアルタイムフィルタリングのセットアップ
+    this.setupRealtimeFiltering();
+  }
+  
+  clearSearch() {
+    this.elements.searchKeyword.value = '';
+    this.elements.searchLevel.value = '';
+    this.elements.searchIssueNumber.value = '';
+    this.elements.searchStartDate.value = '';
+    this.elements.searchEndDate.value = '';
+    
+    const statsDiv = this.elements.searchResults.querySelector('.search-stats');
+    const listDiv = this.elements.searchResults.querySelector('.search-result-list');
+    statsDiv.innerHTML = '';
+    listDiv.innerHTML = '';
+    
+    this.addLog('検索条件をクリアしました', 'info');
+  }
+  
+  async exportLogs() {
+    const params = new URLSearchParams();
+    
+    const keyword = this.elements.searchKeyword.value.trim();
+    if (keyword) params.append('keyword', keyword);
+    
+    const level = this.elements.searchLevel.value;
+    if (level) params.append('level', level);
+    
+    const issueNumber = this.elements.searchIssueNumber.value;
+    if (issueNumber) params.append('issueNumber', issueNumber);
+    
+    const startDate = this.elements.searchStartDate.value;
+    if (startDate) params.append('startDate', startDate);
+    
+    const endDate = this.elements.searchEndDate.value;
+    if (endDate) params.append('endDate', endDate);
+    
+    // エクスポート形式を選択（CSV or JSON）
+    const format = confirm('CSV形式でエクスポートしますか？\n（キャンセルを押すとJSON形式）') ? 'csv' : 'json';
+    params.append('format', format);
+    
+    try {
+      this.addLog(`ログを${format.toUpperCase()}形式でエクスポート中...`, 'info');
+      const response = await fetch(`${this.apiUrl}/logs/export?${params}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logs_${new Date().toISOString().split('T')[0]}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        this.addLog('ログのエクスポートが完了しました', 'info');
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      this.addLog('ログのエクスポートに失敗しました', 'error');
+      console.error('Failed to export logs:', error);
+    }
+  }
+  
+  setupRealtimeFiltering() {
+    // WebSocketメッセージをフィルタリング
+    if (this.filterInterval) {
+      clearInterval(this.filterInterval);
+    }
+    
+    const keyword = this.elements.searchKeyword.value.toLowerCase();
+    const level = this.elements.searchLevel.value;
+    const issueNumber = this.elements.searchIssueNumber.value;
+    
+    if (keyword || level || issueNumber) {
+      // フィルタが設定されている場合、リアルタイムログも同じ条件でフィルタ
+      this.logFilter = (message) => {
+        if (keyword && !message.toLowerCase().includes(keyword)) return false;
+        if (level && !message.includes(`[${level}]`)) return false;
+        if (issueNumber && !message.includes(`Issue #${issueNumber}`)) return false;
+        return true;
+      };
+    } else {
+      this.logFilter = null;
+    }
+  }
+  
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 

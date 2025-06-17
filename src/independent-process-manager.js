@@ -141,14 +141,14 @@ class IndependentProcessManager {
     fs.writeFileSync(wrapperFile, wrapperScript, 'utf8');
 
     // 独立プロセスとして起動
-    const process = spawn('node', [wrapperFile], {
+    const childProcess = spawn('node', [wrapperFile], {
       detached: true,  // 親プロセスから独立
       stdio: 'ignore', // 標準入出力を切り離し
       cwd: process.cwd()
     });
 
     // プロセス情報を記録
-    fs.writeFileSync(pidFile, process.pid.toString(), 'utf8');
+    fs.writeFileSync(pidFile, childProcess.pid.toString(), 'utf8');
     this.updateTaskStatus(taskId, 'running', 'Claude CLI実行中');
     
     // 実行中タスクリストに追加
@@ -156,18 +156,18 @@ class IndependentProcessManager {
       issueNumber: instruction.issue?.number || 0,
       title: instruction.issue?.title || 'Unknown Task',
       startTime: new Date().toISOString(),
-      pid: process.pid,
+      pid: childProcess.pid,
       type: instruction.task || 'execute'
     });
 
     // プロセスを親から切り離し
-    process.unref();
+    childProcess.unref();
 
-    console.log(`✅ タスク ${taskId} を独立プロセス (PID: ${process.pid}) として起動`);
+    console.log(`✅ タスク ${taskId} を独立プロセス (PID: ${childProcess.pid}) として起動`);
     
     if (this.logger) {
       this.logger.logProcess(taskId, 'INDEPENDENT_START', { 
-        pid: process.pid,
+        pid: childProcess.pid,
         instruction: instruction 
       });
     }

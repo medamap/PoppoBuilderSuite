@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const DatabaseManager = require('./database-manager');
 
 /**
  * プロセス状態管理
@@ -11,6 +12,15 @@ class ProcessStateManager {
     this.stateFile = path.join(__dirname, '../logs/process-state.json');
     this.states = this.loadStates();
     this.metricsInterval = null;
+    
+    // データベースマネージャーを初期化
+    try {
+      this.db = new DatabaseManager();
+      this.logger?.info('データベースマネージャーを初期化しました');
+    } catch (error) {
+      this.logger?.error('データベースマネージャーの初期化に失敗', error);
+      this.db = null;
+    }
     
     // 定期的にメトリクスを更新（5秒間隔）
     this.startMetricsCollection();
@@ -49,12 +59,13 @@ class ProcessStateManager {
   /**
    * プロセス開始を記録
    */
-  recordProcessStart(processId, issueNumber, type = 'claude-cli') {
+  recordProcessStart(processId, issueNumber, type = 'claude-cli', title = null) {
     this.states[processId] = {
       processId,
       pid: process.pid,
       type,
       issueNumber,
+      title,
       startTime: new Date().toISOString(),
       status: 'running',
       metrics: {
@@ -67,6 +78,23 @@ class ProcessStateManager {
     };
     
     this.saveStates();
+    
+    // データベースに記録
+    if (this.db) {
+      try {
+        this.db.recordProcessStart({
+          processId,
+          taskType: type,
+          issueNumber,
+          title,
+          cpuUsage: 0,
+          memoryUsage: 0
+        });
+      } catch (error) {
+        this.logger?.error('データベースへのプロセス開始記録に失敗', error);
+      }
+    }
+    
     this.logger?.info(`プロセス開始を記録: ${processId}`, {
       issueNumber,
       type
@@ -76,7 +104,7 @@ class ProcessStateManager {
   /**
    * プロセス終了を記録
    */
-  recordProcessEnd(processId, status = 'completed', exitCode = 0) {
+  recordProcessEnd(processId, status = 'completed', exitCode = 0, error = null) {
     if (this.states[processId]) {
       this.states[processId].status = status;
       this.states[processId].endTime = new Date().toISOString();
@@ -88,6 +116,22 @@ class ProcessStateManager {
       this.states[processId].metrics.elapsedTime = Math.floor((endTime - startTime) / 1000);
       
       this.saveStates();
+      
+      // データベースに記録
+      if (this.db) {
+        try {
+          this.db.recordProcessEnd(processId, {
+            status: status === 'completed' ? 'success' : status,
+            exitCode,
+            error,
+            cpuUsage: this.states[processId].metrics.cpuUsage || 0,
+            memoryUsage: this.states[processId].metrics.memoryUsage || 0
+          });
+        } catch (error) {
+          this.logger?.error('データベースへのプロセス終了記録に失敗', error);
+        }
+      }
+      
       this.logger?.info(`プロセス終了を記録: ${processId}`, {
         status,
         exitCode,
@@ -195,12 +239,41 @@ class ProcessStateManager {
       const now = new Date();
       const elapsedTime = Math.floor((now - startTime) / 1000);
       
-      this.updateProcessMetrics(process.processId, {
+      // プロセスメモリ使用量を取得（簡易版）
+      const memoryUsage = process.pid ? this.getProcessMemoryUsage(process.pid) : 0;
+      
+      const metrics = {
         elapsedTime,
-        // CPU/メモリ使用量は将来的に実装
-        cpuUsage: 0,
-        memoryUsage: 0
-      });
+        cpuUsage: 0, // CPU使用量は将来的に実装
+        memoryUsage
+      };
+      
+      this.updateProcessMetrics(process.processId, metrics);
+      
+      // データベースにメトリクスを記録
+      if (this.db && memoryUsage > 0) {
+        try {
+          this.db.recordMetric(process.processId, 'memory_usage', memoryUsage);
+        } catch (error) {
+          // エラーは無視（ログが大量になるのを防ぐ）
+        }
+      }
+    }
+  }
+
+  /**
+   * プロセスのメモリ使用量を取得（簡易版）
+   */
+  getProcessMemoryUsage(pid) {
+    try {
+      // Node.jsプロセスのメモリ使用量を取得
+      if (pid === process.pid) {
+        const usage = process.memoryUsage();
+        return Math.round(usage.heapUsed / 1024 / 1024); // MB単位
+      }
+      return 0;
+    } catch (error) {
+      return 0;
     }
   }
 
@@ -218,6 +291,16 @@ class ProcessStateManager {
       error: allProcesses.filter(p => p.status === 'error').length,
       timeout: allProcesses.filter(p => p.status === 'timeout').length
     };
+  }
+
+  /**
+   * クリーンアップ時にデータベースを閉じる
+   */
+  cleanup() {
+    this.stopMetricsCollection();
+    if (this.db) {
+      this.db.close();
+    }
   }
 }
 

@@ -3,6 +3,8 @@ const WebSocket = require('ws');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const LogSearchAPI = require('./api/logs');
+const AnalyticsAPI = require('./api/analytics');
 
 /**
  * PoppoBuilder Process Dashboard Server
@@ -27,6 +29,9 @@ class DashboardServer {
     this.app = express();
     this.server = http.createServer(this.app);
     this.wss = new WebSocket.Server({ server: this.server });
+    
+    // ログ検索APIの初期化
+    this.logSearchAPI = new LogSearchAPI(this.logger);
     
     this.setupRoutes();
     this.setupWebSocket();
@@ -98,6 +103,13 @@ class DashboardServer {
         uptime: process.uptime()
       });
     });
+    
+    // ログ検索APIのルートを設定
+    this.logSearchAPI.setupRoutes(this.app);
+    
+    // アナリティクスAPIのルートを設定
+    this.app.use(express.json());
+    this.app.use('/api/analytics', AnalyticsAPI);
   }
 
   /**
