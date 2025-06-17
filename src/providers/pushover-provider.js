@@ -1,177 +1,98 @@
+const axios = require('axios')
 const NotificationProvider = require('./notification-provider')
-const https = require('https')
-const querystring = require('querystring')
 
-/**
- * Pushover通知プロバイダ
- */
 class PushoverProvider extends NotificationProvider {
   constructor(config, logger) {
-    super(config, logger)
-    this.apiToken = this.getEnvOrConfig('PUSHOVER_API_TOKEN')
-    this.userKey = this.getEnvOrConfig('PUSHOVER_USER_KEY')
+    super('Pushover', config, logger)
+    this.appToken = this.resolveEnvVar(config.appToken)
+    this.userKey = this.resolveEnvVar(config.userKey)
+    this.priority = config.priority || 0
+    this.sound = config.sound || 'pushover'
     this.apiUrl = 'https://api.pushover.net/1/messages.json'
   }
 
-  getName() {
-    return 'Pushover'
-  }
-
-  getType() {
-    return 'push'
-  }
-
   async validate() {
-    if (!this.apiToken) {
-      this.logger.error('[Pushover] APIトークンが設定されていません')
-      return false
+    if (!this.appToken) {
+      throw new Error('Pushover App Tokenが設定されていません')
     }
-
+    
     if (!this.userKey) {
-      this.logger.error('[Pushover] ユーザーキーが設定されていません')
-      return false
+      throw new Error('Pushover User Keyが設定されていません')
     }
-
-    // 検証API呼び出し
-    try {
-      const result = await this.validateCredentials()
-      return result.status === 1
-    } catch (error) {
-      this.logger.error(`[Pushover] 認証情報の検証に失敗: ${error.message}`)
-      return false
+    
+    if (this.priority < -2 || this.priority > 2) {
+      throw new Error('Pushover priorityは-2から2の範囲で設定してください')
     }
-  }
-
-  async validateCredentials() {
-    const data = querystring.stringify({
-      token: this.apiToken,
-      user: this.userKey
-    })
-
-    return this.makeRequest('https://api.pushover.net/1/users/validate.json', data)
   }
 
   async send(notification) {
-    return this.sendWithRetry(async (notif) => {
-      const { message, data } = notif
-      const { title, body } = message
+    const { eventType, message, data } = notification
+    
+    const payload = {
+      token: this.appToken,
+      user: this.userKey,
+      message: this.truncateMessage(message, 1024),
+      title: this.getTitle(eventType),
+      priority: this.getPriority(eventType),
+      sound: this.getSound(eventType),
+      timestamp: Math.floor(Date.now() / 1000)
+    }
 
-      const params = {
-        token: this.apiToken,
-        user: this.userKey,
-        title: title,
-        message: this.formatMessage(body, data),
-        priority: this.getPriority(notif.eventType),
-        timestamp: Math.floor(new Date(notif.timestamp).getTime() / 1000),
-        sound: this.getSound(notif.eventType)
-      }
+    // Issue URLを追加
+    if (data && data.issueUrl) {
+      payload.url = data.issueUrl
+      payload.url_title = `Issue #${data.issueNumber}を開く`
+    }
 
-      // URLがある場合は追加
-      if (data.url) {
-        params.url = data.url
-        params.url_title = 'View on GitHub'
-      }
+    // 高優先度メッセージの追加設定
+    if (payload.priority === 2) {
+      payload.retry = 60  // 1分ごとに再通知
+      payload.expire = 3600  // 1時間後に期限切れ
+    }
 
-      const postData = querystring.stringify(params)
-      return this.makeRequest(this.apiUrl, postData)
-    }, notification)
+    const response = await this.retry(() => 
+      axios.post(this.apiUrl, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 5000
+      })
+    )
+
+    if (response.data.status !== 1) {
+      throw new Error(`Pushover API error: ${JSON.stringify(response.data.errors)}`)
+    }
   }
 
-  formatMessage(body, data) {
-    let message = body
-
-    // 追加情報を付加
-    if (data.issueNumber) {
-      message += `\n\nIssue: #${data.issueNumber}`
+  getTitle(eventType) {
+    const titles = {
+      'issue.completed': 'PoppoBuilder - 処理完了',
+      'issue.error': 'PoppoBuilder - エラー発生',
+      'issue.timeout': 'PoppoBuilder - タイムアウト',
+      'dogfooding.restart': 'PoppoBuilder - 再起動'
     }
-
-    if (data.repository) {
-      message += `\nRepository: ${data.repository}`
-    }
-
-    // Pushoverの文字数制限（1024文字）に対応
-    if (message.length > 1024) {
-      message = message.substring(0, 1021) + '...'
-    }
-
-    return message
+    return titles[eventType] || 'PoppoBuilder'
   }
 
   getPriority(eventType) {
-    const priorities = {
-      'task_failed': 1,     // 高優先度
-      'error': 1,           // 高優先度
-      'task_completed': 0,  // 通常
-      'task_started': -1,   // 低優先度
-      'warning': 0,         // 通常
-      'info': -1,          // 低優先度
-      'test': 0            // 通常
+    // エラー時は高優先度、それ以外は設定値を使用
+    if (eventType === 'issue.error') {
+      return Math.max(this.priority, 1)
     }
-    return priorities[eventType] || 0
+    return this.priority
   }
 
   getSound(eventType) {
-    const sounds = {
-      'task_completed': 'magic',
-      'task_failed': 'falling',
-      'error': 'siren',
-      'warning': 'tugboat',
-      'test': 'pushover'
+    // エラー時は特別な音
+    if (eventType === 'issue.error') {
+      return 'siren'
     }
-    return sounds[eventType] || 'pushover'
+    return this.sound
   }
 
-  async makeRequest(url, data) {
-    return new Promise((resolve, reject) => {
-      const urlObj = new URL(url)
-      
-      const options = {
-        hostname: urlObj.hostname,
-        port: 443,
-        path: urlObj.pathname,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(data)
-        }
-      }
-
-      const req = https.request(options, (res) => {
-        let responseBody = ''
-        
-        res.on('data', (chunk) => {
-          responseBody += chunk
-        })
-
-        res.on('end', () => {
-          try {
-            const response = JSON.parse(responseBody)
-            
-            if (res.statusCode === 200 && response.status === 1) {
-              resolve(response)
-            } else {
-              const errors = response.errors ? response.errors.join(', ') : 'Unknown error'
-              reject(new Error(`Pushover API エラー: ${errors}`))
-            }
-          } catch (error) {
-            reject(new Error(`レスポンス解析エラー: ${responseBody}`))
-          }
-        })
-      })
-
-      req.on('error', (error) => {
-        reject(new Error(`ネットワークエラー: ${error.message}`))
-      })
-
-      req.on('timeout', () => {
-        req.destroy()
-        reject(new Error('リクエストタイムアウト'))
-      })
-
-      req.setTimeout(5000)
-      req.write(data)
-      req.end()
-    })
+  truncateMessage(message, maxLength) {
+    if (message.length <= maxLength) {
+      return message
+    }
+    return message.substring(0, maxLength - 3) + '...'
   }
 }
 

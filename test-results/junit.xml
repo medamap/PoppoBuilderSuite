@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="PoppoBuilder Notification Tests" tests="55" failures="8" errors="0" time="6.618">
+  <testsuite name="NotificationProvider基底クラス" errors="0" failures="0" skipped="0" timestamp="2025-06-17T07:05:18" time="1.607" tests="20">
+    <testcase classname="NotificationProvider基底クラス › 基本機能" name="正しく初期化される" time="0.002">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 基本機能" name="デフォルト値が設定される" time="0">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 基本機能" name="無効化されたプロバイダーを識別" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 抽象メソッド" name="sendメソッドは実装が必要" time="0.004">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 抽象メソッド" name="validateメソッドは実装が必要" time="0">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › リトライ機能" name="成功時はリトライしない" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › リトライ機能" name="失敗時は指定回数リトライ" time="0.305">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › リトライ機能" name="リトライ上限到達時は最後のエラーをスロー" time="0.307">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › リトライ機能" name="指数バックオフで待機時間が増加" time="0.004">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › リトライ機能" name="リトライ回数0の場合は初回のみ実行" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="環境変数を正しく解決" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="環境変数が設定されていない場合エラー" time="0.002">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="文字列以外の値はそのまま返す" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="環境変数プレースホルダーがない場合はそのまま返す" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="複雑な環境変数パターンを処理" time="0">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 環境変数の解決" name="環境変数名に特殊文字が含まれる場合" time="0">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 実際の使用例" name="送信メソッドのリトライ" time="0.305">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › 実際の使用例" name="検証メソッドの実行" time="0.001">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › エラーハンドリング" name="リトライ中の異なるエラーを処理" time="0.308">
+    </testcase>
+    <testcase classname="NotificationProvider基底クラス › エラーハンドリング" name="非同期エラーを適切に処理" time="0.128">
+    </testcase>
+  </testsuite>
+  <testsuite name="NotificationManager" errors="0" failures="0" skipped="0" timestamp="2025-06-17T07:05:18" time="2.155" tests="21">
+    <testcase classname="NotificationManager › 初期化" name="通知が無効の場合は初期化をスキップ" time="0.002">
+    </testcase>
+    <testcase classname="NotificationManager › 初期化" name="プロバイダーなしで初期化" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 初期化" name="プロバイダーを登録して初期化" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 初期化" name="検証失敗のプロバイダーはエラーログを出力" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › メッセージフォーマット" name="基本的なプレースホルダーを置換" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › メッセージフォーマット" name="実行時間をフォーマット" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › メッセージフォーマット" name="1時間以上の実行時間をフォーマット" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › メッセージフォーマット" name="ラベルをフォーマット" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › メッセージフォーマット" name="存在しないプレースホルダーは空文字に置換" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="初期化されていない場合は送信をスキップ" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="プロバイダーなしの場合は送信をスキップ" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="単一プロバイダーに送信成功" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="複数プロバイダーに並列送信" time="0">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="一部のプロバイダーが失敗しても他は送信" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › 通知送信" name="テンプレートが存在しない場合はデフォルトメッセージ" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › タイムアウト処理" name="タイムアウトした場合はエラーとして記録" time="1.001">
+    </testcase>
+    <testcase classname="NotificationManager › タイムアウト処理" name="複数プロバイダーでタイムアウトが混在" time="1.001">
+    </testcase>
+    <testcase classname="NotificationManager › エラーハンドリング" name="プロバイダーのsendメソッドがない場合エラー" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › エラーハンドリング" name="通知データが不正でもクラッシュしない" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › 結果サマリー" name="全て成功の場合のサマリー" time="0.001">
+    </testcase>
+    <testcase classname="NotificationManager › 結果サマリー" name="混在結果のサマリー" time="0">
+    </testcase>
+  </testsuite>
+  <testsuite name="通知機能統合テスト" errors="0" failures="8" skipped="0" timestamp="2025-06-17T07:05:18" time="6.012" tests="14">
+    <testcase classname="通知機能統合テスト › 複数プロバイダーへの同時送信" name="全プロバイダーに並列で通知送信" time="0.004">
+    </testcase>
+    <testcase classname="通知機能統合テスト › 複数プロバイダーへの同時送信" name="一部のプロバイダーが失敗しても他は送信" time="1.011">
+      <failure>Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+@@ -1,11 +1,11 @@
+  Object {
+    &quot;Discord&quot;: Object {
+      &quot;success&quot;: true,
+    },
+    &quot;Pushover&quot;: Object {
+-     &quot;error&quot;: &quot;Pushover API Error&quot;,
++     &quot;error&quot;: &quot;Timeout&quot;,
+      &quot;success&quot;: false,
+    },
+    &quot;Telegram&quot;: Object {
+      &quot;success&quot;: true,
+    },
+    at Object.toEqual (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:166:32)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at listOnTimeout (node:internal/timers:569:9)
+    at processTimers (node:internal/timers:543:7)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › フォールバック機能" name="プライマリプロバイダー失敗時に他のプロバイダーで通知" time="1.003">
+    </testcase>
+    <testcase classname="通知機能統合テスト › フォールバック機能" name="全プロバイダー失敗でも処理継続" time="1.005">
+    </testcase>
+    <testcase classname="通知機能統合テスト › タイムアウト処理" name="タイムアウトしたプロバイダーをスキップ" time="1.005">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 1
+Received: 4
+    at Object.toBe (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:259:29)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at listOnTimeout (node:internal/timers:569:9)
+    at processTimers (node:internal/timers:543:7)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › タイムアウト処理" name="複数プロバイダーでタイムアウトが混在" time="1.004">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 1
+Received: 4
+    at Object.toBe (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:305:29)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at listOnTimeout (node:internal/timers:569:9)
+    at processTimers (node:internal/timers:543:7)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › レート制限対応" name="レート制限エラーでリトライ" time="0.103">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 3
+Received: 5
+    at Object.toBe (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:348:25)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › レート制限対応" name="指数バックオフでリトライ間隔が増加" time="0.305">
+    </testcase>
+    <testcase classname="通知機能統合テスト › エラーハンドリング" name="プロバイダー初期化エラーを処理" time="0.003">
+      <failure>Error: expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+Expected: StringContaining &quot;プロバイダー検証エラー&quot;
+Received: &quot;[NotificationManager] プロバイダ Telegram の検証エラー: Telegram Bot Token検証エラー: 無効なBot Tokenです&quot;
+
+Number of calls: 1
+    at Object.toHaveBeenCalledWith (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:411:32)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › エラーハンドリング" name="不正なテンプレートでもクラッシュしない" time="0.002">
+    </testcase>
+    <testcase classname="通知機能統合テスト › エラーハンドリング" name="プロバイダーが例外をスローしても他のプロバイダーは継続" time="0.002">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 1
+Received: 2
+    at Object.toBe (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:456:27)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › パフォーマンステスト" name="多数のプロバイダーでも並列処理で高速" time="0.204">
+      <failure>Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 10
+Received: 11
+    at Object.toBe (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:487:27)</failure>
+    </testcase>
+    <testcase classname="通知機能統合テスト › 実際の使用シナリオ" name="Issue処理完了の通知フロー" time="0.003">
+    </testcase>
+    <testcase classname="通知機能統合テスト › 実際の使用シナリオ" name="エラー発生時の緊急通知フロー" time="0.002">
+      <failure>Error: expect(received).toContain(expected) // indexOf
+
+Matcher error: received value must not be null nor undefined
+
+Received has value: null
+    at Object.toContain (/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/test/notification-integration.test.js:559:38)</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

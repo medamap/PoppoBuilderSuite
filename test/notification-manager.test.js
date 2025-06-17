@@ -36,7 +36,7 @@ class MockProvider {
   async send(notification) {
     this.sendCalled++
     if (this.shouldFail) {
-      throw new Error(`${this.name} send failed`)
+      throw new Error(`send failed`)
     }
     return { success: true }
   }
@@ -89,6 +89,7 @@ describe('NotificationManager', () => {
       
       await manager.initialize()
       
+      expect(manager.initialized).toBe(true)
       expect(manager.providers.has('TestProvider')).toBe(true)
       expect(provider.validateCalled).toBe(1)
     })
@@ -100,6 +101,7 @@ describe('NotificationManager', () => {
       await manager.initialize()
       
       expect(mockLogger.error).toHaveBeenCalled()
+      expect(manager.providers.has('FailProvider')).toBe(false)
     })
   })
 
@@ -141,12 +143,12 @@ describe('NotificationManager', () => {
     })
 
     it('存在しないプレースホルダーは空文字に置換', () => {
-      const template = 'Issue #{{issueNumber}} - {{nonexistent}}'
-      const data = { issueNumber: 123 }
+      const template = 'Issue #{{issueNumber}} - {{title}}'
+      const data = { issueNumber: 123 }  // titleは含まれていない
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('Issue #123 - ')
+      expect(result).toBe('Issue #123 - ')  // titleは空文字に置換される
     })
   })
 
@@ -207,12 +209,21 @@ describe('NotificationManager', () => {
 
     it('一部のプロバイダーが失敗しても他は送信', async () => {
       const provider1 = new MockProvider('Provider1')
-      const provider2 = new MockProvider('Provider2', true) // 失敗する
       const provider3 = new MockProvider('Provider3')
       
       manager.registerProvider(provider1)
-      manager.registerProvider(provider2)
       manager.registerProvider(provider3)
+      
+      // 失敗するプロバイダーを直接登録（validateは成功する）
+      const provider2 = {
+        getName: () => 'Provider2',
+        async validate() {},
+        async send() {
+          throw new Error('send failed')
+        }
+      }
+      manager.registerProvider(provider2)
+      
       await manager.initialize()
       
       const result = await manager.notify('issue.completed', {
@@ -221,12 +232,12 @@ describe('NotificationManager', () => {
       })
       
       expect(provider1.sendCalled).toBe(1)
-      expect(provider2.sendCalled).toBe(1)
       expect(provider3.sendCalled).toBe(1)
       expect(result.sent).toBe(2)
       expect(result.failed).toBe(1)
       expect(result.errors).toHaveLength(1)
       expect(result.errors[0]).toContain('Provider2')
+      expect(result.errors[0]).toContain('send failed')
     })
 
     it('テンプレートが存在しない場合はデフォルトメッセージ', async () => {
@@ -263,7 +274,7 @@ describe('NotificationManager', () => {
       
       expect(result.sent).toBe(0)
       expect(result.failed).toBe(1)
-      expect(result.errors[0]).toContain('Timeout')
+      expect(result.errors[0]).toBe('SlowProvider: Timeout')
     })
 
     it('複数プロバイダーでタイムアウトが混在', async () => {
@@ -287,6 +298,7 @@ describe('NotificationManager', () => {
       expect(result.sent).toBe(1)
       expect(result.failed).toBe(1)
       expect(fastProvider.sendCalled).toBe(1)
+      expect(result.providers.SlowProvider.error).toContain('Timeout')
     })
   })
 
@@ -306,7 +318,7 @@ describe('NotificationManager', () => {
       })
       
       expect(result.failed).toBe(1)
-      expect(result.errors[0]).toContain('send is not a function')
+      expect(result.errors[0]).toBe('InvalidProvider: send is not a function')
     })
 
     it('通知データが不正でもクラッシュしない', async () => {
@@ -331,8 +343,8 @@ describe('NotificationManager', () => {
   describe('結果サマリー', () => {
     it('全て成功の場合のサマリー', () => {
       const results = [
-        { status: 'fulfilled', value: { provider: 'Provider1', success: true } },
-        { status: 'fulfilled', value: { provider: 'Provider2', success: true } }
+        { provider: 'Provider1', success: true },
+        { provider: 'Provider2', success: true }
       ]
       
       const summary = manager.summarizeResults(results)
@@ -350,8 +362,8 @@ describe('NotificationManager', () => {
 
     it('混在結果のサマリー', () => {
       const results = [
-        { status: 'fulfilled', value: { provider: 'Provider1', success: true } },
-        { status: 'rejected', reason: { provider: 'Provider2', success: false, error: 'Failed' } }
+        { provider: 'Provider1', success: true },
+        { provider: 'Provider2', success: false, error: 'Failed' }
       ]
       
       const summary = manager.summarizeResults(results)

@@ -1,185 +1,136 @@
+const axios = require('axios')
 const NotificationProvider = require('./notification-provider')
-const https = require('https')
 
-/**
- * Telegram通知プロバイダ
- */
 class TelegramProvider extends NotificationProvider {
   constructor(config, logger) {
-    super(config, logger)
-    this.botToken = this.getEnvOrConfig('TELEGRAM_BOT_TOKEN')
-    this.chatId = this.getEnvOrConfig('TELEGRAM_CHAT_ID')
-    this.apiBaseUrl = 'https://api.telegram.org'
-  }
-
-  getName() {
-    return 'Telegram'
-  }
-
-  getType() {
-    return 'bot'
+    super('Telegram', config, logger)
+    this.botToken = this.resolveEnvVar(config.botToken)
+    this.chatId = this.resolveEnvVar(config.chatId)
+    this.parseMode = config.parseMode || 'Markdown'
+    this.disableNotification = config.disableNotification || false
+    this.apiBaseUrl = `https://api.telegram.org/bot${this.botToken}`
   }
 
   async validate() {
     if (!this.botToken) {
-      this.logger.error('[Telegram] Botトークンが設定されていません')
-      return false
+      throw new Error('Telegram Bot Tokenが設定されていません')
     }
-
+    
     if (!this.chatId) {
-      this.logger.error('[Telegram] チャットIDが設定されていません')
-      return false
+      throw new Error('Telegram Chat IDが設定されていません')
     }
 
-    // Bot情報の取得で検証
+    // Bot情報の取得でトークンの有効性を確認
     try {
-      const result = await this.getMe()
-      if (result.ok) {
-        this.logger.info(`[Telegram] Bot検証成功: @${result.result.username}`)
-        return true
+      const response = await axios.get(`${this.apiBaseUrl}/getMe`)
+      if (!response.data.ok) {
+        throw new Error('無効なBot Tokenです')
       }
-      return false
+      this.logger.info(`[Telegram] Bot名: ${response.data.result.username}`)
     } catch (error) {
-      this.logger.error(`[Telegram] Bot検証エラー: ${error.message}`)
-      return false
+      throw new Error(`Telegram Bot Token検証エラー: ${error.message}`)
     }
-  }
-
-  async getMe() {
-    return this.makeRequest('getMe')
   }
 
   async send(notification) {
-    return this.sendWithRetry(async (notif) => {
-      const { message, data } = notif
-      const { title, body } = message
-
-      const text = this.formatMessage(title, body, data, notif.eventType)
-      
-      const params = {
-        chat_id: this.chatId,
-        text: text,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: false
-      }
-
-      // インラインキーボードの追加（URLがある場合）
-      if (data.url) {
-        params.reply_markup = {
-          inline_keyboard: [[
-            {
-              text: 'GitHubで見る',
-              url: data.url
-            }
-          ]]
-        }
-      }
-
-      return this.makeRequest('sendMessage', params)
-    }, notification)
-  }
-
-  formatMessage(title, body, data, eventType) {
-    const emoji = this.getEmoji(eventType)
+    const { eventType, message, data } = notification
     
-    let text = `${emoji} *${this.escapeMarkdown(title)}*\n\n`
-    text += `${this.escapeMarkdown(body)}\n`
+    const text = this.formatMessage(eventType, message, data)
+    const keyboard = this.buildKeyboard(data)
+    
+    const payload = {
+      chat_id: this.chatId,
+      text: this.truncateMessage(text, 4096),
+      parse_mode: this.parseMode,
+      disable_notification: this.disableNotification
+    }
 
+    if (keyboard) {
+      payload.reply_markup = keyboard
+    }
+
+    const response = await this.retry(() => 
+      axios.post(`${this.apiBaseUrl}/sendMessage`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 5000
+      })
+    )
+
+    if (!response.data.ok) {
+      throw new Error(`Telegram API error: ${response.data.description}`)
+    }
+  }
+
+  formatMessage(eventType, message, data) {
+    const icon = this.getIcon(eventType)
+    let formatted = `${icon} *${this.getTitle(eventType, data)}*\n\n`
+    
+    // メッセージ本文
+    formatted += message + '\n'
+    
     // 追加情報
-    if (data.issueNumber || data.repository) {
-      text += '\n━━━━━━━━━━━━━━━\n'
-      
-      if (data.issueNumber) {
-        text += `📌 Issue: #${data.issueNumber}\n`
-      }
-      
-      if (data.repository) {
-        text += `📁 Repository: \`${data.repository}\`\n`
-      }
+    if (data && data.executionTime) {
+      formatted += `\n⏱ 実行時間: ${this.formatTime(data.executionTime)}`
     }
-
-    // タイムスタンプ
-    text += `\n🕐 _${new Date().toLocaleString('ja-JP')}_`
-
-    // Telegramの文字数制限（4096文字）に対応
-    if (text.length > 4096) {
-      text = text.substring(0, 4093) + '...'
+    
+    if (data && data.labels && data.labels.length > 0) {
+      formatted += `\n🏷 ラベル: ${data.labels.map(l => `\`${l}\``).join(', ')}`
     }
-
-    return text
+    
+    return formatted
   }
 
-  escapeMarkdown(text) {
-    // Telegram MarkdownV2で特別な意味を持つ文字をエスケープ
-    return text
-      .replace(/([_*\[\]()~`>#+=|{}.!-])/g, '\\$1')
-  }
-
-  getEmoji(eventType) {
-    const emojis = {
-      'task_started': '🚀',
-      'task_completed': '✅',
-      'task_failed': '❌',
-      'error': '🚨',
-      'warning': '⚠️',
-      'info': 'ℹ️',
-      'test': '🧪'
-    }
-    return emojis[eventType] || '📢'
-  }
-
-  async makeRequest(method, params = {}) {
-    return new Promise((resolve, reject) => {
-      const url = `${this.apiBaseUrl}/bot${this.botToken}/${method}`
-      const data = JSON.stringify(params)
-
-      const urlObj = new URL(url)
-      const options = {
-        hostname: urlObj.hostname,
-        port: 443,
-        path: urlObj.pathname,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data)
+  buildKeyboard(data) {
+    if (!data || !data.issueUrl) return null
+    
+    return {
+      inline_keyboard: [[
+        {
+          text: `📋 Issue #${data.issueNumber}を開く`,
+          url: data.issueUrl
         }
-      }
+      ]]
+    }
+  }
 
-      const req = https.request(options, (res) => {
-        let responseBody = ''
-        
-        res.on('data', (chunk) => {
-          responseBody += chunk
-        })
+  getIcon(eventType) {
+    const icons = {
+      'issue.completed': '✅',
+      'issue.error': '❌',
+      'issue.timeout': '⏱️',
+      'dogfooding.restart': '🔄'
+    }
+    return icons[eventType] || '📌'
+  }
 
-        res.on('end', () => {
-          try {
-            const response = JSON.parse(responseBody)
-            
-            if (response.ok) {
-              resolve(response)
-            } else {
-              reject(new Error(`Telegram API エラー: ${response.description || 'Unknown error'}`))
-            }
-          } catch (error) {
-            reject(new Error(`レスポンス解析エラー: ${responseBody}`))
-          }
-        })
-      })
+  getTitle(eventType, data) {
+    const titles = {
+      'issue.completed': `Issue #${data?.issueNumber} 処理完了`,
+      'issue.error': `Issue #${data?.issueNumber} エラー発生`,
+      'issue.timeout': `Issue #${data?.issueNumber} タイムアウト`,
+      'dogfooding.restart': 'PoppoBuilder 再起動'
+    }
+    return titles[eventType] || `Issue #${data?.issueNumber || '?'}`
+  }
 
-      req.on('error', (error) => {
-        reject(new Error(`ネットワークエラー: ${error.message}`))
-      })
+  formatTime(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    
+    if (hours > 0) {
+      return `${hours}時間${minutes % 60}分`
+    } else if (minutes > 0) {
+      return `${minutes}分${seconds % 60}秒`
+    }
+    return `${seconds}秒`
+  }
 
-      req.on('timeout', () => {
-        req.destroy()
-        reject(new Error('リクエストタイムアウト'))
-      })
-
-      req.setTimeout(5000)
-      req.write(data)
-      req.end()
-    })
+  truncateMessage(message, maxLength) {
+    if (message.length <= maxLength) {
+      return message
+    }
+    return message.substring(0, maxLength - 3) + '...'
   }
 }
 
