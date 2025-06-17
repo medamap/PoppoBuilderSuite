@@ -1,0 +1,52 @@
+{
+  "port": 3003,
+  "host": "localhost",
+  "dataDir": "~/.poppo-builder",
+  "maxWorkers": 10,
+  "maxQueueSize": 1000,
+  "workerTimeout": 3600000,
+  "pollInterval": 5000,
+  "api": {
+    "enabled": true,
+    "authentication": {
+      "enabled": false,
+      "token": "change-me-in-production"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "file": "~/.poppo-builder/daemon.log",
+    "maxFiles": 7,
+    "maxSize": "50m"
+  },
+  "projects": {
+    "defaultPriority": 50,
+    "defaultMaxConcurrentTasks": 2,
+    "autoScan": {
+      "enabled": true,
+      "interval": 300000,
+      "labels": {
+        "misc": "task:misc",
+        "dogfooding": "task:dogfooding",
+        "bug": "task:bug",
+        "feature": "task:feature"
+      }
+    }
+  },
+  "queue": {
+    "retryAttempts": 3,
+    "retryDelay": 5000,
+    "taskTimeout": 1800000,
+    "priorityLevels": {
+      "dogfooding": 100,
+      "high": 75,
+      "normal": 50,
+      "low": 25
+    }
+  },
+  "maintenance": {
+    "cleanupInterval": 3600000,
+    "maxTaskAge": 604800000,
+    "maxLogAge": 2592000000
+  }
+}

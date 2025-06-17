@@ -10,6 +10,7 @@
     "setup": "node scripts/setup-labels.js",
     "dashboard": "open http://localhost:3001",
     "trace": "node scripts/trace.js",
+    "audit": "node scripts/audit.js",
     "test": "echo \"Error: no test specified yet\" && exit 1"
   },
   "keywords": [

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PoppoBuilder マルチプロジェクトダッシュボード</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      margin-bottom: 30px;
+      color: #58a6ff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 20px;
+    }
+    
+    .card h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #f0f6fc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #58a6ff;
+      margin: 10px 0;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #8b949e;
+    }
+    
+    .projects-section {
+      margin-top: 30px;
+    }
+    
+    .project-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 15px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+    }
+    
+    .project-info h3 {
+      color: #58a6ff;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    
+    .project-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    
+    .project-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .project-stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+    
+    .project-stat-label {
+      font-size: 12px;
+      color: #8b949e;
+      margin-top: 4px;
+    }
+    
+    .priority-badge {
+      background: #1f6feb;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .priority-high {
+      background: #da3633;
+    }
+    
+    .priority-medium {
+      background: #f85149;
+    }
+    
+    .priority-low {
+      background: #3fb950;
+    }
+    
+    .health-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .health-excellent { background: #3fb950; }
+    .health-good { background: #58a6ff; }
+    .health-fair { background: #f85149; }
+    .health-poor { background: #da3633; }
+    .health-unknown { background: #8b949e; }
+    
+    .queue-section {
+      margin-top: 30px;
+    }
+    
+    .queue-item {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .queue-item-info {
+      flex: 1;
+    }
+    
+    .queue-item-project {
+      font-size: 12px;
+      color: #8b949e;
+      margin-bottom: 4px;
+    }
+    
+    .queue-item-issue {
+      color: #f0f6fc;
+      font-weight: 500;
+    }
+    
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .status-queued {
+      background: #1f6feb;
+      color: white;
+    }
+    
+    .status-processing {
+      background: #f85149;
+      color: white;
+    }
+    
+    .workers-section {
+      margin-top: 30px;
+    }
+    
+    .worker-item {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .worker-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .worker-status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3fb950;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #8b949e;
+    }
+    
+    .error {
+      background: #da3633;
+      color: white;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    
+    .refresh-time {
+      font-size: 12px;
+      color: #8b949e;
+      text-align: right;
+      margin-top: 20px;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    .updating {
+      animation: pulse 1s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      🚂 PoppoBuilder マルチプロジェクトダッシュボード
+    </h1>
+    
+    <div id="error-container"></div>
+    
+    <div class="dashboard-grid">
+      <div class="card">
+        <h2>📊 総プロジェクト数</h2>
+        <div class="stat-value" id="total-projects">-</div>
+        <div class="stat-label">登録済みプロジェクト</div>
+      </div>
+      
+      <div class="card">
+        <h2>📋 キュータスク数</h2>
+        <div class="stat-value" id="total-queue">-</div>
+        <div class="stat-label">処理待ちタスク</div>
+      </div>
+      
+      <div class="card">
+        <h2>⚡ アクティブワーカー</h2>
+        <div class="stat-value" id="active-workers">-</div>
+        <div class="stat-label">実行中のワーカー</div>
+      </div>
+      
+      <div class="card">
+        <h2>✅ 完了タスク</h2>
+        <div class="stat-value" id="completed-tasks">-</div>
+        <div class="stat-label">本日の完了数</div>
+      </div>
+    </div>
+    
+    <div class="projects-section">
+      <h2>🗂️ プロジェクト一覧</h2>
+      <div id="projects-container">
+        <div class="loading">プロジェクト情報を読み込み中...</div>
+      </div>
+    </div>
+    
+    <div class="queue-section">
+      <h2>📝 グローバルキュー（最新10件）</h2>
+      <div id="queue-container">
+        <div class="loading">キュー情報を読み込み中...</div>
+      </div>
+    </div>
+    
+    <div class="workers-section">
+      <h2>🔧 ワーカープロセス</h2>
+      <div id="workers-container">
+        <div class="loading">ワーカー情報を読み込み中...</div>
+      </div>
+    </div>
+    
+    <div class="refresh-time" id="refresh-time">最終更新: -</div>
+  </div>
+  
+  <script>
+    // グローバル変数
+    let ws = null;
+    let reconnectTimer = null;
+    let isMultiProjectMode = true;
+    
+    // DOM要素
+    const elements = {
+      totalProjects: document.getElementById('total-projects'),
+      totalQueue: document.getElementById('total-queue'),
+      activeWorkers: document.getElementById('active-workers'),
+      completedTasks: document.getElementById('completed-tasks'),
+      projectsContainer: document.getElementById('projects-container'),
+      queueContainer: document.getElementById('queue-container'),
+      workersContainer: document.getElementById('workers-container'),
+      errorContainer: document.getElementById('error-container'),
+      refreshTime: document.getElementById('refresh-time')
+    };
+    
+    // データを取得
+    async function fetchData() {
+      try {
+        // プロジェクト一覧を取得
+        const projectsResponse = await fetch('/api/projects');
+        const projectsData = await projectsResponse.json();
+        
+        // グローバルキューを取得
+        const queueResponse = await fetch('/api/global-queue');
+        const queueData = await queueResponse.json();
+        
+        // ワーカー情報を取得
+        const workersResponse = await fetch('/api/workers');
+        const workersData = await workersResponse.json();
+        
+        updateDashboard({
+          projects: projectsData.projects || [],
+          queue: queueData,
+          workers: workersData.workers || []
+        });
+        
+        clearError();
+      } catch (error) {
+        showError('データの取得に失敗しました: ' + error.message);
+      }
+    }
+    
+    // ダッシュボードを更新
+    function updateDashboard(data) {
+      // 統計情報を更新
+      elements.totalProjects.textContent = data.projects.length;
+      elements.totalQueue.textContent = data.queue?.queueSize || 0;
+      elements.activeWorkers.textContent = data.workers.length;
+      
+      // 完了タスク数を計算
+      let totalCompleted = 0;
+      if (data.queue?.statistics?.byProject) {
+        Object.values(data.queue.statistics.byProject).forEach(stats => {
+          totalCompleted += stats.completed || 0;
+        });
+      }
+      elements.completedTasks.textContent = totalCompleted;
+      
+      // プロジェクト一覧を更新
+      updateProjects(data.projects);
+      
+      // キューを更新
+      updateQueue(data.queue?.queue || []);
+      
+      // ワーカーを更新
+      updateWorkers(data.workers);
+      
+      // 更新時刻
+      elements.refreshTime.textContent = `最終更新: ${new Date().toLocaleTimeString('ja-JP')}`;
+    }
+    
+    // プロジェクト一覧を更新
+    function updateProjects(projects) {
+      if (projects.length === 0) {
+        elements.projectsContainer.innerHTML = '<div class="loading">プロジェクトが登録されていません</div>';
+        return;
+      }
+      
+      elements.projectsContainer.innerHTML = projects.map(project => `
+        <div class="project-card">
+          <div class="project-info">
+            <h3>
+              <span class="health-indicator health-${project.health || 'unknown'}"></span>
+              ${project.name}
+            </h3>
+            <div class="project-stats">
+              <div class="project-stat">
+                <div class="project-stat-value">${project.currentQueue?.queued || 0}</div>
+                <div class="project-stat-label">待機中</div>
+              </div>
+              <div class="project-stat">
+                <div class="project-stat-value">${project.currentQueue?.processing || 0}</div>
+                <div class="project-stat-label">処理中</div>
+              </div>
+              <div class="project-stat">
+                <div class="project-stat-value">${project.statistics?.completed || 0}</div>
+                <div class="project-stat-label">完了</div>
+              </div>
+              <div class="project-stat">
+                <div class="project-stat-value">${project.statistics?.failed || 0}</div>
+                <div class="project-stat-label">失敗</div>
+              </div>
+            </div>
+          </div>
+          <div class="project-priority">
+            <span class="priority-badge priority-${getPriorityClass(project.priority)}">
+              優先度: ${project.priority}
+            </span>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // キューを更新
+    function updateQueue(queue) {
+      if (queue.length === 0) {
+        elements.queueContainer.innerHTML = '<div class="loading">キューにタスクがありません</div>';
+        return;
+      }
+      
+      // 最新10件のみ表示
+      const displayQueue = queue.slice(0, 10);
+      
+      elements.queueContainer.innerHTML = displayQueue.map(task => `
+        <div class="queue-item">
+          <div class="queue-item-info">
+            <div class="queue-item-project">${task.projectId}</div>
+            <div class="queue-item-issue">Issue #${task.issueNumber}</div>
+          </div>
+          <span class="status-badge status-${task.status}">
+            ${task.status === 'queued' ? '待機中' : '処理中'}
+          </span>
+        </div>
+      `).join('');
+    }
+    
+    // ワーカーを更新
+    function updateWorkers(workers) {
+      if (workers.length === 0) {
+        elements.workersContainer.innerHTML = '<div class="loading">稼働中のワーカーがありません</div>';
+        return;
+      }
+      
+      elements.workersContainer.innerHTML = workers.map(worker => `
+        <div class="worker-item">
+          <div class="worker-info">
+            <strong>${worker.projectId}</strong>
+            <div style="font-size: 12px; color: #8b949e;">PID: ${worker.pid}</div>
+          </div>
+          <div class="worker-status">
+            <span class="worker-status-indicator"></span>
+            ${worker.status}
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // 優先度クラスを取得
+    function getPriorityClass(priority) {
+      if (priority >= 80) return 'high';
+      if (priority >= 50) return 'medium';
+      return 'low';
+    }
+    
+    // エラーを表示
+    function showError(message) {
+      elements.errorContainer.innerHTML = `<div class="error">${message}</div>`;
+    }
+    
+    // エラーをクリア
+    function clearError() {
+      elements.errorContainer.innerHTML = '';
+    }
+    
+    // WebSocket接続
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}`;
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket接続が確立されました');
+        clearError();
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'update' || data.type === 'initial') {
+            // 単一プロジェクトモードの更新の場合は無視
+            if (!isMultiProjectMode) {
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('WebSocketメッセージの解析エラー:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocketエラー:', error);
+        showError('WebSocket接続エラーが発生しました');
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket接続が切断されました');
+        scheduleReconnect();
+      };
+    }
+    
+    // 再接続をスケジュール
+    function scheduleReconnect() {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      reconnectTimer = setTimeout(() => {
+        console.log('WebSocket再接続を試みます...');
+        connectWebSocket();
+      }, 5000);
+    }
+    
+    // 初期化
+    async function initialize() {
+      // 初回データ取得
+      await fetchData();
+      
+      // WebSocket接続
+      connectWebSocket();
+      
+      // 定期的なデータ更新（5秒ごと）
+      setInterval(fetchData, 5000);
+    }
+    
+    // ページ読み込み時に初期化
+    document.addEventListener('DOMContentLoaded', initialize);
+  </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+items:
+  PBS-REQ-101:
+    id: PBS-REQ-101
+    phase: REQ
+    title: GitHub連携機能
+    description: GitHub Issue/PRとの自動連携
+    status: active
+    created: '2025-06-17T01:33:06.266Z'
+    updated: '2025-06-17T01:33:06.266Z'
+    links:
+      implements: []
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+      implemented_by:
+        - PBS-SPEC-101
+    github:
+      issues:
+        - 52
+      prs: []
+      commits: []
+  PBS-SPEC-101:
+    id: PBS-SPEC-101
+    phase: SPEC
+    title: GitHub同期仕様
+    description: IDの自動抽出と双方向同期
+    status: active
+    created: '2025-06-17T01:33:06.266Z'
+    updated: '2025-06-17T01:33:06.266Z'
+    links:
+      implements:
+        - PBS-REQ-101
+      references: []
+      derives_from: []
+      conflicts_with: []
+      supersedes: []
+metadata:
+  lastUpdated: '2025-06-17T01:33:06.270Z'
+  version: '1.0'

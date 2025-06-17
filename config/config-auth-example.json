@@ -1,0 +1,35 @@
+{
+  "github": {
+    "owner": "medamap",
+    "repo": "PoppoBuilderSuite"
+  },
+  "claude": {
+    "maxConcurrent": 2,
+    "timeout": 86400000
+  },
+  "polling": {
+    "interval": 300000
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "host": "localhost",
+    "updateInterval": 5000,
+    "authentication": {
+      "enabled": true,
+      "username": "admin",
+      "password": "your-secure-password-here"
+    }
+  },
+  "sessionSecret": "your-secret-key-here-change-this-in-production",
+  "commentHandling": {
+    "enabled": true,
+    "completionKeywords": [
+      "ありがとう", "ありがとうございます", "ありがとうございました",
+      "完了", "OK", "ok", "了解", "承知",
+      "thank you", "thanks", "done", "complete"
+    ],
+    "maxCommentCount": 10,
+    "timeoutHours": 24
+  }
+}
