@@ -6,6 +6,7 @@ const AutoRepairEngine = require('./repairer');
 const AdvancedAnalyzer = require('./advanced-analyzer');
 const ErrorGrouper = require('./error-grouper');
 const ErrorStatistics = require('./statistics');
+const LogArchiver = require('./log-archiver');
 
 /**
  * CCLA (Code Change Log Analyzer) エージェント
@@ -154,6 +155,12 @@ class CCLAAgent extends AgentBase {
     if (config.errorLogCollection?.advanced?.statisticsEnabled) {
       this.errorStatistics = new ErrorStatistics(this.logger);
     }
+    
+    // ログアーカイバーの初期化
+    if (config.errorLogCollection?.archiving?.enabled !== false) {
+      this.logArchiver = new LogArchiver(config, this.logger);
+      this.archiveRotationInterval = config.errorLogCollection?.archiving?.rotationInterval || 86400000; // 24時間
+    }
   }
   
   /**
@@ -187,6 +194,15 @@ class CCLAAgent extends AgentBase {
     if (this.errorStatistics) {
       await this.errorStatistics.initialize();
       this.logger.info('統計分析機能を有効化しました');
+    }
+    
+    // ログアーカイバーの初期化
+    if (this.logArchiver) {
+      await this.logArchiver.initialize();
+      this.logger.info('ログアーカイブ機能を有効化しました');
+      
+      // アーカイブローテーションの開始
+      this.startArchiveRotation();
     }
     
     // ログ監視の開始
@@ -234,6 +250,19 @@ class CCLAAgent extends AgentBase {
     this.logMonitorTimer = setInterval(() => {
       this.checkLogs();
     }, this.errorLogConfig.pollingInterval);
+  }
+  
+  /**
+   * アーカイブローテーションの開始
+   */
+  startArchiveRotation() {
+    // 即座に最初のローテーション
+    this.rotateProcessedLogs();
+    
+    // 定期的なローテーション
+    this.archiveRotationTimer = setInterval(() => {
+      this.rotateProcessedLogs();
+    }, this.archiveRotationInterval);
   }
   
   /**
@@ -788,11 +817,56 @@ ${this.advancedAnalyzer.generateAnalysisSummary(advancedAnalysis)}`;
   }
   
   /**
-   * ログローテーション（将来実装）
+   * ログローテーション
    */
   async rotateProcessedLogs() {
-    // TODO: 処理済みログの移動と圧縮
-    this.logger.info('ログローテーション機能は将来実装予定です');
+    if (!this.logArchiver) {
+      this.logger.debug('ログアーカイブ機能が無効です');
+      return;
+    }
+    
+    try {
+      this.logger.info('処理済みログのアーカイブを開始します...');
+      
+      // 処理済みエラー記録ファイルを処理済みディレクトリに移動
+      const processedErrors = await this.getProcessedErrorFiles();
+      for (const file of processedErrors) {
+        const sourcePath = path.join(this.logsDir, file);
+        const destPath = path.join(this.logArchiver.processedPath, file);
+        
+        try {
+          await fs.rename(sourcePath, destPath);
+          this.logger.debug(`処理済みファイルを移動: ${file}`);
+        } catch (error) {
+          if (error.code !== 'ENOENT') {
+            this.logger.error(`ファイル移動エラー: ${file}`, error);
+          }
+        }
+      }
+      
+      // アーカイブ処理を実行
+      await this.logArchiver.archiveProcessedLogs();
+      
+      this.logger.info('処理済みログのアーカイブが完了しました');
+    } catch (error) {
+      this.logger.error('ログローテーションエラー:', error);
+    }
+  }
+  
+  /**
+   * 処理済みエラーファイルの取得
+   */
+  async getProcessedErrorFiles() {
+    try {
+      const files = await fs.readdir(this.logsDir);
+      return files.filter(file => 
+        file.startsWith('processed-') && 
+        (file.endsWith('.json') || file.endsWith('.log'))
+      );
+    } catch (error) {
+      this.logger.error('処理済みファイル取得エラー:', error);
+      return [];
+    }
   }
   
   /**
@@ -802,6 +876,20 @@ ${this.advancedAnalyzer.generateAnalysisSummary(advancedAnalysis)}`;
     // ログ監視タイマーの停止
     if (this.logMonitorTimer) {
       clearInterval(this.logMonitorTimer);
+    }
+    
+    // アーカイブローテーションタイマーの停止
+    if (this.archiveRotationTimer) {
+      clearInterval(this.archiveRotationTimer);
+    }
+    
+    // 最後のアーカイブ処理を実行
+    if (this.logArchiver) {
+      try {
+        await this.rotateProcessedLogs();
+      } catch (error) {
+        this.logger.error('最終アーカイブ処理エラー:', error);
+      }
     }
     
     // 処理済みエラーの最終保存

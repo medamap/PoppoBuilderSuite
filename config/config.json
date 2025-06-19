@@ -26,9 +26,9 @@
     "host": "localhost",
     "updateInterval": 5000,
     "authentication": {
-      "enabled": false,
+      "enabled": true,
       "username": "admin",
-      "password": "changeme"
+      "password": "poppo2025"
     }
   },
   "rateLimiting": {
@@ -47,7 +47,7 @@
     }
   },
   "dynamicTimeout": {
-    "enabled": false,
+    "enabled": true,
     "minTimeout": 600000,
     "maxTimeout": 86400000,
     "timeoutProfiles": {
@@ -122,10 +122,244 @@
       "minOccurrencesForLearning": 3
     },
     "logRotation": {
-      "enabled": false,
+      "enabled": true,
       "maxFileSize": "100MB",
       "maxFiles": 4,
       "compress": true
+    },
+    "archiving": {
+      "enabled": true,
+      "archivePath": "data/ccla/archives",
+      "retentionDays": 30,
+      "compressionLevel": 6,
+      "autoCleanup": true,
+      "processedLogsPath": "data/ccla/processed",
+      "rotationInterval": 86400000,
+      "maxArchiveSize": "1GB",
+      "alertThreshold": "800MB"
+    }
+  },
+  "healthCheck": {
+    "enabled": true,
+    "interval": 60000,
+    "scoring": {
+      "weights": {
+        "application": 0.4,
+        "system": 0.3,
+        "network": 0.2,
+        "data": 0.1
+      }
+    },
+    "thresholds": {
+      "healthy": 80,
+      "degraded": 60
+    },
+    "autoRecovery": {
+      "enabled": true,
+      "actions": {
+        "memoryCleanup": true,
+        "processRestart": true,
+        "diskCleanup": true,
+        "apiRetry": true
+      }
+    },
+    "alerts": {
+      "enabled": true,
+      "channels": ["log"],
+      "throttle": 300000
+    }
+  },
+  "twoStageProcessing": {
+    "enabled": true,
+    "confidenceThreshold": 0.7,
+    "analyzeTimeout": 30000,
+    "createIssueLabels": {
+      "default": ["task:misc"],
+      "keywords": {
+        "dogfooding": ["task:dogfooding"],
+        "バグ": ["task:bug"],
+        "機能": ["task:feature"],
+        "ドキュメント": ["task:documentation"]
+      }
+    }
+  },
+  "configReload": {
+    "enabled": true,
+    "watchFiles": true,
+    "debounceDelay": 500,
+    "hotReloadableSettings": [
+      "logLevel",
+      "claude.timeout",
+      "claude.maxRetries",
+      "rateLimiter",
+      "monitoring",
+      "language",
+      "notification"
+    ],
+    "restartRequiredSettings": [
+      "port",
+      "workerCount",
+      "maxConcurrentTasks",
+      "dashboard.port"
+    ]
+  },
+  "notifications": {
+    "enabled": true,
+    "providers": {
+      "discord": {
+        "enabled": false,
+        "webhookUrl": "",
+        "username": "PoppoBuilder",
+        "avatarUrl": "",
+        "mentions": {
+          "error": "@everyone",
+          "warning": "",
+          "info": ""
+        }
+      },
+      "pushover": {
+        "enabled": false,
+        "apiToken": "",
+        "userKey": "",
+        "priority": {
+          "error": 1,
+          "warning": 0,
+          "info": -1
+        }
+      },
+      "telegram": {
+        "enabled": false,
+        "botToken": "",
+        "chatId": "",
+        "parseMode": "HTML",
+        "disableNotification": {
+          "error": false,
+          "warning": false,
+          "info": true
+        }
+      }
+    },
+    "events": {
+      "issueCompleted": {
+        "enabled": true,
+        "level": "info",
+        "template": "✅ Issue #{number} 処理完了: {title}"
+      },
+      "issueError": {
+        "enabled": true,
+        "level": "error",
+        "template": "❌ Issue #{number} エラー: {title}\\nエラー: {error}"
+      },
+      "issueTimeout": {
+        "enabled": true,
+        "level": "warning",
+        "template": "⏱️ Issue #{number} タイムアウト: {title}"
+      },
+      "processStarted": {
+        "enabled": false,
+        "level": "info",
+        "template": "🚀 Issue #{number} 処理開始: {title}"
+      },
+      "systemError": {
+        "enabled": true,
+        "level": "error",
+        "template": "🚨 システムエラー: {error}"
+      }
+    },
+    "retry": {
+      "maxAttempts": 3,
+      "initialDelay": 1000,
+      "maxDelay": 10000,
+      "backoffMultiplier": 2
+    }
+  },
+  "logRotation": {
+    "enabled": true,
+    "maxSize": 104857600,
+    "maxFiles": 10,
+    "datePattern": "YYYY-MM-DD",
+    "compress": true,
+    "compressionLevel": 6,
+    "retentionDays": 30,
+    "checkInterval": 60000,
+    "archivePath": "logs/archive",
+    "logLevel": "INFO"
+  },
+  "dynamicScaling": {
+    "enabled": true,
+    "metrics": {
+      "collectionInterval": 10000,
+      "historySize": 60,
+      "aggregationWindow": 5
+    },
+    "scaling": {
+      "minAgents": 3,
+      "maxAgents": 15,
+      "scaleUpThreshold": 0.8,
+      "scaleDownThreshold": 0.3,
+      "scaleUpIncrement": 2,
+      "scaleDownIncrement": 1,
+      "cooldownPeriod": 60000,
+      "evaluationInterval": 30000,
+      "memoryThreshold": 0.85,
+      "cpuWindowSize": 5
+    },
+    "loadBalancer": {
+      "algorithm": "least-connections",
+      "healthCheckInterval": 30000,
+      "unhealthyThreshold": 3,
+      "healthyThreshold": 2,
+      "requestTimeout": 30000,
+      "retryAttempts": 2,
+      "stickySession": false,
+      "sessionTimeout": 3600000
+    },
+    "lifecycle": {
+      "gracefulShutdownTimeout": 30000,
+      "healthCheckInterval": 10000,
+      "startupTimeout": 60000,
+      "restartDelay": 5000,
+      "maxRestartAttempts": 3,
+      "zombieCheckInterval": 60000
+    }
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention": 30,
+    "maxBackups": 10,
+    "storage": {
+      "type": "local",
+      "path": "./backups",
+      "compress": true,
+      "encrypt": false,
+      "encryptionKey": null
+    },
+    "targets": {
+      "config": true,
+      "database": true,
+      "logs": true,
+      "agents": true,
+      "state": true,
+      "security": true
+    },
+    "incremental": {
+      "enabled": false,
+      "maxIncrementals": 7
+    },
+    "beforeBackup": {
+      "checkIntegrity": true
+    },
+    "notifications": {
+      "enabled": true,
+      "onSuccess": true,
+      "onError": true,
+      "channels": ["log"]
+    },
+    "retry": {
+      "enabled": true,
+      "maxRetries": 3,
+      "delay": 300000
     }
   }
 }

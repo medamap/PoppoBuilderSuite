@@ -208,6 +208,15 @@ class AgentIntegration {
           language: 'ja'
         };
         
+      case 'quality-assurance':
+        // 品質保証用の情報
+        return {
+          issueNumber: number,
+          repository: issue.repository || 'medamap/PoppoBuilderSuite',
+          changes: this.extractFilePaths(body),
+          pullRequest: this.extractPullRequestNumber(body)
+        };
+        
       default:
         return {
           issueNumber: number,
@@ -230,6 +239,20 @@ class AgentIntegration {
     }
     
     return matches.length > 0 ? matches : ['src/minimal-poppo.js']; // デフォルト
+  }
+  
+  /**
+   * Pull Request番号の抽出
+   */
+  extractPullRequestNumber(text) {
+    const prRegex = /#(\d+)|PR\s*#?(\d+)|pull request\s*#?(\d+)/gi;
+    const match = prRegex.exec(text);
+    
+    if (match) {
+      return parseInt(match[1] || match[2] || match[3]);
+    }
+    
+    return null;
   }
   
   /**
@@ -349,7 +372,10 @@ class AgentIntegration {
         'documentation': ['generate-docs', 'update-readme'],
         'security': ['security-audit'],
         'refactor': ['refactoring-suggestion'],
-        'dogfooding': ['code-review', 'generate-docs']
+        'dogfooding': ['code-review', 'generate-docs'],
+        'quality': ['quality-assurance'],
+        'test': ['quality-assurance'],
+        'qa': ['quality-assurance']
       },
       keywords: {
         'レビュー': ['code-review'],
@@ -359,7 +385,11 @@ class AgentIntegration {
         'セキュリティ': ['security-audit'],
         'security': ['security-audit'],
         'リファクタリング': ['refactoring-suggestion'],
-        'refactor': ['refactoring-suggestion']
+        'refactor': ['refactoring-suggestion'],
+        '品質': ['quality-assurance'],
+        'quality': ['quality-assurance'],
+        'テスト': ['quality-assurance'],
+        'test': ['quality-assurance']
       }
     };
   }

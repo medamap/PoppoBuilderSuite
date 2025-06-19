@@ -1,13 +1,26 @@
 const fs = require('fs');
 const path = require('path');
+const LogRotator = require('./log-rotator');
 
 /**
- * シンプルなロガークラス
+ * シンプルなロガークラス（ログローテーション機能付き）
  */
 class Logger {
-  constructor(logDir = path.join(__dirname, '../logs')) {
+  constructor(logDir = path.join(__dirname, '../logs'), rotationConfig = {}) {
     this.logDir = logDir;
     this.ensureLogDir();
+    
+    // ログローテーターを初期化
+    this.rotator = new LogRotator(rotationConfig);
+    
+    // ログレベルの設定（デフォルトはINFO以上を出力）
+    this.logLevels = {
+      ERROR: 0,
+      WARN: 1,
+      INFO: 2,
+      DEBUG: 3
+    };
+    this.currentLogLevel = rotationConfig.logLevel || 'INFO';
   }
 
   ensureLogDir() {
@@ -26,9 +39,21 @@ class Logger {
   }
 
   /**
+   * ログレベルをチェック
+   */
+  shouldLog(level) {
+    return this.logLevels[level] <= this.logLevels[this.currentLogLevel];
+  }
+
+  /**
    * ログ出力（ファイルとコンソール）
    */
   log(level, category, message, data = null) {
+    // ログレベルチェック
+    if (!this.shouldLog(level)) {
+      return;
+    }
+    
     const timestamp = new Date().toISOString();
     const logEntry = {
       timestamp,
@@ -116,6 +141,44 @@ class Logger {
    */
   logSystem(event, data) {
     this.log('INFO', 'SYSTEM', event, data);
+  }
+
+  /**
+   * ログレベルを変更
+   */
+  setLogLevel(level) {
+    if (this.logLevels.hasOwnProperty(level)) {
+      this.currentLogLevel = level;
+      this.logSystem(`ログレベル変更: ${level}`);
+    }
+  }
+
+  /**
+   * ログローテーターを停止
+   */
+  close() {
+    if (this.rotator) {
+      this.rotator.stopWatching();
+    }
+  }
+
+  /**
+   * 手動でログローテーションを実行
+   */
+  async rotate() {
+    if (this.rotator) {
+      await this.rotator.rotateAll();
+    }
+  }
+
+  /**
+   * アーカイブ統計情報を取得
+   */
+  async getArchiveStats() {
+    if (this.rotator) {
+      return await this.rotator.getArchiveStats();
+    }
+    return null;
   }
 }
 

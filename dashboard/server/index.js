@@ -5,12 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const LogSearchAPI = require('./api/logs');
 const AnalyticsAPI = require('./api/analytics');
+const HealthAPI = require('./api/health');
+const ProcessAPI = require('./api/process');
 
 /**
  * PoppoBuilder Process Dashboard Server
  */
 class DashboardServer {
-  constructor(config, processStateManager, logger) {
+  constructor(config, processStateManager, logger, healthCheckManager = null, independentProcessManager = null) {
     this.config = config.dashboard || {
       enabled: true,
       port: 3001,
@@ -20,6 +22,8 @@ class DashboardServer {
     
     this.stateManager = processStateManager;
     this.logger = logger;
+    this.healthCheckManager = healthCheckManager;
+    this.independentProcessManager = independentProcessManager;
     
     if (!this.config.enabled) {
       this.logger?.info('ダッシュボードは無効化されています');
@@ -32,6 +36,13 @@ class DashboardServer {
     
     // ログ検索APIの初期化
     this.logSearchAPI = new LogSearchAPI(this.logger);
+    
+    // ヘルスチェックAPIの初期化
+    this.healthAPI = new HealthAPI(this.healthCheckManager);
+    
+    // プロセス管理APIの初期化
+    this.processAPI = this.independentProcessManager ? 
+      new ProcessAPI(this.stateManager, this.independentProcessManager, this.logger) : null;
     
     this.setupRoutes();
     this.setupWebSocket();
@@ -95,21 +106,39 @@ class DashboardServer {
       }
     });
     
-    // ヘルスチェック
-    this.app.get('/api/health', (req, res) => {
-      res.json({ 
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      });
+    // 基本的なヘルスチェック（HealthAPIが無い場合のフォールバック）
+    this.app.get('/api/health', (req, res, next) => {
+      if (this.healthAPI) {
+        // HealthAPIが存在する場合は次のミドルウェアへ
+        next();
+      } else {
+        // フォールバック
+        res.json({ 
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime()
+        });
+      }
     });
+    
+    // JSONパーサーミドルウェア（すべてのAPIルートの前に設定）
+    this.app.use(express.json());
     
     // ログ検索APIのルートを設定
     this.logSearchAPI.setupRoutes(this.app);
     
     // アナリティクスAPIのルートを設定
-    this.app.use(express.json());
     this.app.use('/api/analytics', AnalyticsAPI);
+    
+    // ヘルスチェックAPIのルートを設定
+    if (this.healthAPI) {
+      this.app.use('/api/health', this.healthAPI.getRouter());
+    }
+    
+    // プロセス管理APIのルートを設定
+    if (this.processAPI) {
+      this.app.use('/api', this.processAPI.getRouter());
+    }
   }
 
   /**

@@ -283,8 +283,47 @@ class DashboardApp {
       return;
     }
     
-    this.addLog(`プロセス停止機能は未実装です: ${processId}`, 'warning');
-    // TODO: プロセス停止APIの実装
+    try {
+      const response = await fetch(`/api/process/${processId}/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ force: false })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        this.addLog(`✅ タスク ${processId} を停止しました`, 'success');
+        // プロセスリストを更新
+        this.fetchProcesses();
+      } else {
+        this.addLog(`❌ プロセス停止エラー: ${result.error || 'Unknown error'}`, 'error');
+        // 強制終了を提案
+        if (result.error && result.error.includes('force')) {
+          if (confirm('プロセスが終了しません。強制終了しますか？')) {
+            const forceResponse = await fetch(`/api/process/${processId}/stop`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ force: true })
+            });
+            
+            const forceResult = await forceResponse.json();
+            if (forceResponse.ok && forceResult.success) {
+              this.addLog(`✅ タスク ${processId} を強制終了しました`, 'success');
+              this.fetchProcesses();
+            } else {
+              this.addLog(`❌ 強制終了も失敗しました: ${forceResult.error}`, 'error');
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.addLog(`❌ ネットワークエラー: ${error.message}`, 'error');
+    }
   }
 
   async stopAllProcesses() {
@@ -292,8 +331,36 @@ class DashboardApp {
       return;
     }
     
-    this.addLog('全プロセス停止機能は未実装です', 'warning');
-    // TODO: 全プロセス停止APIの実装
+    try {
+      const response = await fetch('/api/process/stop-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ confirm: true, force: false })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        this.addLog(`✅ ${result.stoppedCount}個のタスクを停止しました`, 'success');
+        if (result.failedCount > 0) {
+          this.addLog(`⚠️ ${result.failedCount}個のタスクの停止に失敗しました`, 'warning');
+          // 失敗したタスクの詳細を表示
+          if (result.results && result.results.failed) {
+            result.results.failed.forEach(task => {
+              this.addLog(`  - ${task.taskId}: ${task.error}`, 'error');
+            });
+          }
+        }
+        // プロセスリストを更新
+        this.fetchProcesses();
+      } else {
+        this.addLog(`❌ 全プロセス停止エラー: ${result.error || 'Unknown error'}`, 'error');
+      }
+    } catch (error) {
+      this.addLog(`❌ ネットワークエラー: ${error.message}`, 'error');
+    }
   }
 
   refresh() {

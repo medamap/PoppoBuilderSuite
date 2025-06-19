@@ -1,0 +1,245 @@
+name: Performance Tests
+
+on:
+  # 定期実行（毎日深夜2時 JST = 17:00 UTC）
+  schedule:
+    - cron: '0 17 * * *'
+  
+  # プルリクエスト時
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'agents/**'
+      - 'test/performance/**'
+      - 'package.json'
+      - '.github/workflows/performance-tests.yml'
+  
+  # 手動実行
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'テストモード'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+          - quick
+          - full
+      update_baseline:
+        description: 'ベースラインを更新'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ベースライン比較のため完全な履歴を取得
+      
+      - name: Node.js ${{ matrix.node-version }} セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: 依存関係インストール
+        run: npm ci
+      
+      - name: ダッシュボードサーバー起動
+        run: |
+          # バックグラウンドでダッシュボードを起動
+          npm run dashboard &
+          DASHBOARD_PID=$!
+          echo "DASHBOARD_PID=$DASHBOARD_PID" >> $GITHUB_ENV
+          
+          # サーバーが起動するまで待機
+          echo "ダッシュボードの起動を待機中..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3001/api/health > /dev/null; then
+              echo "ダッシュボードが起動しました"
+              break
+            fi
+            sleep 1
+          done
+      
+      - name: パフォーマンステスト実行（PR時）
+        if: github.event_name == 'pull_request'
+        run: npm run test:performance:quick
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: パフォーマンステスト実行（定期実行時）
+        if: github.event_name == 'schedule'
+        run: npm run test:performance
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: パフォーマンステスト実行（手動実行時）
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.mode }}" = "quick" ]; then
+            npm run test:performance:quick
+          else
+            npm run test:performance
+          fi
+          
+          if [ "${{ inputs.update_baseline }}" = "true" ]; then
+            npm run performance:baseline
+          fi
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      
+      - name: レポートアーティファクト保存
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports-node${{ matrix.node-version }}
+          path: test/performance/reports/
+          retention-days: 30
+      
+      - name: パフォーマンス結果コメント（PR時）
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            // 最新のレポートファイルを探す
+            const reportDir = 'test/performance/reports';
+            const files = fs.readdirSync(reportDir);
+            const markdownFiles = files.filter(f => f.endsWith('.md'));
+            
+            if (markdownFiles.length === 0) {
+              console.log('Markdownレポートが見つかりません');
+              return;
+            }
+            
+            // 最新のファイルを取得
+            const latestFile = markdownFiles.sort().pop();
+            const reportPath = path.join(reportDir, latestFile);
+            const reportContent = fs.readFileSync(reportPath, 'utf8');
+            
+            // PRにコメント
+            const comment = `## 🚀 パフォーマンステスト結果\n\n${reportContent}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: パフォーマンス劣化チェック
+        if: github.event_name == 'pull_request'
+        run: |
+          # ベースラインとの比較
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+              // 最新の結果を読み込み
+              const reportDir = 'test/performance/reports';
+              const files = fs.readdirSync(reportDir);
+              const jsonFiles = files.filter(f => f.endsWith('.json'));
+              
+              if (jsonFiles.length === 0) {
+                console.log('JSONレポートが見つかりません');
+                process.exit(0);
+              }
+              
+              const latestFile = jsonFiles.sort().pop();
+              const resultPath = path.join(reportDir, latestFile);
+              const results = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+              
+              // ベースラインを読み込み
+              const baselinePath = path.join(reportDir, 'baseline.json');
+              if (!fs.existsSync(baselinePath)) {
+                console.log('ベースラインが見つかりません。スキップします。');
+                process.exit(0);
+              }
+              
+              const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+              
+              // 主要メトリクスの比較
+              let hasRegression = false;
+              
+              // スループットチェック（10%以上の劣化で失敗）
+              const currentThroughput = results.throughput?.issuesPerHour || 0;
+              const baselineThroughput = baseline.results?.throughput?.issuesPerHour || 1000;
+              
+              if (currentThroughput < baselineThroughput * 0.9) {
+                console.error(\`❌ スループットが10%以上劣化しています: \${currentThroughput} < \${baselineThroughput * 0.9}\`);
+                hasRegression = true;
+              }
+              
+              // レスポンスタイムチェック（50%以上の劣化で失敗）
+              // TODO: 実際の値に基づいてチェック
+              
+              if (hasRegression) {
+                console.error('パフォーマンスの劣化が検出されました');
+                process.exit(1);
+              } else {
+                console.log('✅ パフォーマンスの劣化は検出されませんでした');
+              }
+              
+            } catch (error) {
+              console.error('パフォーマンスチェックエラー:', error);
+              // エラーの場合は警告のみ
+            }
+          "
+      
+      - name: クリーンアップ
+        if: always()
+        run: |
+          # ダッシュボードプロセスを終了
+          if [ ! -z "$DASHBOARD_PID" ]; then
+            kill $DASHBOARD_PID || true
+          fi
+
+  performance-summary:
+    needs: performance-test
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: レポート集約
+        uses: actions/download-artifact@v4
+        with:
+          path: all-reports
+      
+      - name: サマリー生成
+        run: |
+          echo "# パフォーマンステスト サマリー" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "実行日時: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 各Node.jsバージョンの結果を集約
+          for dir in all-reports/*/; do
+            if [ -d "$dir" ]; then
+              echo "## $(basename $dir)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              
+              # Markdownレポートがあれば内容を追加
+              if ls $dir/*.md 1> /dev/null 2>&1; then
+                cat $dir/*.md >> $GITHUB_STEP_SUMMARY
+              else
+                echo "レポートが見つかりません" >> $GITHUB_STEP_SUMMARY
+              fi
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done

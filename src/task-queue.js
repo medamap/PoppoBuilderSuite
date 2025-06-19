@@ -1,10 +1,11 @@
 const EventEmitter = require('events');
+const IssueLockManager = require('./issue-lock-manager');
 
 /**
  * 優先度付きタスクキュー
  */
 class TaskQueue extends EventEmitter {
-  constructor(config = {}) {
+  constructor(config = {}, lockManager = null) {
     super();
     
     // 優先度レベル
@@ -29,6 +30,9 @@ class TaskQueue extends EventEmitter {
     // 設定
     this.maxConcurrent = config.maxConcurrent || 2;
     this.maxQueueSize = config.maxQueueSize || 100;
+    
+    // IssueLockManager（オプショナル）
+    this.lockManager = lockManager;
     
     // 統計情報
     this.stats = {
@@ -70,11 +74,29 @@ class TaskQueue extends EventEmitter {
   /**
    * タスクをキューに追加
    */
-  enqueue(task) {
+  async enqueue(task) {
     // キューサイズチェック
     const totalSize = this.getQueueSize();
     if (totalSize >= this.maxQueueSize) {
       throw new Error(`Queue is full (${totalSize}/${this.maxQueueSize})`);
+    }
+    
+    // Issue重複チェック（キュー内）
+    if (task.type === 'issue' && task.issueNumber) {
+      const pendingIssues = this.getPendingIssues();
+      if (pendingIssues.includes(task.issueNumber)) {
+        console.log(`⚠️  Issue #${task.issueNumber} は既にキューに存在するためスキップ`);
+        throw new Error(`Issue #${task.issueNumber} は既にキューに存在します`);
+      }
+    }
+    
+    // IssueLockManagerが設定されている場合、既にロックされているかチェック
+    if (this.lockManager && task.issueNumber) {
+      const existingLock = await this.lockManager.checkLock(task.issueNumber);
+      if (existingLock && this.lockManager.isLockValid(existingLock)) {
+        console.log(`⚠️  Issue #${task.issueNumber} is already locked by PID ${existingLock.lockedBy.pid}, skipping enqueue`);
+        throw new Error(`Issue #${task.issueNumber} is already being processed`);
+      }
     }
     
     // 優先度を決定
@@ -138,7 +160,21 @@ class TaskQueue extends EventEmitter {
   /**
    * タスクの実行を開始
    */
-  startTask(taskId, processInfo) {
+  async startTask(taskId, processInfo) {
+    // IssueLockManagerが設定されていて、processInfoにissueNumberがある場合はロックを取得
+    if (this.lockManager && processInfo && processInfo.issueNumber) {
+      const lockAcquired = await this.lockManager.acquireLock(processInfo.issueNumber, {
+        pid: processInfo.pid || process.pid,
+        sessionId: process.env.CLAUDE_SESSION_ID,
+        taskId: taskId,
+        type: 'issue_processing'
+      });
+      
+      if (!lockAcquired) {
+        throw new Error(`Failed to acquire lock for Issue #${processInfo.issueNumber}`);
+      }
+    }
+    
     this.runningTasks.set(taskId, {
       startedAt: Date.now(),
       processInfo
@@ -150,9 +186,21 @@ class TaskQueue extends EventEmitter {
   /**
    * タスクの実行を完了
    */
-  completeTask(taskId, success = true) {
+  async completeTask(taskId, success = true) {
     const runningInfo = this.runningTasks.get(taskId);
     if (!runningInfo) return;
+    
+    // IssueLockManagerが設定されていて、processInfoにissueNumberがある場合はロックを解放
+    if (this.lockManager && runningInfo.processInfo && runningInfo.processInfo.issueNumber) {
+      try {
+        await this.lockManager.releaseLock(
+          runningInfo.processInfo.issueNumber, 
+          runningInfo.processInfo.pid || process.pid
+        );
+      } catch (error) {
+        console.error(`Failed to release lock for Issue #${runningInfo.processInfo.issueNumber}:`, error);
+      }
+    }
     
     this.runningTasks.delete(taskId);
     
@@ -235,6 +283,81 @@ class TaskQueue extends EventEmitter {
       this.queues[priority] = [];
     });
     console.log('🧹 すべてのキューをクリアしました');
+  }
+
+  /**
+   * 保留中のIssue番号の配列を取得（重複チェック用）
+   */
+  getPendingIssues() {
+    const issueNumbers = [];
+    const allTasks = this.getAllPendingTasks();
+    
+    for (const task of allTasks) {
+      if (task.type === 'issue' && task.issueNumber) {
+        issueNumbers.push(task.issueNumber);
+      }
+    }
+    
+    return issueNumbers;
+  }
+
+  /**
+   * すべての保留中タスクを取得（永続化用）
+   */
+  getAllPendingTasks() {
+    const allTasks = [];
+    
+    // 優先度の高い順にタスクを収集
+    const priorities = Object.keys(this.queues)
+      .map(p => parseInt(p))
+      .sort((a, b) => b - a);
+    
+    for (const priority of priorities) {
+      const queue = this.queues[priority];
+      if (queue && queue.length > 0) {
+        allTasks.push(...queue);
+      }
+    }
+    
+    return allTasks;
+  }
+
+  /**
+   * 保存されたタスクを復元
+   */
+  restoreTasks(tasks) {
+    if (!Array.isArray(tasks)) {
+      console.warn('復元するタスクが配列ではありません');
+      return;
+    }
+    
+    let restoredCount = 0;
+    
+    for (const task of tasks) {
+      try {
+        // タスクの整合性チェック
+        if (!task || typeof task !== 'object') {
+          console.warn('無効なタスクをスキップ:', task);
+          continue;
+        }
+        
+        // 優先度が設定されていない場合は再計算
+        if (task.priority === undefined) {
+          task.priority = this.determinePriority(task);
+        }
+        
+        // キューに追加
+        if (!this.queues[task.priority]) {
+          this.queues[task.priority] = [];
+        }
+        this.queues[task.priority].push(task);
+        restoredCount++;
+      } catch (error) {
+        console.error(`タスク復元エラー: ${error.message}`, task);
+      }
+    }
+    
+    console.log(`📥 ${restoredCount}個のタスクを復元しました`);
   }
 }
 

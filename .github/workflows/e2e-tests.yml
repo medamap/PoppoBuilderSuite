@@ -1,0 +1,148 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop, work/poppo-builder ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # 毎日午前2時（JST 11時）に実行
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+    inputs:
+      test_scenario:
+        description: '特定のテストシナリオを実行（空の場合は全て）'
+        required: false
+        default: ''
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        test-suite:
+          - issue-processing
+          - multi-agent
+          - dashboard
+          - config-recovery
+          - all
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Create test environment
+      run: |
+        mkdir -p test/e2e/temp
+        cp test/e2e/config/test.env test/e2e/temp/.env
+
+    - name: Run E2E tests - ${{ matrix.test-suite }}
+      env:
+        NODE_ENV: test
+        E2E_TEST: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+      run: |
+        if [ "${{ matrix.test-suite }}" = "all" ]; then
+          npm run test:e2e
+        elif [ "${{ github.event.inputs.test_scenario }}" != "" ]; then
+          npm run test:e2e:grep "${{ github.event.inputs.test_scenario }}"
+        else
+          npm run test:e2e:grep "${{ matrix.test-suite }}"
+        fi
+
+    - name: Upload test artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-artifacts-${{ matrix.node-version }}-${{ matrix.test-suite }}
+        path: |
+          test/e2e/temp/logs/
+          test/e2e/temp/*.db
+          test/e2e/screenshots/
+        retention-days: 7
+
+    - name: Generate test report
+      if: always()
+      run: |
+        mkdir -p reports
+        echo "# E2E Test Report" > reports/e2e-report.md
+        echo "- Node Version: ${{ matrix.node-version }}" >> reports/e2e-report.md
+        echo "- Test Suite: ${{ matrix.test-suite }}" >> reports/e2e-report.md
+        echo "- Status: ${{ job.status }}" >> reports/e2e-report.md
+        echo "- Run ID: ${{ github.run_id }}" >> reports/e2e-report.md
+        echo "- Timestamp: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> reports/e2e-report.md
+
+    - name: Upload test report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-test-report-${{ matrix.node-version }}-${{ matrix.test-suite }}
+        path: reports/
+        retention-days: 30
+
+  e2e-coverage:
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run E2E tests with coverage
+      run: |
+        npx nyc --reporter=lcov --reporter=text npm run test:e2e
+      env:
+        NODE_ENV: test
+        E2E_TEST: true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/lcov.info
+        flags: e2e
+        name: e2e-coverage
+
+  notify:
+    needs: [e2e-tests, e2e-coverage]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Send notification
+      if: ${{ github.event_name == 'schedule' }}
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: |
+          E2Eテストの定期実行が完了しました
+          結果: ${{ needs.e2e-tests.result }}
+          カバレッジ: ${{ needs.e2e-coverage.result }}
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

@@ -1,0 +1,73 @@
+[
+  {
+    "type": "issue",
+    "issue": {
+      "author": {
+        "id": "MDQ6VXNlcjE1NjY0OTk1",
+        "is_bot": false,
+        "login": "medamap",
+        "name": "Medamap"
+      },
+      "body": "## 概要\nPoppoBuilder Suiteに新しいエージェント「CCRA（Code Change Review Agent）」を実装します。このエージェントは、PRレビューの自動化、コード品質チェック、フィードバック生成を行います。\n\n## 背景\n設計書（implementation-plan.md Phase 3）で計画されているCCRAエージェントは、コードレビューの自動化により開発効率を向上させることを目的としています。\n\n## 実装内容\n1. **CCRAエージェントの基本構造**\n   - agents/ccra/ ディレクトリの作成\n   - index.jsでメインロジックの実装\n   - 5分ごとのスケジュール実行\n\n2. **主要機能の実装**\n   - PRの自動検出と分析\n   - コード品質チェック（複雑度、重複、スタイル）\n   - セキュリティ脆弱性の検出\n   - ベストプラクティスの確認\n   - レビューコメントの自動生成\n\n3. **GitHub APIとの統合**\n   - PR情報の取得\n   - コメントの投稿\n   - ステータスチェックの更新\n\n4. **設定とカスタマイズ**\n   - レビュー基準の設定\n   - 除外パターンの設定\n   - 通知設定\n\n## 期待される効果\n- コードレビューの効率化\n- 品質の均一化\n- セキュリティ向上\n- レビュー待ち時間の削減\n\n## 参考資料\n- 設計書: docs/design/implementation-plan.md Phase 3\n- 関連エージェント: CCPM（リファクタリング提案）\n\n## タスクの規模\n大規模（8-10時間程度の実装）\n\n#task:dogfooding",
+      "createdAt": "2025-06-18T03:17:46Z",
+      "labels": [
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC24Eyw",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC8UZPg",
+          "name": "task:dogfooding",
+          "description": "PoppoBuilder自己改善タスク（CLAUDE.md参照・更新必須）",
+          "color": "ff6b35"
+        }
+      ],
+      "number": 89,
+      "title": "CCRA (Code Change Review Agent) の実装",
+      "updatedAt": "2025-06-19T08:54:50Z"
+    },
+    "issueNumber": 89,
+    "labels": [
+      "enhancement",
+      "task:dogfooding"
+    ],
+    "id": "task-1750323843919-cog5yn5xa",
+    "priority": 100,
+    "enqueuedAt": 1750323862409,
+    "attempts": 0
+  },
+  {
+    "type": "issue",
+    "issue": {
+      "author": {
+        "id": "MDQ6VXNlcjE1NjY0OTk1",
+        "is_bot": false,
+        "login": "medamap",
+        "name": "Medamap"
+      },
+      "body": "## 概要\nMirinOrphanManagerを「Redis大使」に昇格し、すべての状態管理をRedis経由で行う新しいアーキテクチャの第1段階として、Redis環境構築とミリンちゃんの基盤機能を実装します。\n\n## 背景\n現在のFileStateManagerによるJSONファイルベースの状態管理では、以下の問題が発生しています：\n- ファイルI/Oのボトルネック（10-50ms → 0.1-1ms への改善期待）\n- ロック機構による並行処理の制限\n- 孤児Issue問題の根本的解決が困難\n\n## Phase 1の実装内容\n\n### 1.1 Redis環境構築\n```bash\n# Redis導入と設定\nbrew install redis\nbrew services start redis\n\n# package.json に依存関係追加\nnpm install ioredis\n```\n\n### 1.2 MirinRedisAmbassador実装\n**ファイル**: `src/mirin-redis-ambassador.js`\n\n主要機能：\n- Issue状態のチェックアウト（Redis + GitHub連携）\n- 孤児Issue検出・修復の強化\n- プロセス間通信（Pub/Sub）\n- ハートビート監視とプロセス生存確認\n\n### 1.3 RedisStateClient実装\n**ファイル**: `src/redis-state-client.js`\n\n主要機能：\n- ミリンちゃんへの状態管理依頼\n- 応答待機機能（タイムアウト付き）\n- 定期的なハートビート送信\n- エラーハンドリングとフォールバック\n\n## Redis データ構造設計\n\n### Issue状態管理\n```redis\n# issue:123 (Hash)\nHSET issue:123 status processing\nHSET issue:123 processId issue-123-poppo\nHSET issue:123 pid 12345\nHSET issue:123 taskType dogfooding\nHSET issue:123 startTime 2025-06-19T10:00:00Z\n```\n\n### ハートビート管理\n```redis\n# heartbeat:issue-123-poppo (String with TTL)\nSETEX heartbeat:issue-123-poppo 1800 \"alive\"\n```\n\n### 処理中Issue一覧\n```redis\n# processing_issues (Set)\nSADD processing_issues 123 456 789\n```\n\n## テスト計画\n- ユニットテスト: MirinRedisAmbassador, RedisStateClient\n- 統合テスト: プロセス間通信、Issue状態管理\n- パフォーマンステスト: Redis vs JSONファイル性能比較\n\n## 成功条件\n- [ ] Redis環境が正常に動作する\n- [ ] MirinRedisAmbassadorがIssue状態を管理できる\n- [ ] RedisStateClientが依頼/応答できる\n- [ ] 孤児Issue検出・修復が動作する\n- [ ] パフォーマンスが10倍以上向上する\n- [ ] すべてのテストが合格する\n\n## 期待される効果\n- **パフォーマンス**: ファイルI/O → インメモリ操作で10-50倍高速化\n- **信頼性**: アトミック操作による整合性保証\n- **拡張性**: 将来の「ぽっぽ学園」マルチプロジェクト対応\n\n## 詳細設計書\n`docs/design/mirin-redis-ambassador-requirements.md` を参照してください。\n\n## 注意事項\n実装については深く深く深く仕様を検討し、バグが発生しないよう慎重に実装してください。特に：\n- Redis接続エラー時の処理\n- プロセス間通信の信頼性\n- データの整合性保証\n- 段階的移行による既存機能の保持",
+      "createdAt": "2025-06-18T23:50:10Z",
+      "labels": [
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC42cow",
+          "name": "task:feature",
+          "description": "要求定義から始まる機能開発",
+          "color": "1d76db"
+        }
+      ],
+      "number": 102,
+      "title": "【Phase 1】ミリンちゃんRedis大使昇格 - Redis環境構築とミリンちゃん基盤実装",
+      "updatedAt": "2025-06-19T08:49:29Z"
+    },
+    "issueNumber": 102,
+    "labels": [
+      "task:feature"
+    ],
+    "id": "task-1750323843919-48j5co6ai",
+    "priority": 50,
+    "enqueuedAt": 1750323843919,
+    "attempts": 0
+  }
+]

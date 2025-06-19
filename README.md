@@ -26,6 +26,7 @@ PoppoBuilder Suiteは、GitHub IssueとClaude CLIを連携した自動タスク�
 ## 🚀 現在の機能
 
 ✅ **Issue自動処理** - ラベル付きIssueを30秒間隔で監視・処理  
+✅ **重複処理抑制** - 同一Issueに対する重複処理を防止（`processing`ラベルで管理）  
 ✅ **コメント追記対応** - `awaiting-response`ラベルで継続的な対話が可能  
 ✅ **Dogfooding機能** - `task:dogfooding`で自己改善タスク実行  
 ✅ **自動再起動** - Dogfoodingタスク完了時に30秒後の自動再起動  

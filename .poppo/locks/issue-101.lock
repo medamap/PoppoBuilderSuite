@@ -1,0 +1,13 @@
+{
+  "issueNumber": 101,
+  "lockedAt": "2025-06-19T06:12:05.643Z",
+  "lockedBy": {
+    "pid": 1675,
+    "sessionId": "claude_20250616_223400_36244",
+    "taskId": "task-1750313204959-486ioknd0",
+    "hostname": "JunichiJobinoMacBook-Air.local"
+  },
+  "type": "issue_processing",
+  "ttl": 3600000,
+  "expiresAt": "2025-06-19T07:12:05.643Z"
+}

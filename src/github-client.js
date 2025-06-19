@@ -3,8 +3,10 @@ const GitHubRateLimiter = require('./github-rate-limiter');
 
 class GitHubClient {
   constructor(config) {
-    this.owner = config.owner;
-    this.repo = config.repo;
+    console.log('GitHubClient 初期化:', config);
+    this.owner = config?.owner || 'medamap';
+    this.repo = config?.repo || 'PoppoBuilderSuite';
+    console.log(`GitHub設定: ${this.owner}/${this.repo}`);
     this.rateLimiter = new GitHubRateLimiter();
   }
 
@@ -115,6 +117,62 @@ class GitHubClient {
       console.error(`Failed to get issue #${issueNumber}:`, error.message);
       return null;
     }
+  }
+
+  /**
+   * 特定のラベルが付いたIssueリストを取得
+   */
+  async listIssuesWithLabel(labelName) {
+    try {
+      return await this.listIssues({ labels: [labelName] });
+    } catch (error) {
+      console.error(`Failed to list issues with label ${labelName}:`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Issueのラベルを更新（既存ラベルを新しいラベルで置き換え）
+   */
+  async updateLabels(issueNumber, newLabels) {
+    try {
+      // 現在のIssueを取得
+      const issue = await this.getIssue(issueNumber);
+      if (!issue) {
+        throw new Error(`Issue #${issueNumber} not found`);
+      }
+
+      const currentLabels = issue.labels.map(l => l.name);
+      const newLabelsSet = new Set(newLabels);
+
+      // 削除すべきラベル
+      const labelsToRemove = currentLabels.filter(label => !newLabelsSet.has(label));
+      
+      // 追加すべきラベル
+      const labelsToAdd = newLabels.filter(label => !currentLabels.includes(label));
+
+      // ラベルを削除
+      if (labelsToRemove.length > 0) {
+        await this.removeLabels(issueNumber, labelsToRemove);
+      }
+
+      // ラベルを追加
+      if (labelsToAdd.length > 0) {
+        await this.addLabels(issueNumber, labelsToAdd);
+      }
+
+      return true;
+    } catch (error) {
+      console.error(`Failed to update labels for issue #${issueNumber}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Issueにコメントを作成（addCommentのエイリアス）
+   */
+  async createComment(issueNumber, body) {
+    return await this.addComment(issueNumber, body);
   }
 
   /**

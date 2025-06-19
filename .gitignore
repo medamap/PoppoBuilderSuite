@@ -43,6 +43,7 @@ cicd/logs/
 cicd/pids/
 logs/
 temp/
+backups/
 
 # Temporary files
 *.tmp
