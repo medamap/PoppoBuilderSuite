@@ -5,13 +5,15 @@ const { promisify } = require('util');
 const execAsync = promisify(exec);
 const os = require('os');
 const DatabaseManager = require('./database-manager');
+const EventEmitter = require('events');
 
 /**
  * プロセス状態管理
  * プロセスの実行状態を記録・管理する
  */
-class ProcessStateManager {
+class ProcessStateManager extends EventEmitter {
   constructor(logger) {
+    super();
     this.logger = logger;
     this.stateFile = path.join(__dirname, '../logs/process-state.json');
     this.states = this.loadStates();
@@ -66,7 +68,7 @@ class ProcessStateManager {
    * プロセス開始を記録
    */
   recordProcessStart(processId, issueNumber, type = 'claude-cli', title = null) {
-    this.states[processId] = {
+    const processInfo = {
       processId,
       pid: process.pid,
       type,
@@ -83,7 +85,11 @@ class ProcessStateManager {
       lastUpdateTime: new Date().toISOString()
     };
     
+    this.states[processId] = processInfo;
     this.saveStates();
+    
+    // イベントを発行
+    this.emit('process-added', processInfo);
     
     // データベースに記録
     if (this.db) {
@@ -123,6 +129,9 @@ class ProcessStateManager {
       
       this.saveStates();
       
+      // イベントを発行
+      this.emit('process-removed', processId);
+      
       // データベースに記録
       if (this.db) {
         try {
@@ -155,6 +164,9 @@ class ProcessStateManager {
       this.states[processId].lastOutput = output.slice(-500);
       this.states[processId].lastUpdateTime = new Date().toISOString();
       this.saveStates();
+      
+      // イベントを発行（プロセス更新）
+      this.emit('process-updated', this.states[processId]);
     }
   }
 
@@ -169,6 +181,9 @@ class ProcessStateManager {
       };
       this.states[processId].lastUpdateTime = new Date().toISOString();
       this.saveStates();
+      
+      // イベントを発行（プロセス更新）
+      this.emit('process-updated', this.states[processId]);
     }
   }
 

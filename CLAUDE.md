@@ -2218,5 +2218,135 @@ const statusManager = StateManagerFactory.createStatusManager(config);
 - 暗号化ストレージ
 - 分散ロック強化
 
+### Issue #91: WebSocketによるダッシュボードのリアルタイム更新機能の完全実装 ✅
+**実装完了**: 2025/6/20に実装完了。ダッシュボードにWebSocketを使用したリアルタイム更新機能を実装し、プロセスの状態変更が即座にブラウザに反映されるようにしました。
+
+**実装内容**:
+1. **サーバー側の拡張** (`dashboard/server/index.js`)
+   - 差分更新メカニズムの実装（processStates Mapによる状態追跡）
+   - 新しいWebSocketメッセージタイプの追加
+   - `process-added`、`process-updated`、`process-removed`イベント
+   - `notification`、`log`メッセージのサポート
+   - Ping/Pong接続監視機能
+
+2. **クライアント側の実装** (`dashboard/client/js/app.js`)
+   - 新しいメッセージハンドラーの実装
+   - 差分DOM更新による効率的なレンダリング
+   - アニメーション付きの状態遷移
+   - 自動再接続機能（5秒間隔）
+   - 接続状態モニタリング（30秒ごと）
+   - ログストリーミング用のAPI（将来の拡張用）
+
+3. **CSSアニメーション** (`dashboard/client/css/dashboard.css`)
+   - `@keyframes`定義（slideIn、slideOut、pulse）
+   - プロセス追加時のスライドイン効果
+   - 更新時のパルス効果
+   - 削除時のスライドアウト効果
+   - 通知表示のトランジション
+
+4. **ProcessStateManagerの拡張** (`src/process-state-manager.js`)
+   - EventEmitterの継承
+   - プロセス状態変更時のイベント発行
+   - `recordProcessStart`、`recordProcessEnd`、`updateProcessOutput`、`updateProcessMetrics`でのイベント発行
+
+5. **統合とテスト**
+   - minimal-poppo.jsでのイベントリスナー設定
+   - ProcessStateManagerとDashboardServerの接続
+   - テストスクリプト (`test/test-websocket-updates.js`)
+   - 詳細なドキュメント (`docs/websocket-realtime-updates.md`)
+
+**技術的特徴**:
+- **リアルタイム性**: プロセス状態の即座反映
+- **効率性**: 差分更新による最小限のDOM操作
+- **信頼性**: 自動再接続と接続監視
+- **拡張性**: 新しいメッセージタイプの簡単な追加
+- **視覚的フィードバック**: アニメーションによる状態変化の明確化
+
+**使用方法**:
+```javascript
+// 通知送信
+dashboardServer.sendNotification({
+  type: 'success',
+  message: 'タスクが完了しました'
+});
+
+// ログ送信
+dashboardServer.sendLogMessage({
+  message: '処理中...',
+  level: 'info'
+});
+```
+
+### Issue #92: GitHubプロジェクトとの統合機能の実装 ✅
+**実装完了**: 2025/6/20に実装完了。GitHub Projects (v2) GraphQL APIを使用して、PoppoBuilderとGitHub Projectsを双方向に同期する機能を実装しました。
+
+**実装内容**:
+1. **GitHubProjectsClient** (`src/github-projects-client.js`)
+   - GitHub Projects v2 GraphQL APIのラッパー
+   - プロジェクト一覧取得、詳細取得
+   - アイテムの追加、ステータス更新、アーカイブ
+   - IssueノードIDの取得
+   - ステータスフィールドの管理
+
+2. **GitHubProjectsSync** (`src/github-projects-sync.js`)
+   - StatusManagerとの統合
+   - 双方向同期（PoppoBuilder → Projects、Projects → PoppoBuilder）
+   - 複数プロジェクトのサポート
+   - カスタムステータスマッピング
+   - 自動Issue追加とアーカイブ
+   - 定期同期機能（デフォルト5分間隔）
+   - 進捗レポート生成
+
+3. **設定とマッピング** (`config/config.json`)
+   - `githubProjects`セクションの追加
+   - プロジェクトごとの設定
+   - ステータスマッピングのカスタマイズ
+   - フィルター設定（ラベルベース）
+   - Webhook設定（将来の拡張用）
+
+4. **StatusManagerの拡張** (`src/status-manager.js`)
+   - `status-changed`イベントの発行
+   - updateStatusとcheckinメソッドでのイベント発行
+   - 古いステータスの追跡
+
+5. **統合とドキュメント**
+   - minimal-poppo.jsへの統合
+   - 初期化と定期同期の開始
+   - クリーンアップ処理
+   - テストスクリプト (`test/test-github-projects.js`)
+   - 詳細なドキュメント (`docs/github-projects-integration.md`)
+   - セットアップガイド (`docs/github-projects-setup.md`)
+
+**技術的特徴**:
+- **GraphQL API**: GitHub Projects v2の最新APIを使用
+- **双方向同期**: PoppoBuilderとProjectsの状態を相互に反映
+- **柔軟なマッピング**: カスタムステータス名に対応
+- **複数プロジェクト**: 複数のプロジェクトボードを同時管理
+- **イベント駆動**: StatusManagerのイベントベース統合
+
+**使用方法**:
+```javascript
+// 設定
+{
+  "githubProjects": {
+    "enabled": true,
+    "projects": [{
+      "id": "PVT_kwDOBq5-Ys4Aj5Xv",
+      "statusMapping": {
+        "processing": "In Progress",
+        "completed": "Done"
+      }
+    }]
+  }
+}
+
+// レポート生成
+const report = await githubProjectsSync.generateProgressReport(projectId);
+```
+
+**必要な権限**:
+- GitHubトークンに`project`スコープが必要
+- GraphQL APIアクセス権限
+
 ---
-最終更新: 2025/6/20 - Issue #102 Phase 2完了（StatusManagerのRedis対応）
+最終更新: 2025/6/20 - Issue #92完了（GitHub Projects統合）

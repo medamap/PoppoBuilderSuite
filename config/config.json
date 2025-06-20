@@ -444,5 +444,42 @@
         "description": "動的設定"
       }
     }
+  },
+  "githubProjects": {
+    "enabled": false,
+    "token": "${GITHUB_TOKEN}",
+    "syncInterval": 300000,
+    "projects": [
+      {
+        "id": "${PROJECT_ID}",
+        "name": "PoppoBuilder Tasks",
+        "autoAdd": true,
+        "autoArchive": true,
+        "statusMapping": {
+          "pending": "Todo",
+          "processing": "In Progress",
+          "awaiting-response": "In Review",
+          "completed": "Done",
+          "error": "Blocked"
+        },
+        "filters": {
+          "labels": ["task:misc", "task:dogfooding", "task:feature"],
+          "excludeLabels": ["wontfix", "duplicate"]
+        }
+      }
+    ],
+    "defaultStatusMapping": {
+      "pending": "Todo",
+      "processing": "In Progress",
+      "awaiting-response": "In Review",
+      "completed": "Done",
+      "error": "Blocked",
+      "skipped": "Cancelled"
+    },
+    "webhooks": {
+      "enabled": false,
+      "secret": "${WEBHOOK_SECRET}",
+      "events": ["project_card.moved", "project_card.created", "project_card.deleted"]
+    }
   }
 }

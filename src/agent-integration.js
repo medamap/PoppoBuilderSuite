@@ -235,6 +235,40 @@ class AgentIntegration {
           qualityMetrics: ['complexity', 'duplication', 'style', 'best-practices']
         };
         
+      case 'test-execution':
+        // テスト実行
+        return {
+          issueNumber: number,
+          type: 'full_test',
+          coverage: true
+        };
+        
+      case 'coverage-report':
+        // カバレッジレポート
+        return {
+          issueNumber: number,
+          type: 'coverage_check',
+          targetBranch: 'main',
+          detailed: true
+        };
+        
+      case 'performance-test':
+        // パフォーマンステスト
+        return {
+          issueNumber: number,
+          type: 'performance_test',
+          scenarios: ['default'],
+          iterations: 3
+        };
+        
+      case 'test-analysis':
+        // テスト分析
+        return {
+          issueNumber: number,
+          type: 'pr_test',
+          prNumber: this.extractPullRequestNumber(body) || number
+        };
+        
       default:
         return {
           issueNumber: number,
@@ -392,10 +426,12 @@ class AgentIntegration {
         'refactor': ['refactoring-suggestion'],
         'dogfooding': ['code-review', 'generate-docs'],
         'quality': ['quality-assurance', 'code-quality-check'],
-        'test': ['quality-assurance'],
+        'test': ['test-execution', 'coverage-report'],
         'qa': ['quality-assurance'],
         'pr': ['pr-review'],
-        'pull-request': ['pr-review']
+        'pull-request': ['pr-review'],
+        'coverage': ['coverage-report'],
+        'performance': ['performance-test']
       },
       keywords: {
         'レビュー': ['code-review', 'pr-review'],
@@ -408,8 +444,12 @@ class AgentIntegration {
         'refactor': ['refactoring-suggestion'],
         '品質': ['quality-assurance', 'code-quality-check'],
         'quality': ['quality-assurance', 'code-quality-check'],
-        'テスト': ['quality-assurance'],
-        'test': ['quality-assurance'],
+        'テスト': ['test-execution', 'coverage-report'],
+        'test': ['test-execution', 'coverage-report'],
+        'カバレッジ': ['coverage-report'],
+        'coverage': ['coverage-report'],
+        'パフォーマンス': ['performance-test'],
+        'performance': ['performance-test'],
         'PR': ['pr-review'],
         'プルリクエスト': ['pr-review'],
         'pull request': ['pr-review']

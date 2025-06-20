@@ -164,6 +164,7 @@ class StatusManager extends EventEmitter {
     await this.acquireLock();
     try {
       const currentStatus = this.state.issues[issueNumber] || {};
+      const oldStatus = currentStatus.status;
       
       this.state.issues[issueNumber] = {
         ...currentStatus,
@@ -175,9 +176,14 @@ class StatusManager extends EventEmitter {
       await this.saveState();
       
       // MirinOrphanManager にラベル更新を依頼
-      await this.requestLabelUpdate(issueNumber, status, currentStatus.status);
+      await this.requestLabelUpdate(issueNumber, status, oldStatus);
       
       this.emit('statusUpdated', { issueNumber, status, metadata });
+      
+      // 新しいイベントも発行（GitHub Projects同期用）
+      if (oldStatus !== status) {
+        this.emit('status-changed', issueNumber, status, oldStatus);
+      }
       
       return this.state.issues[issueNumber];
     } finally {
@@ -242,6 +248,11 @@ class StatusManager extends EventEmitter {
       await this.requestLabelUpdate(issueNumber, status, 'processing');
       
       this.emit('checkedIn', { issueNumber, status, result });
+      
+      // GitHub Projects同期用のイベントも発行
+      if (currentStatus.status !== status) {
+        this.emit('status-changed', issueNumber, status, currentStatus.status);
+      }
       
       return this.state.issues[issueNumber];
     } finally {

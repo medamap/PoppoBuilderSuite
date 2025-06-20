@@ -24,6 +24,7 @@ const MirinOrphanManager = require('./mirin-orphan-manager');
 const IssueLockManager = require('./issue-lock-manager');
 const BackupScheduler = require('./backup-scheduler');
 const FileStateManager = require('./file-state-manager');
+const GitHubProjectsSync = require('./github-projects-sync');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
@@ -178,6 +179,19 @@ const mirinManager = new MirinOrphanManager(github, statusManager, {
 // ダッシュボードサーバーの初期化（ProcessStateManagerを渡す）
 const dashboardServer = new DashboardServer(config, processStateManager, logger, healthCheckManager, processManager);
 
+// ProcessStateManagerのイベントをダッシュボードサーバーに接続
+processStateManager.on('process-added', (process) => {
+  dashboardServer.notifyProcessAdded(process);
+});
+
+processStateManager.on('process-updated', (process) => {
+  dashboardServer.notifyProcessUpdated(process);
+});
+
+processStateManager.on('process-removed', (processId) => {
+  dashboardServer.notifyProcessRemoved(processId);
+});
+
 // 2段階処理システムの初期化
 const twoStageProcessor = new TwoStageProcessor(config, null, logger); // claudeClientは後で設定
 
@@ -186,6 +200,12 @@ const backupScheduler = new BackupScheduler(config, logger);
 
 // ファイルベースの状態管理を初期化
 const fileStateManager = new FileStateManager();
+
+// GitHub Projects同期の初期化
+let githubProjectsSync = null;
+if (config.githubProjects?.enabled) {
+  githubProjectsSync = new GitHubProjectsSync(config, githubConfig, statusManager, logger);
+}
 
 // 処理済みIssueを記録（FileStateManager使用）
 let processedIssues = new Set();
@@ -947,6 +967,11 @@ process.on('SIGINT', async () => {
     backupScheduler.stop();
   }
   
+  // GitHub Projects同期を停止
+  if (githubProjectsSync) {
+    await githubProjectsSync.cleanup();
+  }
+  
   // ログローテーターを停止
   logger.close();
   
@@ -987,6 +1012,11 @@ process.on('SIGTERM', async () => {
   // バックアップスケジューラーを停止
   if (backupScheduler) {
     backupScheduler.stop();
+  }
+  
+  // GitHub Projects同期を停止
+  if (githubProjectsSync) {
+    await githubProjectsSync.cleanup();
   }
   
   // ログローテーターを停止
@@ -1041,6 +1071,13 @@ Promise.all([
   if (config.backup?.enabled) {
     backupScheduler.start();
     logger.info('バックアップスケジューラーを開始しました');
+  }
+  
+  // GitHub Projects同期を開始
+  if (githubProjectsSync) {
+    await githubProjectsSync.initialize();
+    githubProjectsSync.startPeriodicSync(config.githubProjects.syncInterval);
+    logger.info('GitHub Projects同期を開始しました');
   }
   
   // 開始

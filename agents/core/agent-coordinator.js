@@ -72,6 +72,13 @@ class AgentCoordinator extends EventEmitter {
         maxConcurrentTasks: 4,
         minInstances: 1,
         maxInstances: 5
+      },
+      CCTA: {
+        script: path.join(__dirname, '../ccta/index.js'),
+        capabilities: ['test-execution', 'coverage-report', 'performance-test', 'test-analysis'],
+        maxConcurrentTasks: 2,
+        minInstances: 1,
+        maxInstances: 3
       }
     };
     
