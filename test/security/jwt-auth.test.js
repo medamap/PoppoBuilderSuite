@@ -111,16 +111,24 @@ describe('JWTAuthManager', () => {
             const bcrypt = require('bcrypt');
             sandbox.stub(bcrypt, 'compare').resolves(false);
 
-            await expect(jwtAuth.authenticateAgent(agentId, apiKey))
-                .to.be.rejectedWith('認証に失敗しました');
+            try {
+                await jwtAuth.authenticateAgent(agentId, apiKey);
+                expect.fail('Expected authentication to fail');
+            } catch (err) {
+                expect(err.message).to.include('認証に失敗しました');
+            }
         });
 
         it('存在しないエージェントで認証が失敗すること', async () => {
             const agentId = 'non-existent-agent';
             const apiKey = 'any-api-key';
 
-            await expect(jwtAuth.authenticateAgent(agentId, apiKey))
-                .to.be.rejectedWith('エージェントが見つからないか無効です');
+            try {
+                await jwtAuth.authenticateAgent(agentId, apiKey);
+                expect.fail('Expected authentication to fail');
+            } catch (err) {
+                expect(err.message).to.include('エージェントが見つからないか無効です');
+            }
         });
     });
 
@@ -149,8 +157,12 @@ describe('JWTAuthManager', () => {
         it('無効なリフレッシュトークンでエラーになること', async () => {
             const invalidToken = 'invalid.refresh.token';
 
-            await expect(jwtAuth.refreshAccessToken(invalidToken))
-                .to.be.rejectedWith('リフレッシュトークンの検証に失敗');
+            try {
+                await jwtAuth.refreshAccessToken(invalidToken);
+                expect.fail('Expected token refresh to fail');
+            } catch (err) {
+                expect(err.message).to.include('リフレッシュトークンの検証に失敗');
+            }
         });
     });
 

@@ -4,7 +4,6 @@
  */
 
 const EventEmitter = require('events');
-const WeakMap = require('weak-map');
 
 class MemoryOptimizer extends EventEmitter {
   constructor(config = {}, logger = console) {

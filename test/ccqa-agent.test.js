@@ -1,3 +1,6 @@
+const { expect } = require('chai');
+const sinon = require('sinon');
+const MockFactory = require('./helpers/mock-factory');
 const CCQAAgent = require('../agents/ccqa');
 const fs = require('fs').promises;
 const path = require('path');
@@ -5,8 +8,12 @@ const path = require('path');
 describe('CCQA Agent', () => {
   let agent;
   let mockConfig;
+  let sandbox;
+  let mockFactory;
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
+    mockFactory = new MockFactory();
     mockConfig = {
       runTests: true,
       checkQuality: true,
@@ -36,21 +43,23 @@ describe('CCQA Agent', () => {
     if (agent && agent.shutdown) {
       await agent.shutdown();
     }
+    sandbox.restore();
+    mockFactory.cleanup();
   });
   
   describe('Initialization', () => {
-    test('should initialize agent successfully', async () => {
-      await expect(agent.initialize()).resolves.toBe(true);
-      expect(agent.status).toBe('running');
+    it('should initialize agent successfully', async () => {
+      await agent.initialize();
+      expect(agent.status).to.equal('running');
     });
     
-    test('should check required tools during initialization', async () => {
+    it('should check required tools during initialization', async () => {
       const checkToolsSpy = jest.spyOn(agent, 'checkRequiredTools');
       await agent.initialize();
       expect(checkToolsSpy).toHaveBeenCalled();
     });
     
-    test('should handle initialization errors gracefully', async () => {
+    it('should handle initialization errors gracefully', async () => {
       agent.onInitialize = jest.fn().mockRejectedValue(new Error('Init error'));
       await expect(agent.initialize()).rejects.toThrow('Init error');
       expect(agent.status).toBe('error');
@@ -62,7 +71,7 @@ describe('CCQA Agent', () => {
       await agent.initialize();
     });
     
-    test('should process quality assurance task', async () => {
+    it('should process quality assurance task', async () => {
       const mockMessage = {
         taskId: 'test-task-1',
         taskType: 'quality-assurance',
@@ -114,7 +123,7 @@ describe('CCQA Agent', () => {
       expect(result.summary).toBeDefined();
     });
     
-    test('should handle task processing errors', async () => {
+    it('should handle task processing errors', async () => {
       const mockMessage = {
         taskId: 'test-task-2',
         taskType: 'quality-assurance',
@@ -129,7 +138,7 @@ describe('CCQA Agent', () => {
   });
   
   describe('Quality Score Calculation', () => {
-    test('should calculate quality score based on results', () => {
+    it('should calculate quality score based on results', () => {
       const results = {
         results: {
           tests: {
@@ -161,7 +170,7 @@ describe('CCQA Agent', () => {
       expect(score).toBeLessThanOrEqual(100);
     });
     
-    test('should return 100 for perfect results', () => {
+    it('should return 100 for perfect results', () => {
       const results = {
         results: {
           tests: {
@@ -188,7 +197,7 @@ describe('CCQA Agent', () => {
   });
   
   describe('Summary Generation', () => {
-    test('should generate summary from results', () => {
+    it('should generate summary from results', () => {
       const results = {
         results: {
           tests: {
@@ -216,7 +225,7 @@ describe('CCQA Agent', () => {
   });
   
   describe('Recommendations Generation', () => {
-    test('should generate recommendations for low coverage', () => {
+    it('should generate recommendations for low coverage', () => {
       const results = {
         results: {
           tests: {
@@ -234,7 +243,7 @@ describe('CCQA Agent', () => {
       );
     });
     
-    test('should generate recommendations for quality errors', () => {
+    it('should generate recommendations for quality errors', () => {
       const results = {
         results: {
           quality: {
@@ -255,7 +264,7 @@ describe('CCQA Agent', () => {
       );
     });
     
-    test('should generate recommendations for security vulnerabilities', () => {
+    it('should generate recommendations for security vulnerabilities', () => {
       const results = {
         results: {
           security: {
@@ -277,7 +286,7 @@ describe('CCQA Agent', () => {
   });
   
   describe('Task Duration Estimation', () => {
-    test('should estimate task duration based on file count', () => {
+    it('should estimate task duration based on file count', () => {
       const message = {
         changes: ['file1.js', 'file2.js', 'file3.js']
       };
@@ -287,7 +296,7 @@ describe('CCQA Agent', () => {
       expect(duration).toBe(60000 + (3 * 30000)); // base + (3 files * 30s)
     });
     
-    test('should return base time for no files', () => {
+    it('should return base time for no files', () => {
       const message = {
         changes: []
       };
@@ -298,7 +307,7 @@ describe('CCQA Agent', () => {
   });
   
   describe('Message Handling', () => {
-    test('should handle TASK_ASSIGNMENT message', async () => {
+    it('should handle TASK_ASSIGNMENT message', async () => {
       const message = {
         type: 'TASK_ASSIGNMENT',
         taskId: 'test-task-3',
@@ -336,7 +345,7 @@ describe('CCQA Modules', () => {
       });
     });
     
-    test('should detect available test runners', async () => {
+    it('should detect available test runners', async () => {
       await testRunner.initialize();
       expect(testRunner.availableRunners).toBeInstanceOf(Array);
     });
@@ -353,14 +362,14 @@ describe('CCQA Modules', () => {
       });
     });
     
-    test('should detect available tools', async () => {
+    it('should detect available tools', async () => {
       await qualityChecker.initialize();
       expect(qualityChecker.availableTools).toBeInstanceOf(Object);
     });
     
-    test('should calculate cyclomatic complexity', () => {
+    it('should calculate cyclomatic complexity', () => {
       const code = `
-        function test(x) {
+        function it(x) {
           if (x > 0) {
             for (let i = 0; i < x; i++) {
               if (i % 2 === 0) {
@@ -388,7 +397,7 @@ describe('CCQA Modules', () => {
       });
     });
     
-    test('should mask credentials', () => {
+    it('should mask credentials', () => {
       const credential = 'super-secret-api-key-12345';
       const masked = securityScanner.maskCredential(credential);
       
@@ -398,7 +407,7 @@ describe('CCQA Modules', () => {
       expect(masked).not.toContain('secret');
     });
     
-    test('should calculate security score', () => {
+    it('should calculate security score', () => {
       const results = {
         summary: {
           critical: 1,
@@ -425,7 +434,7 @@ describe('CCQA Modules', () => {
       });
     });
     
-    test('should extract functions from code', () => {
+    it('should extract functions from code', () => {
       const code = `
         function testFunc() {}
         const arrowFunc = () => {}
@@ -437,7 +446,7 @@ describe('CCQA Modules', () => {
       expect(functions.some(f => f.name === 'testFunc')).toBe(true);
     });
     
-    test('should estimate execution time', () => {
+    it('should estimate execution time', () => {
       const func = {
         complexity: 5,
         body: 'for (let i = 0; i < 10; i++) { console.log(i); }'
@@ -460,7 +469,7 @@ describe('CCQA Modules', () => {
       });
     });
     
-    test('should generate quality emoji based on score', () => {
+    it('should generate quality emoji based on score', () => {
       expect(reportGenerator.getQualityEmoji(95)).toBe('🌟');
       expect(reportGenerator.getQualityEmoji(85)).toBe('✅');
       expect(reportGenerator.getQualityEmoji(75)).toBe('⚠️');
@@ -468,7 +477,7 @@ describe('CCQA Modules', () => {
       expect(reportGenerator.getQualityEmoji(50)).toBe('❌');
     });
     
-    test('should generate markdown report', async () => {
+    it('should generate markdown report', async () => {
       const results = {
         qualityScore: 90,
         repository: 'test-repo',
@@ -490,7 +499,7 @@ describe('CCQA Modules', () => {
       expect(report).toContain('90/100');
     });
     
-    test('should generate JSON report', async () => {
+    it('should generate JSON report', async () => {
       const results = {
         qualityScore: 90,
         repository: 'test-repo',

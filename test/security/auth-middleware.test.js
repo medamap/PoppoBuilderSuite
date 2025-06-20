@@ -1,35 +1,33 @@
 const { expect } = require('chai');
 const sinon = require('sinon');
+const MockFactory = require('../helpers/mock-factory');
 const AuthMiddleware = require('../../src/security/auth-middleware');
 
 describe('AuthMiddleware', () => {
     let authMiddleware;
     let sandbox;
+    let mockFactory;
     let mockReq, mockRes, mockNext;
 
     beforeEach(() => {
         sandbox = sinon.createSandbox();
+        mockFactory = new MockFactory();
+        
+        // AuthMiddleware のモック依存関係を設定
         authMiddleware = new AuthMiddleware();
+        authMiddleware.jwtAuth = mockFactory.createMockJWTAuth();
+        authMiddleware.rbac = mockFactory.createMockRBAC();
+        authMiddleware.auditLogger = mockFactory.createMockAuditLogger();
+        authMiddleware.initialized = false;
         
-        mockReq = {
-            headers: {},
-            ip: '127.0.0.1',
-            path: '/api/test',
-            method: 'GET',
-            id: 'req-123',
-            sessionID: 'session-123'
-        };
-        
-        mockRes = {
-            status: sinon.stub().returnsThis(),
-            json: sinon.stub().returnsThis()
-        };
-        
-        mockNext = sinon.stub();
+        mockReq = mockFactory.createMockRequest();
+        mockRes = mockFactory.createMockResponse();
+        mockNext = mockFactory.createMockNext();
     });
 
     afterEach(() => {
         sandbox.restore();
+        mockFactory.cleanup();
     });
 
     describe('initialize', () => {
@@ -90,10 +88,14 @@ describe('AuthMiddleware', () => {
 
         it('無効な認証情報で認証が失敗すること', async () => {
             const error = new Error('Invalid credentials');
-            sandbox.stub(authMiddleware.jwtAuth, 'authenticateAgent').rejects(error);
+            authMiddleware.jwtAuth.authenticateAgent.rejects(error);
 
-            await expect(authMiddleware.authenticate('test-agent', 'invalid-key'))
-                .to.be.rejectedWith('Invalid credentials');
+            try {
+                await authMiddleware.authenticate('test-agent', 'invalid-key');
+                expect.fail('Expected authentication to fail');
+            } catch (err) {
+                expect(err.message).to.equal('Invalid credentials');
+            }
 
             expect(authMiddleware.auditLogger.logEvent).to.have.been.calledTwice;
             
@@ -198,8 +200,12 @@ describe('AuthMiddleware', () => {
 
             const middleware = authMiddleware.createFileMessageMiddleware('test.read');
             
-            await expect(middleware(message))
-                .to.be.rejectedWith('認証トークンがありません');
+            try {
+                await middleware(message);
+                expect.fail('Expected middleware to reject message');
+            } catch (err) {
+                expect(err.message).to.include('認証トークンがありません');
+            }
         });
 
         it('有効なトークンでメッセージを処理すること', async () => {
@@ -237,15 +243,19 @@ describe('AuthMiddleware', () => {
                 }
             };
 
-            sandbox.stub(authMiddleware.jwtAuth, 'verifyAccessToken').resolves({
+            authMiddleware.jwtAuth.verifyAccessToken.resolves({
                 agentId: 'different-agent',
                 permissions: ['test.read']
             });
 
             const middleware = authMiddleware.createFileMessageMiddleware();
             
-            await expect(middleware(message))
-                .to.be.rejectedWith('エージェントIDが一致しません');
+            try {
+                await middleware(message);
+                expect.fail('Expected middleware to reject message');
+            } catch (err) {
+                expect(err.message).to.include('エージェントIDが一致しません');
+            }
         });
 
         it('権限が不足している場合メッセージを拒否すること', async () => {
@@ -256,16 +266,20 @@ describe('AuthMiddleware', () => {
                 }
             };
 
-            sandbox.stub(authMiddleware.jwtAuth, 'verifyAccessToken').resolves({
+            authMiddleware.jwtAuth.verifyAccessToken.resolves({
                 agentId: 'test-agent',
                 permissions: ['test.read']
             });
-            sandbox.stub(authMiddleware.rbac, 'hasPermission').returns(false);
+            authMiddleware.rbac.hasPermission.returns(false);
 
             const middleware = authMiddleware.createFileMessageMiddleware('test.write');
             
-            await expect(middleware(message))
-                .to.be.rejectedWith('権限が不足しています: test.write');
+            try {
+                await middleware(message);
+                expect.fail('Expected middleware to reject message');
+            } catch (err) {
+                expect(err.message).to.include('権限が不足しています: test.write');
+            }
         });
     });
 
@@ -327,8 +341,12 @@ describe('AuthMiddleware', () => {
         it('存在しないエージェントでエラーになること', async () => {
             authMiddleware.jwtAuth.agentCredentials = {};
 
-            await expect(authMiddleware.generateNewApiKey('non-existent'))
-                .to.be.rejectedWith('エージェントが見つかりません');
+            try {
+                await authMiddleware.generateNewApiKey('non-existent');
+                expect.fail('Expected generateNewApiKey to fail');
+            } catch (err) {
+                expect(err.message).to.include('エージェントが見つかりません');
+            }
         });
     });
 });

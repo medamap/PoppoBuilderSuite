@@ -163,8 +163,12 @@ describe('RBACManager', () => {
         it('既存のロールIDで追加しようとするとエラーになること', async () => {
             rbac.roles['existing-role'] = { name: 'Existing' };
 
-            await expect(rbac.addRole('existing-role', { name: 'New' }))
-                .to.be.rejectedWith('ロール existing-role は既に存在します');
+            try {
+                await rbac.addRole('existing-role', { name: 'New' });
+                expect.fail('Expected addRole to fail');
+            } catch (err) {
+                expect(err.message).to.include('ロール existing-role は既に存在します');
+            }
         });
 
         it('無効な権限を含むロールを追加しようとするとエラーになること', async () => {
@@ -173,8 +177,12 @@ describe('RBACManager', () => {
                 permissions: ['invalid.permission']
             };
 
-            await expect(rbac.addRole('invalid-role', roleData))
-                .to.be.rejectedWith('無効な権限: invalid.permission');
+            try {
+                await rbac.addRole('invalid-role', roleData);
+                expect.fail('Expected addRole to fail');
+            } catch (err) {
+                expect(err.message).to.include('無効な権限: invalid.permission');
+            }
         });
     });
 
@@ -213,8 +221,12 @@ describe('RBACManager', () => {
         });
 
         it('存在しないロールを更新しようとするとエラーになること', async () => {
-            await expect(rbac.updateRole('non-existent', { name: 'Updated' }))
-                .to.be.rejectedWith('ロール non-existent が見つかりません');
+            try {
+                await rbac.updateRole('non-existent', { name: 'Updated' });
+                expect.fail('Expected updateRole to fail');
+            } catch (err) {
+                expect(err.message).to.include('ロール non-existent が見つかりません');
+            }
         });
     });
 
@@ -234,8 +246,12 @@ describe('RBACManager', () => {
         });
 
         it('存在しないロールを削除しようとするとエラーになること', async () => {
-            await expect(rbac.removeRole('non-existent'))
-                .to.be.rejectedWith('ロール non-existent が見つかりません');
+            try {
+                await rbac.removeRole('non-existent');
+                expect.fail('Expected removeRole to fail');
+            } catch (err) {
+                expect(err.message).to.include('ロール non-existent が見つかりません');
+            }
         });
     });
 

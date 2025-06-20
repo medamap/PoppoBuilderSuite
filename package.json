@@ -18,7 +18,11 @@
     "trace": "node scripts/trace.js",
     "audit": "node scripts/audit.js",
     "test": "mocha test/**/*.test.js --timeout 10000",
+    "test:fixed": "node scripts/test-runner.js",
+    "test:simple": "mocha test/ccqa-agent-simple.test.js test/helpers/*.js --timeout 5000",
+    "test:security": "mocha test/security/*.test.js --timeout 10000",
     "test:integration": "node test/integration/run-all-tests.js",
+    "test:integration:stable": "mocha test/integration/test-stable-integration.js --timeout 10000",
     "test:integration:ccta": "node test/integration/test-ccta-integration.js",
     "test:integration:websocket": "node test/integration/test-websocket-integration.js",
     "test:integration:projects": "node test/integration/test-github-projects-integration.js",
@@ -115,7 +119,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.53.0",
-    "chai": "^5.2.0",
+    "chai": "^4.3.10",
+    "chai-as-promised": "^7.1.1",
     "dotenv": "^16.5.0",
     "istanbul-lib-coverage": "^3.2.0",
     "istanbul-lib-report": "^3.0.0",
@@ -125,7 +130,7 @@
     "playwright": "^1.53.0",
     "puppeteer": "^21.0.0",
     "sinon": "^21.0.0",
-    "sinon-chai": "^4.0.0",
+    "sinon-chai": "^3.7.0",
     "supertest": "^7.1.1"
   }
 }
