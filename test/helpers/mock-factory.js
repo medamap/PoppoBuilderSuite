@@ -264,6 +264,16 @@ class MockFactory {
     }
 
     /**
+     * ghコマンドのモック
+     */
+    createMockGhCommand() {
+        const GhMock = require('./gh-mock');
+        const ghMock = new GhMock();
+        this.mocks.push(ghMock);
+        return ghMock;
+    }
+
+    /**
      * すべてのスタブをリセット
      */
     resetAllStubs() {

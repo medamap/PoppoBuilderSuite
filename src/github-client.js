@@ -44,6 +44,44 @@ class GitHubClient {
   }
 
   /**
+   * 新しいIssueを作成
+   */
+  async createIssue(options = {}) {
+    try {
+      const { title, body, labels = [] } = options;
+      
+      // コマンドを構築
+      let cmd = `gh issue create --repo ${this.owner}/${this.repo}`;
+      
+      if (title) {
+        cmd += ` --title "${title}"`;
+      }
+      
+      if (body) {
+        cmd += ` --body "${body}"`;
+      }
+      
+      if (labels.length > 0) {
+        cmd += ` --label "${labels.join(',')}"`;
+      }
+      
+      const output = await this.executeWithRateLimit(cmd, 1);
+      
+      // 作成されたIssueの番号を抽出
+      const match = output.match(/issues\/(\d+)/);
+      if (match) {
+        const issueNumber = parseInt(match[1]);
+        return await this.getIssue(issueNumber);
+      }
+      
+      return JSON.parse(output);
+    } catch (error) {
+      console.error('Failed to create issue:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Issueにコメントを追加
    */
   async addComment(issueNumber, body) {
