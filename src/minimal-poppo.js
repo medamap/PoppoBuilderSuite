@@ -25,6 +25,13 @@ const IssueLockManager = require('./issue-lock-manager');
 const BackupScheduler = require('./backup-scheduler');
 const FileStateManager = require('./file-state-manager');
 const GitHubProjectsSync = require('./github-projects-sync');
+const MemoryMonitor = require('./memory-monitor');
+const MemoryOptimizer = require('./memory-optimizer');
+
+// エラーハンドリングとリカバリー戦略
+const { ErrorHandler } = require('./error-handler');
+const { CircuitBreakerFactory } = require('./circuit-breaker');
+const { ErrorRecoveryManager } = require('./error-recovery');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
@@ -80,6 +87,11 @@ const logger = new Logger(
   path.join(__dirname, '../logs'),
   config.logRotation || {}
 );
+
+// エラーハンドリングシステムの初期化
+const errorHandler = new ErrorHandler(logger, config.errorHandling || {});
+const circuitBreakerFactory = new CircuitBreakerFactory();
+const recoveryManager = new ErrorRecoveryManager(logger, config.errorHandling?.autoRecovery || {});
 
 // ConfigWatcherの初期化（設定の動的再読み込み機能）
 let configWatcher = null;
@@ -205,6 +217,32 @@ const fileStateManager = new FileStateManager();
 let githubProjectsSync = null;
 if (config.githubProjects?.enabled) {
   githubProjectsSync = new GitHubProjectsSync(config, githubConfig, statusManager, logger);
+}
+
+// メモリ監視と最適化の初期化
+let memoryMonitor = null;
+let memoryOptimizer = null;
+if (config.memory?.monitoring?.enabled !== false) {
+  memoryMonitor = new MemoryMonitor(config.memory?.monitoring || {}, logger);
+  memoryOptimizer = new MemoryOptimizer(config.memory?.optimization || {}, logger);
+  
+  // メモリ監視イベントハンドラー
+  memoryMonitor.on('threshold-exceeded', ({ current, alerts }) => {
+    logger.error('メモリ閾値超過:', alerts);
+    // 自動最適化を実行
+    if (config.memory?.autoOptimize !== false) {
+      memoryOptimizer.performGlobalOptimization();
+    }
+  });
+  
+  memoryMonitor.on('memory-leak-detected', (leakInfo) => {
+    logger.error('メモリリーク検出:', leakInfo);
+    notificationManager.sendNotification('memory-leak', {
+      title: 'メモリリークの可能性',
+      message: `増加率: ${leakInfo.mbPerMinute} MB/分`,
+      severity: 'critical'
+    });
+  });
 }
 
 // 処理済みIssueを記録（FileStateManager使用）
@@ -408,38 +446,62 @@ async function processIssue(issue) {
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
-    logger.logIssue(issueNumber, 'ERROR', { 
-      message: error.message, 
-      stack: error.stack,
-      stdout: error.stdout,
-      stderr: error.stderr 
+    // 統合エラーハンドリング
+    const handledError = await errorHandler.handleError(error, {
+      issueNumber,
+      operation: 'processIssue',
+      title: issue.title
     });
-    console.error(`Issue #${issueNumber} の処理エラー:`, error.message);
     
-    // より詳細なエラー情報をコメントに含める
-    const errorDetails = [
-      `## エラーが発生しました`,
-      ``,
-      `### エラーメッセージ`,
-      `\`\`\``,
-      error.message || '(エラーメッセージなし)',
-      `\`\`\``,
-      error.stderr ? `\n### エラー出力\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
-      error.stdout ? `\n### 標準出力\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
-      ``,
-      `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
-    ].filter(Boolean).join('\n');
+    // 自動リカバリーを試行
+    const recovered = await recoveryManager.recover(handledError, {
+      issueNumber,
+      operation: async () => {
+        // リトライ用の操作（簡略版）
+        const poppoConfig = configLoader.loadConfig();
+        return await processManager.executeClaudeCode(issue.body, {
+          issueNumber,
+          title: issue.title,
+          language: poppoConfig.language?.primary || 'ja'
+        });
+      }
+    });
     
-    await github.addComment(issueNumber, errorDetails);
-    
-    // エラー時はステータスをリセット（再試行可能にする）
-    await statusManager.resetIssueStatus(issueNumber);
-    processedIssues.delete(issueNumber);
-    
-    // 処理済みIssuesを再読み込みして削除
-    const currentProcessed = await fileStateManager.loadProcessedIssues();
-    currentProcessed.delete(issueNumber);
-    await fileStateManager.saveProcessedIssues(currentProcessed);
+    if (!recovered) {
+      // リカバリー失敗時の処理
+      console.error(`Issue #${issueNumber} の処理エラー:`, handledError.message);
+      
+      // より詳細なエラー情報をコメントに含める
+      const errorDetails = [
+        `## エラーが発生しました`,
+        ``,
+        `### エラーメッセージ`,
+        `\`\`\``,
+        handledError.message || '(エラーメッセージなし)',
+        `\`\`\``,
+        handledError.context?.stderr ? `\n### エラー出力\n\`\`\`\n${handledError.context.stderr}\n\`\`\`` : '',
+        handledError.context?.stdout ? `\n### 標準出力\n\`\`\`\n${handledError.context.stdout}\n\`\`\`` : '',
+        ``,
+        `エラーコード: \`${handledError.code}\``,
+        `重要度: \`${handledError.severity}\``,
+        `リトライ可能: \`${handledError.retryable ? 'Yes' : 'No'}\``,
+        ``,
+        `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
+      ].filter(Boolean).join('\n');
+      
+      await github.addComment(issueNumber, errorDetails);
+      
+      // エラー時はステータスをリセット（再試行可能にする）
+      await statusManager.resetIssueStatus(issueNumber);
+      processedIssues.delete(issueNumber);
+      
+      // 処理済みIssuesを再読み込みして削除
+      const currentProcessed = await fileStateManager.loadProcessedIssues();
+      currentProcessed.delete(issueNumber);
+      await fileStateManager.saveProcessedIssues(currentProcessed);
+    } else {
+      logger.info(`Issue #${issueNumber} の自動リカバリーが成功しました`);
+    }
   }
 }
 
@@ -972,6 +1034,12 @@ process.on('SIGINT', async () => {
     await githubProjectsSync.cleanup();
   }
   
+  // メモリ監視を停止
+  if (memoryMonitor) {
+    memoryMonitor.stop();
+    memoryOptimizer.stop();
+  }
+  
   // ログローテーターを停止
   logger.close();
   
@@ -1017,6 +1085,12 @@ process.on('SIGTERM', async () => {
   // GitHub Projects同期を停止
   if (githubProjectsSync) {
     await githubProjectsSync.cleanup();
+  }
+  
+  // メモリ監視を停止
+  if (memoryMonitor) {
+    memoryMonitor.stop();
+    memoryOptimizer.stop();
   }
   
   // ログローテーターを停止
@@ -1078,6 +1152,13 @@ Promise.all([
     await githubProjectsSync.initialize();
     githubProjectsSync.startPeriodicSync(config.githubProjects.syncInterval);
     logger.info('GitHub Projects同期を開始しました');
+  }
+  
+  // メモリ監視を開始
+  if (memoryMonitor) {
+    await memoryMonitor.start();
+    memoryOptimizer.start();
+    logger.info('メモリ監視と最適化を開始しました');
   }
   
   // 開始

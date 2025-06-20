@@ -481,5 +481,78 @@
       "secret": "${WEBHOOK_SECRET}",
       "events": ["project_card.moved", "project_card.created", "project_card.deleted"]
     }
+  },
+  "memory": {
+    "monitoring": {
+      "enabled": true,
+      "interval": 60000,
+      "thresholds": {
+        "heapUsed": 524288000,
+        "heapTotal": 1073741824,
+        "rss": 1572864000,
+        "external": 104857600
+      },
+      "snapshot": {
+        "enabled": true,
+        "interval": 3600000,
+        "path": "./memory-snapshots"
+      }
+    },
+    "optimization": {
+      "enabled": true,
+      "strategies": {
+        "cacheEviction": true,
+        "objectPooling": true,
+        "lazyLoading": true,
+        "streamProcessing": true
+      },
+      "cache": {
+        "maxSize": 104857600,
+        "ttl": 3600000,
+        "checkInterval": 300000
+      }
+    },
+    "autoOptimize": true,
+    "leakDetection": {
+      "enabled": true,
+      "checkInterval": 300000,
+      "tracking": {
+        "minSize": 1024,
+        "maxTracked": 10000,
+        "retentionTime": 3600000
+      }
+    }
+  },
+  "errorHandling": {
+    "enabled": true,
+    "maxErrorHistory": 1000,
+    "errorFile": "logs/errors.json",
+    "enableStackTrace": true,
+    "autoRecovery": {
+      "enabled": true,
+      "maxRecoveryAttempts": 3,
+      "recoveryTimeout": 300000
+    },
+    "circuitBreaker": {
+      "defaultConfig": {
+        "failureThreshold": 5,
+        "successThreshold": 3,
+        "timeout": 30000,
+        "resetTimeout": 60000,
+        "volumeThreshold": 10,
+        "errorThresholdPercentage": 50
+      }
+    },
+    "notifications": {
+      "enabled": true,
+      "channels": ["log"],
+      "severityThreshold": "high"
+    },
+    "reporting": {
+      "enabled": true,
+      "schedule": "0 6 * * *",
+      "retentionDays": 30,
+      "formats": ["json", "markdown"]
+    }
   }
 }

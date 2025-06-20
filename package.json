@@ -6,7 +6,8 @@
   "bin": {
     "poppo": "./scripts/poppo-process.js",
     "poppo-health": "./scripts/poppo-health.js",
-    "poppo-log-rotate": "./scripts/poppo-log-rotate.js"
+    "poppo-log-rotate": "./scripts/poppo-log-rotate.js",
+    "poppo-memory": "./scripts/poppo-memory.js"
   },
   "scripts": {
     "start": "node src/minimal-poppo.js",
@@ -64,7 +65,20 @@
     "test:redis": "node test/redis-integration.test.js",
     "test:redis:perf": "node test/redis-performance.test.js",
     "demo:redis": "node examples/redis-state-demo.js",
-    "test:redis:state": "npm test test/redis-state-manager.test.js"
+    "test:redis:state": "npm test test/redis-state-manager.test.js",
+    "memory": "node scripts/poppo-memory.js",
+    "memory:status": "node scripts/poppo-memory.js status",
+    "memory:monitor": "node scripts/poppo-memory.js monitor",
+    "memory:optimize": "node scripts/poppo-memory.js optimize",
+    "memory:leak-detect": "node scripts/poppo-memory.js detect-leaks",
+    "memory:report": "node scripts/poppo-memory.js report",
+    "errors": "node scripts/poppo-errors.js",
+    "errors:stats": "node scripts/poppo-errors.js stats",
+    "errors:report": "node scripts/poppo-errors.js report",
+    "errors:recovery": "node scripts/poppo-errors.js recovery",
+    "errors:clear": "node scripts/poppo-errors.js clear",
+    "errors:codes": "node scripts/poppo-errors.js codes",
+    "errors:config": "node scripts/poppo-errors.js config"
   },
   "keywords": [
     "ai",
