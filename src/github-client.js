@@ -188,6 +188,170 @@ class GitHubClient {
       return [];
     }
   }
+
+  /**
+   * Pull Requestリストを取得
+   */
+  async listPullRequests(owner, repo, state = 'open') {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const output = await this.executeWithRateLimit(
+        `gh pr list --repo ${targetRepo} --state ${state} --json number,title,body,labels,author,createdAt,updatedAt,draft,additions,deletions,head,base,user`,
+        1
+      );
+      return JSON.parse(output);
+    } catch (error) {
+      console.error('Failed to list pull requests:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Pull Requestの詳細を取得
+   */
+  async getPullRequest(owner, repo, number) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const output = await this.executeWithRateLimit(
+        `gh pr view ${number} --repo ${targetRepo} --json number,title,body,labels,author,createdAt,updatedAt,draft,additions,deletions,head,base,mergeable,rebaseable`,
+        1
+      );
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to get PR #${number}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Pull Requestのファイル一覧を取得
+   */
+  async getPullRequestFiles(owner, repo, number) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const output = await this.executeWithRateLimit(
+        `gh api repos/${targetRepo}/pulls/${number}/files`,
+        1
+      );
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to get PR files for #${number}:`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Pull Requestのコミット一覧を取得
+   */
+  async getPullRequestCommits(owner, repo, number) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const output = await this.executeWithRateLimit(
+        `gh api repos/${targetRepo}/pulls/${number}/commits`,
+        1
+      );
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to get PR commits for #${number}:`, error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Pull Requestにレビューを作成
+   */
+  async createReview(owner, repo, number, review) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const fs = require('fs');
+      const path = require('path');
+      const tempFile = path.join(__dirname, '../temp', `review-${number}-${Date.now()}.json`);
+      
+      // レビューデータをJSONファイルに保存
+      fs.writeFileSync(tempFile, JSON.stringify(review), 'utf8');
+      
+      const output = await this.executeWithRateLimit(
+        `gh api repos/${targetRepo}/pulls/${number}/reviews --input ${tempFile}`,
+        1
+      );
+      
+      // 一時ファイルを削除
+      fs.unlinkSync(tempFile);
+      
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to create review for PR #${number}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Pull Requestにレビューコメントを作成
+   */
+  async createReviewComment(owner, repo, number, commitId, path, line, body) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const commentData = {
+        body: body,
+        commit_id: commitId,
+        path: path,
+        line: line || 1
+      };
+      
+      const fs = require('fs');
+      const pathModule = require('path');
+      const tempFile = pathModule.join(__dirname, '../temp', `review-comment-${number}-${Date.now()}.json`);
+      
+      fs.writeFileSync(tempFile, JSON.stringify(commentData), 'utf8');
+      
+      const output = await this.executeWithRateLimit(
+        `gh api repos/${targetRepo}/pulls/${number}/comments --input ${tempFile}`,
+        1
+      );
+      
+      // 一時ファイルを削除
+      fs.unlinkSync(tempFile);
+      
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to create review comment for PR #${number}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * コミットのステータスを作成
+   */
+  async createStatus(owner, repo, sha, status) {
+    try {
+      const targetRepo = `${owner || this.owner}/${repo || this.repo}`;
+      const statusData = {
+        state: status.state,
+        context: status.context,
+        description: status.description,
+        target_url: status.target_url
+      };
+      
+      const fs = require('fs');
+      const path = require('path');
+      const tempFile = path.join(__dirname, '../temp', `status-${sha}-${Date.now()}.json`);
+      
+      fs.writeFileSync(tempFile, JSON.stringify(statusData), 'utf8');
+      
+      const output = await this.executeWithRateLimit(
+        `gh api repos/${targetRepo}/statuses/${sha} --input ${tempFile}`,
+        1
+      );
+      
+      // 一時ファイルを削除
+      fs.unlinkSync(tempFile);
+      
+      return JSON.parse(output);
+    } catch (error) {
+      console.error(`Failed to create status for commit ${sha}:`, error.message);
+      return null;
+    }
+  }
 }
 
 module.exports = GitHubClient;

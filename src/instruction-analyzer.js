@@ -1,13 +1,21 @@
 const fs = require('fs').promises;
 const path = require('path');
+const Redis = require('ioredis');
+const { v4: uuidv4 } = require('uuid');
 
 /**
  * 指示内容分析器
- * Claude APIを使用してユーザーの指示を分析し、適切なアクションを決定する
+ * CCSPエージェント（パイちゃん）を使用してユーザーの指示を分析し、適切なアクションを決定する
  */
 class InstructionAnalyzer {
-  constructor(claudeClient, customLogger = null) {
-    this.claudeClient = claudeClient;
+  constructor(redisConfig, customLogger = null) {
+    // Redis設定（claudeClientの代わり）
+    this.redisConfig = redisConfig || {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379
+    };
+    this.redis = new Redis(this.redisConfig);
+    this.responseQueue = 'ccsp:responses:instruction-analyzer';
     this.promptTemplate = null;
     
     // loggerの初期化
@@ -59,8 +67,58 @@ class InstructionAnalyzer {
       // プロンプトを生成
       const prompt = this.promptTemplate.replace('{{INSTRUCTION}}', instruction);
       
-      // Claude APIを呼び出し
-      const response = await this.claudeClient.sendMessage(prompt);
+      // パイちゃんへのリクエストを作成
+      const requestId = uuidv4();
+      const request = {
+        requestId,
+        fromAgent: 'instruction-analyzer',
+        type: 'analyze',
+        prompt: prompt,
+        context: {
+          workingDirectory: process.cwd(),
+          timeout: 300000, // 5分
+          priority: 'normal'
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      this.logger.info(`Sending analysis request to CCSP: ${requestId}`);
+      
+      // リクエストを送信
+      await this.redis.lpush('ccsp:requests', JSON.stringify(request));
+      
+      // レスポンスを待機
+      const timeout = Date.now() + 300000; // 5分のタイムアウト
+      let response = null;
+      
+      while (Date.now() < timeout) {
+        // FIFOのため、lpopで取得
+        const data = await this.redis.lpop(this.responseQueue);
+        
+        if (data) {
+          const parsed = JSON.parse(data);
+          
+          // 自分のリクエストのレスポンスか確認
+          if (parsed.requestId === requestId) {
+            if (parsed.success) {
+              response = parsed.result;
+              break;
+            } else {
+              throw new Error(parsed.error || 'CCSP returned error');
+            }
+          } else {
+            // 他のリクエストのレスポンスは戻す（末尾に追加）
+            await this.redis.rpush(this.responseQueue, data);
+          }
+        }
+        
+        // 100ミリ秒待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (!response) {
+        throw new Error('Timeout waiting for CCSP response');
+      }
       
       // レスポンスをパース
       const result = this.parseResponse(response);
@@ -221,6 +279,15 @@ class InstructionAnalyzer {
     }
     
     return updatedLabels;
+  }
+
+  /**
+   * クリーンアップ処理
+   */
+  async cleanup() {
+    if (this.redis) {
+      await this.redis.quit();
+    }
   }
 }
 

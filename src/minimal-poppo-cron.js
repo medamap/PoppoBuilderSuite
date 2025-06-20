@@ -109,30 +109,38 @@ let processedComments = new Map();
  * Issueが処理対象かチェック
  */
 function shouldProcessIssue(issue) {
+  const debugPrefix = `  Issue #${issue.number}:`;
+  
   // すでに処理済み
   if (processedIssues.has(issue.number)) {
+    console.log(`${debugPrefix} ⏭️  既に処理済み`);
     return false;
   }
 
   // 作者のIssueかチェック
   if (issue.author.login !== config.github.owner) {
+    console.log(`${debugPrefix} ⏭️  作者が異なる (${issue.author.login} !== ${config.github.owner})`);
     return false;
   }
 
   // ラベルチェック
   const labels = issue.labels.map(l => l.name);
+  console.log(`${debugPrefix} ラベル: [${labels.join(', ')}]`);
   
   // task:misc, task:dogfooding, task:quality, task:docs, task:feature のいずれかのラベルが必要
   const taskLabels = ['task:misc', 'task:dogfooding', 'task:quality', 'task:docs', 'task:feature'];
   if (!labels.some(label => taskLabels.includes(label))) {
+    console.log(`${debugPrefix} ⏭️  必要なタスクラベルがない`);
     return false;
   }
 
   // completed, processing, awaiting-responseラベルがあればスキップ
   if (labels.includes('completed') || labels.includes('processing') || labels.includes('awaiting-response')) {
+    console.log(`${debugPrefix} ⏭️  スキップラベルあり (completed/processing/awaiting-response)`);
     return false;
   }
 
+  console.log(`${debugPrefix} ✅ 処理対象`);
   return true;
 }
 
@@ -768,23 +776,109 @@ function setupSignalHandlers() {
 }
 
 /**
+ * すべての永続化ファイルをリセット
+ */
+async function resetAllStateFiles() {
+  console.log('📄 永続化ファイルをリセット中...');
+  
+  try {
+    // 処理済みIssueをリセット
+    await stateManager.saveProcessedIssues(new Set());
+    console.log('  ✅ processed-issues.json をリセット');
+    
+    // 処理済みコメントをリセット（必要に応じて）
+    await stateManager.saveProcessedComments(new Map());
+    console.log('  ✅ processed-comments.json をリセット');
+    
+    // Issue状態をリセット（StatusManager経由）
+    if (statusManager && statusManager.state && statusManager.state.issues) {
+      const issueNumbers = Object.keys(statusManager.state.issues);
+      for (const issueNumber of issueNumbers) {
+        await statusManager.resetIssueStatus(parseInt(issueNumber));
+      }
+      console.log(`  ✅ issue-status.json をリセット (${issueNumbers.length}件のIssue)`);
+    }
+    
+    // 保留中タスクをリセット
+    await stateManager.savePendingTasks([]);
+    console.log('  ✅ pending-tasks.json をリセット');
+    
+    // 実行中タスクをリセット（注意: 実行中のプロセスがある場合は問題が起きる可能性）
+    const runningTasks = await stateManager.loadRunningTasks();
+    if (Object.keys(runningTasks).length > 0) {
+      console.log('  ⚠️  実行中のタスクが存在します。リセットによりこれらのタスクの状態が不整合になる可能性があります。');
+      console.log('  実行中のタスク:', Object.keys(runningTasks));
+    }
+    // 注意: running-tasks.json はプロセスマネージャが管理しているため、ここではリセットしない
+    
+    console.log('\n📊 リセット結果:');
+    console.log('  - processed-issues.json: 空の配列 []');
+    console.log('  - processed-comments.json: 空のオブジェクト {}');
+    console.log('  - issue-status.json: すべてのIssueステータスをクリア');
+    console.log('  - pending-tasks.json: 空の配列 []');
+    console.log('  - running-tasks.json: 変更なし（実行中のプロセスを保護）');
+    
+  } catch (error) {
+    console.error('❌ リセット中にエラーが発生しました:', error.message);
+    throw error;
+  }
+}
+
+/**
  * メイン処理（1回実行）
  */
 async function main() {
   console.log('PoppoBuilder Cron実行開始');
   
+  // コマンドラインオプションの処理
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`
+PoppoBuilder Cron - 使用方法
+
+オプション:
+  --reset-state       すべての永続化情報をリセット
+  --reset-processed   processed-issues.jsonのみリセット
+  --sync-github       GitHubのラベル状態と同期（未実装）
+  --help, -h          このヘルプを表示
+
+例:
+  node minimal-poppo-cron.js --reset-state
+  node minimal-poppo-cron.js --reset-processed
+`);
+    process.exit(0);
+  }
+
   // シグナルハンドラーの設定
   setupSignalHandlers();
   
   try {
     // 状態管理の初期化
+    console.log('📋 状態管理システムを初期化中...');
     try {
       await stateManager.init();
       await statusManager.initialize();
       await mirinManager.initialize();
+      console.log('✅ 初期化完了');
     } catch (error) {
       console.error('初期化エラー:', error.message);
       logger.error('初期化に失敗しました', error);
+      process.exit(1);
+    }
+
+    // リセットオプションの処理
+    if (process.argv.includes('--reset-state')) {
+      console.log('🔄 すべての永続化情報をリセット中...');
+      await resetAllStateFiles();
+      console.log('✅ リセット完了');
+      process.exit(0);
+    } else if (process.argv.includes('--reset-processed')) {
+      console.log('🔄 処理済みIssue情報をリセット中...');
+      await stateManager.saveProcessedIssues(new Set());
+      console.log('✅ processed-issues.jsonをリセットしました');
+      process.exit(0);
+    } else if (process.argv.includes('--sync-github')) {
+      console.log('⚠️  --sync-githubオプションは未実装です');
+      console.log('   将来的にGitHubラベルとの同期機能を実装予定です');
       process.exit(1);
     }
     
@@ -793,12 +887,13 @@ async function main() {
     logger.info('MirinOrphanManagerの監視を開始しました');
     
     // プロセスレベルのロック取得
+    console.log('🔒 プロセスロックを取得中...');
     const lockAcquired = await stateManager.acquireProcessLock();
     if (!lockAcquired) {
       console.log('⚠️  別のPoppoBuilderプロセスが実行中です');
       process.exit(0);
     }
-    console.log('🔒 プロセスロックを取得しました');
+    console.log('✅ プロセスロックを取得しました');
     
     // 既存のrunning-tasksファイルのマイグレーション
     await migrateRunningTasks();
@@ -840,14 +935,16 @@ async function main() {
     }
 
     // Issue取得
-    console.log('Issueをチェック中...');
+    console.log('📋 GitHub から Issue を取得中...');
     const issues = await github.listIssues({ state: 'open' });
+    console.log(`✅ ${issues.length} 件の Open Issue を取得しました`);
     
     // 処理対象のIssueを抽出
+    console.log('🔍 処理対象の Issue をフィルタリング中...');
     const targetIssues = issues.filter(shouldProcessIssue);
     
     if (targetIssues.length === 0) {
-      console.log('処理対象のIssueはありません');
+      console.log('ℹ️  処理対象のIssueはありません');
     } else {
       console.log(`${targetIssues.length}件のIssueが見つかりました`);
       

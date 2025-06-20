@@ -6,12 +6,26 @@ const LogRotator = require('./log-rotator');
  * シンプルなロガークラス（ログローテーション機能付き）
  */
 class Logger {
-  constructor(logDir = path.join(__dirname, '../logs'), rotationConfig = {}) {
-    this.logDir = logDir;
+  constructor(categoryOrLogDir = 'default', options = {}) {
+    // 後方互換性のチェック
+    // 第一引数がパスのような文字列の場合は、旧形式として扱う
+    if (typeof categoryOrLogDir === 'string' && 
+        (categoryOrLogDir.includes('/') || categoryOrLogDir.includes('\\') || categoryOrLogDir === path.join(__dirname, '../logs'))) {
+      // 旧形式: constructor(logDir, rotationConfig)
+      this.category = 'default';
+      this.logDir = categoryOrLogDir;
+      this.rotationConfig = options;
+    } else {
+      // 新形式: constructor(category, options)
+      this.category = categoryOrLogDir || 'default';
+      this.logDir = options.logDir || path.join(__dirname, '../logs');
+      this.rotationConfig = options.rotationConfig || {};
+    }
+    
     this.ensureLogDir();
     
     // ログローテーターを初期化
-    this.rotator = new LogRotator(rotationConfig);
+    this.rotator = new LogRotator(this.rotationConfig);
     
     // ログレベルの設定（デフォルトはINFO以上を出力）
     this.logLevels = {
@@ -20,7 +34,7 @@ class Logger {
       INFO: 2,
       DEBUG: 3
     };
-    this.currentLogLevel = rotationConfig.logLevel || 'INFO';
+    this.currentLogLevel = this.rotationConfig.logLevel || 'INFO';
   }
 
   ensureLogDir() {
@@ -49,6 +63,23 @@ class Logger {
    * ログ出力（ファイルとコンソール）
    */
   log(level, category, message, data = null) {
+    // 引数の調整（categoryが省略された場合）
+    if (arguments.length === 2) {
+      // log(level, message) の形式
+      data = null;
+      message = category;
+      category = this.category;
+    } else if (arguments.length === 3 && typeof message !== 'string') {
+      // log(level, message, data) の形式
+      data = message;
+      message = category;
+      category = this.category;
+    } else if (arguments.length === 4 && typeof category === 'string' && typeof message === 'string') {
+      // 正しい形式なので何もしない
+    } else {
+      // その他の場合は、第2引数をカテゴリとして扱う
+    }
+    
     // ログレベルチェック
     if (!this.shouldLog(level)) {
       return;
@@ -121,19 +152,47 @@ class Logger {
 
   // 便利メソッド
   info(category, message, data) {
-    this.log('INFO', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('INFO', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('INFO', this.category, category, message);
+    } else {
+      this.log('INFO', category, message, data);
+    }
   }
 
   error(category, message, data) {
-    this.log('ERROR', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('ERROR', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('ERROR', this.category, category, message);
+    } else {
+      this.log('ERROR', category, message, data);
+    }
   }
 
   warn(category, message, data) {
-    this.log('WARN', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('WARN', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('WARN', this.category, category, message);
+    } else {
+      this.log('WARN', category, message, data);
+    }
   }
 
   debug(category, message, data) {
-    this.log('DEBUG', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('DEBUG', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('DEBUG', this.category, category, message);
+    } else {
+      this.log('DEBUG', category, message, data);
+    }
   }
 
   /**

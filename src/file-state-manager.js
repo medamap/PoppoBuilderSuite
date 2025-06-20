@@ -21,7 +21,7 @@ class FileStateManager {
     this.runningTasksFile = path.join(stateDir, 'running-tasks.json');
     this.lastRunFile = path.join(stateDir, 'last-run.json');
     this.pendingTasksFile = path.join(stateDir, 'pending-tasks.json');
-    this.processLockFile = path.join(stateDir, 'poppo-cron.lock');
+    this.processLockFile = path.join(stateDir, 'poppo-node.lock');
     this.lockDir = path.join(stateDir, '.locks');
   }
 
@@ -203,6 +203,23 @@ class FileStateManager {
   }
 
   /**
+   * 処理済みIssueの追加
+   */
+  async addProcessedIssue(issueNumber) {
+    const processedIssues = await this.loadProcessedIssues();
+    processedIssues.add(issueNumber);
+    await this.saveProcessedIssues(processedIssues);
+  }
+
+  /**
+   * 処理済みIssueのチェック
+   */
+  async isIssueProcessed(issueNumber) {
+    const processedIssues = await this.loadProcessedIssues();
+    return processedIssues.has(issueNumber);
+  }
+
+  /**
    * 処理済みコメントの読み込み
    */
   async loadProcessedComments() {
@@ -248,6 +265,41 @@ class FileStateManager {
     } finally {
       await this.releaseLock(lockFile);
     }
+  }
+
+  /**
+   * 処理済みコメントの追加
+   */
+  async addProcessedComment(issueNumber, commentId) {
+    const processedComments = await this.loadProcessedComments();
+    
+    if (!processedComments.has(issueNumber)) {
+      processedComments.set(issueNumber, new Set());
+    }
+    
+    processedComments.get(issueNumber).add(commentId);
+    await this.saveProcessedComments(processedComments);
+  }
+
+  /**
+   * 処理済みコメントのチェック
+   */
+  async isCommentProcessed(issueNumber, commentId) {
+    const processedComments = await this.loadProcessedComments();
+    
+    if (!processedComments.has(issueNumber)) {
+      return false;
+    }
+    
+    return processedComments.get(issueNumber).has(commentId);
+  }
+
+  /**
+   * 特定Issueの処理済みコメントを取得
+   */
+  async getProcessedCommentsForIssue(issueNumber) {
+    const processedComments = await this.loadProcessedComments();
+    return processedComments.get(issueNumber) || new Set();
   }
 
   /**

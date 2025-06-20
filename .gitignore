@@ -4,7 +4,6 @@ node_modules/
 .pnp.js
 
 # Testing
-coverage/
 *.lcov
 .nyc_output
 
@@ -53,3 +52,94 @@ backups/
 
 # OS generated files
 Thumbs.db
+
+# State and request files
+state/requests/label-update-*.json
+state/*.json.backup-*
+state/*.json.tmp.*
+
+# Redis dump
+dump.rdb
+
+# Test generated files
+test-*.txt
+test-result.txt
+test-rate-limit*.js
+
+# Report files
+*-report.md
+*-report-*.md
+impact-analysis-*.md
+traceability-matrix.md
+
+# Backup files
+*.backup
+CLAUDE.md.backup
+
+# Log archives
+logs/cleanup-*/
+logs/archive/*.gz
+logs/archive/*.meta.json
+
+# Temporary issue logs
+logs/issue-*T*.log
+logs/poppo-*T*.log
+logs/restart-*.log
+logs/processes-*.log
+
+# Migration files
+logs/*.migrated-*
+
+# Dashboard logs
+dashboard.log
+poppo-fixed.log
+poppo-output*.log
+poppo-restart.log
+start.log
+restart-scheduler.log
+
+# Nohup logs
+logs/poppo-nohup*.log
+nohup.out
+
+# Temporary directories (that were created during testing)
+/AgentCoordinator/
+/AgentIntegration/
+/AlertManager/
+/ApplicationMonitor/
+/AutoScaler/
+/AutoScalingTest/
+/CCAG/
+/CCLA/
+/CCPM/
+/CCRA/
+/DataMonitor/
+/HealthCheckManager/
+/HealthMetricsStore/
+/LoadBalancer/
+/MetricsCollector/
+/NetworkMonitor/
+/RecoveryManager/
+/SystemMonitor/
+
+# Temp cleanup directories
+temp/cleanup/
+test/cleanup/
+
+# Coverage reports
+coverage/
+
+# Test files
+test-*.txt
+test-result.txt
+test-rate-limit*.js
+
+# Report files
+*-report.md
+*-report-*.md
+impact-analysis-*.md
+traceability-matrix.md
+
+# Backup files
+*.backup
+CLAUDE.md.backup

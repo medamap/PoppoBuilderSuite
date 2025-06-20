@@ -23,6 +23,7 @@ const StatusManager = require('./status-manager');
 const MirinOrphanManager = require('./mirin-orphan-manager');
 const IssueLockManager = require('./issue-lock-manager');
 const BackupScheduler = require('./backup-scheduler');
+const FileStateManager = require('./file-state-manager');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
@@ -183,11 +184,14 @@ const twoStageProcessor = new TwoStageProcessor(config, null, logger); // claude
 // バックアップスケジューラーの初期化
 const backupScheduler = new BackupScheduler(config, logger);
 
-// 処理済みIssueを記録（メモリ内）
-const processedIssues = new Set();
+// ファイルベースの状態管理を初期化
+const fileStateManager = new FileStateManager();
 
-// 処理済みコメントを記録（メモリ内）
-const processedComments = new Map(); // issueNumber -> Set(commentIds)
+// 処理済みIssueを記録（FileStateManager使用）
+let processedIssues = new Set();
+
+// 処理済みコメントを記録（FileStateManager使用）
+let processedComments = new Map(); // issueNumber -> Set(commentIds)
 
 // タスクキューイベントハンドラー
 taskQueue.on('taskEnqueued', (task) => {
@@ -261,9 +265,10 @@ function updateHotReloadableConfigs(newConfig, changes) {
 /**
  * Issueが処理対象かチェック
  */
-function shouldProcessIssue(issue) {
+async function shouldProcessIssue(issue) {
   // すでに処理済み
-  if (processedIssues.has(issue.number)) {
+  const isProcessed = await fileStateManager.isIssueProcessed(issue.number);
+  if (isProcessed) {
     return false;
   }
 
@@ -311,6 +316,7 @@ async function processIssue(issue) {
   }
 
   // 処理開始前に処理済みとして記録（二重起動防止）
+  await fileStateManager.addProcessedIssue(issueNumber);
   processedIssues.add(issueNumber);
 
   try {
@@ -409,6 +415,11 @@ async function processIssue(issue) {
     // エラー時はステータスをリセット（再試行可能にする）
     await statusManager.resetIssueStatus(issueNumber);
     processedIssues.delete(issueNumber);
+    
+    // 処理済みIssuesを再読み込みして削除
+    const currentProcessed = await fileStateManager.loadProcessedIssues();
+    currentProcessed.delete(issueNumber);
+    await fileStateManager.saveProcessedIssues(currentProcessed);
   }
 }
 
@@ -585,7 +596,7 @@ async function checkComments() {
     
     for (const issue of issues) {
       const comments = await github.listComments(issue.number);
-      const processed = processedComments.get(issue.number) || new Set();
+      const processed = await fileStateManager.getProcessedCommentsForIssue(issue.number);
       
       // 新規コメントをチェック
       for (const comment of comments) {
@@ -597,6 +608,7 @@ async function checkComments() {
           console.log(`新規コメントを検出: Issue #${issue.number}, Comment: ${commentId}`);
           
           // 処理済みとして記録
+          await fileStateManager.addProcessedComment(issue.number, commentId);
           if (!processedComments.has(issue.number)) {
             processedComments.set(issue.number, new Set());
           }
@@ -831,7 +843,12 @@ async function mainLoop() {
       const issues = await github.listIssues({ state: 'open' });
       
       // 処理対象のIssueを抽出
-      const targetIssues = issues.filter(shouldProcessIssue);
+      const targetIssues = [];
+      for (const issue of issues) {
+        if (await shouldProcessIssue(issue)) {
+          targetIssues.push(issue);
+        }
+      }
       
       if (targetIssues.length === 0) {
         console.log('処理対象のIssueはありません');
@@ -903,6 +920,57 @@ async function mainLoop() {
 process.on('SIGINT', async () => {
   console.log('\n\n終了します...');
   
+  // 状態を保存
+  try {
+    await fileStateManager.saveProcessedIssues(processedIssues);
+    await fileStateManager.saveProcessedComments(processedComments);
+    logger.info('処理済み状態を保存しました');
+  } catch (error) {
+    logger.error('状態保存エラー:', error);
+  }
+  
+  // ヘルスチェックマネージャーを停止
+  if (healthCheckManager) {
+    await healthCheckManager.stop();
+  }
+  
+  // MirinOrphanManagerを停止
+  mirinManager.stop();
+  
+  // ハートビートインターバルをクリア
+  if (global.heartbeatInterval) {
+    clearInterval(global.heartbeatInterval);
+  }
+  
+  // バックアップスケジューラーを停止
+  if (backupScheduler) {
+    backupScheduler.stop();
+  }
+  
+  // ログローテーターを停止
+  logger.close();
+  
+  // IssueLockManagerをシャットダウン
+  await lockManager.shutdown();
+  
+  processManager.killAll();
+  dashboardServer.stop();
+  process.exit(0);
+});
+
+// SIGTERMでも同じクリーンアップを実行
+process.on('SIGTERM', async () => {
+  console.log('\n\nSIGTERMを受信しました。終了します...');
+  
+  // 状態を保存
+  try {
+    await fileStateManager.saveProcessedIssues(processedIssues);
+    await fileStateManager.saveProcessedComments(processedComments);
+    logger.info('処理済み状態を保存しました');
+  } catch (error) {
+    logger.error('状態保存エラー:', error);
+  }
+  
   // ヘルスチェックマネージャーを停止
   if (healthCheckManager) {
     await healthCheckManager.stop();
@@ -953,11 +1021,17 @@ if (config.twoStageProcessing?.enabled) {
 
 // StatusManager、MirinOrphanManager、IssueLockManagerを初期化
 Promise.all([
+  fileStateManager.init(),
   statusManager.initialize(),
   mirinManager.initialize(),
   lockManager.initialize()
-]).then(() => {
-  logger.info('StatusManager、MirinOrphanManager、IssueLockManagerを初期化しました');
+]).then(async () => {
+  logger.info('FileStateManager、StatusManager、MirinOrphanManager、IssueLockManagerを初期化しました');
+  
+  // 保存された状態を読み込む
+  processedIssues = await fileStateManager.loadProcessedIssues();
+  processedComments = await fileStateManager.loadProcessedComments();
+  logger.info(`保存された状態を読み込みました: Issues=${processedIssues.size}, Comments=${processedComments.size}`);
   
   // MirinOrphanManagerを開始
   mirinManager.start();

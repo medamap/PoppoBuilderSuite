@@ -50,7 +50,12 @@ class ProcessManager {
       }
       
       const instructionFile = path.join(tempDir, `instruction-${taskId}.txt`);
-      let instructionContent = `${instruction.context.systemPrompt}\n\n`;
+      let instructionContent = `【重要な制限事項】\n`;
+      instructionContent += 'Claude APIの呼び出しは絶対に禁止です。anthropic、claude-ai、claude-sdk などのAPIライブラリの使用も禁止です。\n';
+      instructionContent += 'HTTPリクエストでClaude APIエンドポイントへのアクセスも禁止です。子プロセスからのclaude CLIコマンドの実行も禁止です。\n';
+      instructionContent += 'この制限はPoppoBuilderSuiteシステム全体のポリシーです。\n\n';
+      
+      instructionContent += `${instruction.context.systemPrompt}\n\n`;
       
       // コンテキスト付き実行の場合（コメント対応）
       if (instruction.task === 'execute_with_context' && instruction.issue.conversation) {

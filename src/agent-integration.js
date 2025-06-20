@@ -217,6 +217,24 @@ class AgentIntegration {
           pullRequest: this.extractPullRequestNumber(body)
         };
         
+      case 'pr-review':
+        // PRレビュー用の情報
+        return {
+          issueNumber: number,
+          repository: issue.repository || 'medamap/PoppoBuilderSuite',
+          pullRequest: this.extractPullRequestNumber(body) || number,
+          reviewType: 'comprehensive',
+          additionalContext: `Issue: ${title}\n${body}`
+        };
+        
+      case 'code-quality-check':
+        // コード品質チェック用の情報
+        return {
+          issueNumber: number,
+          targetFiles: this.extractFilePaths(body),
+          qualityMetrics: ['complexity', 'duplication', 'style', 'best-practices']
+        };
+        
       default:
         return {
           issueNumber: number,
@@ -368,28 +386,33 @@ class AgentIntegration {
   getDefaultTaskMapping() {
     return {
       labels: {
-        'review': ['code-review'],
+        'review': ['code-review', 'pr-review'],
         'documentation': ['generate-docs', 'update-readme'],
         'security': ['security-audit'],
         'refactor': ['refactoring-suggestion'],
         'dogfooding': ['code-review', 'generate-docs'],
-        'quality': ['quality-assurance'],
+        'quality': ['quality-assurance', 'code-quality-check'],
         'test': ['quality-assurance'],
-        'qa': ['quality-assurance']
+        'qa': ['quality-assurance'],
+        'pr': ['pr-review'],
+        'pull-request': ['pr-review']
       },
       keywords: {
-        'レビュー': ['code-review'],
-        'review': ['code-review'],
+        'レビュー': ['code-review', 'pr-review'],
+        'review': ['code-review', 'pr-review'],
         'ドキュメント': ['generate-docs'],
         'document': ['generate-docs'],
         'セキュリティ': ['security-audit'],
         'security': ['security-audit'],
         'リファクタリング': ['refactoring-suggestion'],
         'refactor': ['refactoring-suggestion'],
-        '品質': ['quality-assurance'],
-        'quality': ['quality-assurance'],
+        '品質': ['quality-assurance', 'code-quality-check'],
+        'quality': ['quality-assurance', 'code-quality-check'],
         'テスト': ['quality-assurance'],
-        'test': ['quality-assurance']
+        'test': ['quality-assurance'],
+        'PR': ['pr-review'],
+        'プルリクエスト': ['pr-review'],
+        'pull request': ['pr-review']
       }
     };
   }

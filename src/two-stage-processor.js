@@ -7,9 +7,14 @@ const GitHubClient = require('./github-client');
  * 第2段階: 決定されたアクションを実行
  */
 class TwoStageProcessor {
-  constructor(config, claudeClient, customLogger = null) {
+  constructor(config, redisConfig, customLogger = null) {
     this.config = config.twoStageProcessing || {};
-    this.claudeClient = claudeClient;
+    
+    // Redis設定（claudeClientの代わり）
+    this.redisConfig = redisConfig || {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379
+    };
     
     // loggerの初期化
     if (customLogger) {
@@ -30,7 +35,8 @@ class TwoStageProcessor {
       }
     }
     
-    this.analyzer = new InstructionAnalyzer(claudeClient, this.logger);
+    // InstructionAnalyzerにRedis設定を渡す
+    this.analyzer = new InstructionAnalyzer(this.redisConfig, this.logger);
     this.githubClient = null;
     this.enabled = this.config.enabled !== false;
     this.confidenceThreshold = this.config.confidenceThreshold || 0.7;
@@ -284,6 +290,15 @@ class TwoStageProcessor {
     
     const instructionLower = instruction.toLowerCase();
     return keywords.some(keyword => instructionLower.includes(keyword));
+  }
+  
+  /**
+   * クリーンアップ処理
+   */
+  async cleanup() {
+    if (this.analyzer && this.analyzer.cleanup) {
+      await this.analyzer.cleanup();
+    }
   }
 }
 

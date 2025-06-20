@@ -65,6 +65,13 @@ class AgentCoordinator extends EventEmitter {
         maxConcurrentTasks: 2,
         minInstances: 1,
         maxInstances: 3
+      },
+      CCRA: {
+        script: path.join(__dirname, '../ccra/index.js'),
+        capabilities: ['pr-review', 'code-quality-check', 'security-audit', 'review-comment'],
+        maxConcurrentTasks: 4,
+        minInstances: 1,
+        maxInstances: 5
       }
     };
     

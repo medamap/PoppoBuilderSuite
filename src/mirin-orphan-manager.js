@@ -261,13 +261,21 @@ class MirinOrphanManager extends EventEmitter {
       const files = await fs.readdir(this.config.requestsDir);
       const requestFiles = files.filter(f => f.startsWith('label-update-') && f.endsWith('.json'));
       
+      if (requestFiles.length === 0) {
+        return; // 処理するファイルがない場合は早期リターン
+      }
+      
+      this.logger.debug(`${requestFiles.length} 件のラベル更新リクエストを処理します`);
+      
+      // 各ファイルを個別に処理
       for (const file of requestFiles) {
         await this.processRequest(file);
       }
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        throw error;
+        this.logger.error('リクエストディレクトリ読み込みエラー:', error);
       }
+      // ディレクトリが存在しない場合は無視
     }
   }
 
@@ -278,6 +286,15 @@ class MirinOrphanManager extends EventEmitter {
     const filepath = path.join(this.config.requestsDir, filename);
     
     try {
+      // ファイルの存在を確認
+      try {
+        await fs.access(filepath);
+      } catch (accessError) {
+        // ファイルが存在しない場合は単にスキップ
+        this.logger.debug(`リクエストファイルが存在しません（既に処理済みの可能性）: ${filename}`);
+        return;
+      }
+      
       // リクエストを読み込む
       const content = await fs.readFile(filepath, 'utf8');
       const request = JSON.parse(content);
@@ -290,6 +307,25 @@ class MirinOrphanManager extends EventEmitter {
       
       this.logger.info(`ラベル更新リクエスト処理完了: ${request.requestId}`);
     } catch (error) {
+      // ENOENTエラー（ファイルが存在しない）の場合は無視
+      if (error.code === 'ENOENT') {
+        this.logger.debug(`リクエストファイルが既に削除されています: ${filename}`);
+        return;
+      }
+      
+      // Issue不在エラーの場合は即座にファイルを削除
+      if (error.code === 'ISSUE_NOT_FOUND') {
+        try {
+          await fs.unlink(filepath);
+          this.logger.warn(`存在しないIssue へのリクエストを削除: ${filename}`);
+        } catch (deleteError) {
+          if (deleteError.code !== 'ENOENT') {
+            this.logger.warn(`不要リクエストファイル削除エラー: ${deleteError.message}`);
+          }
+        }
+        return;
+      }
+      
       this.logger.error(`リクエスト処理エラー (${filename}):`, error);
       
       // エラーが続く場合は古いリクエストを削除
@@ -301,7 +337,10 @@ class MirinOrphanManager extends EventEmitter {
           this.logger.warn(`古いリクエストを削除: ${filename}`);
         }
       } catch (unlinkError) {
-        // 無視
+        // 既に削除されている場合は無視
+        if (unlinkError.code !== 'ENOENT') {
+          this.logger.debug(`古いリクエストファイルの削除エラー: ${unlinkError.message}`);
+        }
       }
     }
   }
@@ -315,6 +354,14 @@ class MirinOrphanManager extends EventEmitter {
     try {
       // 現在のラベルを取得
       const issue = await this.githubClient.getIssue(issueNumber);
+      
+      // Issueが存在しない場合は特別なエラーをthrow
+      if (!issue) {
+        const error = new Error(`Issue #${issueNumber} not found`);
+        error.code = 'ISSUE_NOT_FOUND';
+        throw error;
+      }
+      
       const currentLabels = issue.labels.map(l => l.name);
       
       // 新しいラベルセットを計算

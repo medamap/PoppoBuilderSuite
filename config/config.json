@@ -361,5 +361,88 @@
       "maxRetries": 3,
       "delay": 300000
     }
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379,
+    "password": null,
+    "db": 0,
+    "maxRetriesPerRequest": 3,
+    "retryDelayOnFailover": 100,
+    "enableReadyCheck": false
+  },
+  "mirin": {
+    "heartbeatInterval": 30000,
+    "orphanCheckInterval": 300000,
+    "requestChannel": "poppo:channel:mirin:requests",
+    "responseChannel": "poppo:channel:mirin:responses"
+  },
+  "messaging": {
+    "mode": "hybrid",
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "password": null,
+      "db": 0,
+      "maxRetriesPerRequest": 3
+    },
+    "queue": {
+      "defaultJobOptions": {
+        "removeOnComplete": true,
+        "removeOnFail": false,
+        "attempts": 3,
+        "backoff": {
+          "type": "exponential",
+          "delay": 2000
+        }
+      },
+      "enableMonitoring": true,
+      "messageVersion": "1.0.0"
+    },
+    "compatibility": {
+      "fileCheckInterval": 5000,
+      "migrationBatchSize": 10,
+      "enableAutoMigration": true
+    },
+    "eventBus": {
+      "enablePersistence": true,
+      "enableBroadcast": true,
+      "eventTTL": 3600000,
+      "eventQueueName": "poppo:events"
+    }
+  },
+  "unifiedStateManagement": {
+    "enabled": true,
+    "migrationCompleted": true,
+    "useAdapter": true,
+    "backend": "file",
+    "redis": {
+      "enabled": false,
+      "host": "127.0.0.1",
+      "port": 6379,
+      "password": null,
+      "db": 0,
+      "processId": null
+    },
+    "namespaces": {
+      "issues": {
+        "description": "Issue関連の状態"
+      },
+      "comments": {
+        "description": "コメント関連の状態"
+      },
+      "tasks": {
+        "description": "タスク実行状態"
+      },
+      "processes": {
+        "description": "プロセス管理"
+      },
+      "agents": {
+        "description": "エージェント固有データ"
+      },
+      "config": {
+        "description": "動的設定"
+      }
+    }
   }
 }

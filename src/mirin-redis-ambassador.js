@@ -553,6 +553,59 @@ class MirinRedisAmbassador extends EventEmitter {
   }
 
   /**
+   * プロセスのクリーンアップ
+   */
+  async cleanupProcess(request) {
+    const { processId } = request;
+    const processKeys = PoppoRedisKeys.process(processId);
+    const lists = PoppoRedisKeys.lists();
+
+    try {
+      // プロセス情報を取得
+      const processInfo = await this.redis.hgetall(processKeys.info);
+      if (!processInfo || !processInfo.issueNumber) {
+        return {
+          message: 'Process not found or already cleaned up',
+          processId
+        };
+      }
+
+      // 関連するIssueをチェックイン
+      if (processInfo.issueNumber && processInfo.status === 'active') {
+        await this.checkinIssue({
+          issueNumber: processInfo.issueNumber,
+          processId,
+          finalStatus: 'error',
+          metadata: {
+            error: 'Process cleanup requested',
+            cleanupAt: new Date().toISOString()
+          }
+        });
+      }
+
+      // プロセス情報を削除
+      const multi = this.redis.multi();
+      multi.del(processKeys.info);
+      multi.del(processKeys.heartbeat);
+      multi.srem(lists.activeProcesses, processId);
+      
+      await multi.exec();
+
+      this.logger.info(`🧹 プロセス ${processId} をクリーンアップ`);
+      
+      return {
+        message: 'Process cleaned up successfully',
+        processId,
+        issueNumber: processInfo.issueNumber
+      };
+
+    } catch (error) {
+      this.logger.error(`プロセス ${processId} のクリーンアップエラー:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * プロセス生存確認
    */
   isProcessAlive(pid) {

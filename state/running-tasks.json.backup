@@ -1,9 +1,1 @@
-{
-  "issue-86": {
-    "issueNumber": 86,
-    "title": "バックアップ・リストア機能の実装",
-    "pid": 12777,
-    "type": "dogfooding",
-    "startTime": "2025-06-19T09:04:22.408Z"
-  }
-}
+{}

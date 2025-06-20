@@ -1,14 +1,22 @@
 const { spawn } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
+const Redis = require('ioredis');
+const { v4: uuidv4 } = require('uuid');
 
 /**
  * 高度なエラー分析エンジン
- * Claudeを使用してエラーの詳細分析を行う
+ * CCSPエージェント（パイちゃん）を使用してエラーの詳細分析を行う
  */
 class AdvancedAnalyzer {
   constructor(logger) {
     this.logger = logger;
+    // Redis接続を追加
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379
+    });
+    this.responseQueue = 'ccsp:responses:ccla';
     this.cacheFile = path.join(__dirname, '../../.poppo/analysis-cache.json');
     this.analysisCache = new Map();
   }
@@ -79,7 +87,9 @@ class AdvancedAnalyzer {
    * 分析プロンプトの構築
    */
   buildAnalysisPrompt(errorInfo, context) {
-    return `エラー分析を実行してください。
+    return `【重要】Claude APIの使用は禁止されています。コード生成や修正提案を行う際は、Claude APIを呼び出すコードを含めないでください。
+
+エラー分析を実行してください。
 
 ## エラー情報
 - カテゴリ: ${errorInfo.category}
@@ -129,64 +139,76 @@ JSON形式で回答してください。`;
   }
 
   /**
-   * Claudeによる分析実行
+   * Claudeによる分析実行（パイちゃん経由）
    */
   async executeClaudeAnalysis(prompt) {
-    return new Promise((resolve, reject) => {
-      const tempFile = path.join(__dirname, `../../temp/analysis-${Date.now()}.txt`);
+    const requestId = uuidv4();
+    
+    // パイちゃんへのリクエストを作成
+    const request = {
+      requestId,
+      fromAgent: 'ccla',
+      type: 'error-analysis',
+      prompt: prompt,
+      context: {
+        workingDirectory: process.cwd(),
+        timeout: 600000, // 10分
+        priority: 'high'
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    this.logger.info(`Sending analysis request to CCSP: ${requestId}`);
+    
+    try {
+      // リクエストをRedis Queueに送信
+      await this.redis.lpush('ccsp:requests', JSON.stringify(request));
       
-      // プロンプトをファイルに保存
-      fs.writeFile(tempFile, prompt, 'utf8')
-        .then(() => {
-          const claudeProcess = spawn('claude', ['code'], {
-            cwd: path.dirname(tempFile)
-          });
-
-          let output = '';
-          let error = '';
-
-          claudeProcess.stdout.on('data', (data) => {
-            output += data.toString();
-          });
-
-          claudeProcess.stderr.on('data', (data) => {
-            error += data.toString();
-          });
-
-          claudeProcess.on('close', async (code) => {
-            // 一時ファイルを削除
-            try {
-              await fs.unlink(tempFile);
-            } catch (err) {
-              this.logger.warn(`一時ファイルの削除に失敗: ${err.message}`);
-            }
-
-            if (code !== 0) {
-              reject(new Error(`Claude実行エラー: ${error}`));
-              return;
-            }
-
-            try {
-              // JSON部分を抽出
+      // レスポンスを待機
+      const timeout = Date.now() + 600000; // 10分のタイムアウト
+      
+      while (Date.now() < timeout) {
+        const response = await this.redis.rpop(this.responseQueue);
+        
+        if (response) {
+          const parsed = JSON.parse(response);
+          
+          // 自分のリクエストのレスポンスか確認
+          if (parsed.requestId === requestId) {
+            if (parsed.success) {
+              this.logger.info('Received successful response from CCSP');
+              
+              // レスポンスからJSON部分を抽出
+              const output = parsed.result;
               const jsonMatch = output.match(/```json\n([\s\S]*?)\n```/);
               if (jsonMatch) {
                 const analysis = JSON.parse(jsonMatch[1]);
-                resolve(analysis);
+                return analysis;
               } else {
                 // JSON形式でない場合の処理
-                resolve(this.parseNonJsonResponse(output));
+                return this.parseNonJsonResponse(output);
               }
-            } catch (parseError) {
-              reject(new Error(`分析結果のパースエラー: ${parseError.message}`));
+            } else {
+              this.logger.error('CCSP returned error:', parsed.error);
+              throw new Error(parsed.error || 'CCSP analysis failed');
             }
-          });
-
-          // プロンプトを標準入力に送信
-          claudeProcess.stdin.write(prompt);
-          claudeProcess.stdin.end();
-        })
-        .catch(reject);
-    });
+          } else {
+            // 他のリクエストのレスポンスは戻す
+            await this.redis.lpush(this.responseQueue, response);
+          }
+        }
+        
+        // 100ミリ秒待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // タイムアウト
+      throw new Error('Timeout waiting for CCSP response');
+      
+    } catch (error) {
+      this.logger.error(`CCSP communication error: ${error.message}`);
+      throw error;
+    }
   }
 
   /**
@@ -333,6 +355,15 @@ ${analysis.preventionMeasures.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 
 ---
 *この分析は${analysis.fallbackAnalysis ? 'フォールバック分析' : 'Claude'}により生成されました*`;
+  }
+
+  /**
+   * クリーンアップ処理
+   */
+  async cleanup() {
+    if (this.redis) {
+      await this.redis.quit();
+    }
   }
 }
 
