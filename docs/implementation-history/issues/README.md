@@ -37,6 +37,9 @@ PoppoBuilderのDogfooding機能により実装されたIssueの履歴です。
 - [Issue #29: コメントコンテキスト拡張](issue-29.md) - メタデータ追加
 - [Issue #35: 未完了タスクの登録](issue-35.md) - 5つのタスク登録
 
+### グローバル機能実装
+- [Issue #149: Global Configuration Management System](issue-149-global-config.md) - グローバル設定管理
+
 ## 📈 実装統計
 
 ### カテゴリ別
@@ -45,11 +48,12 @@ PoppoBuilderのDogfooding機能により実装されたIssueの履歴です。
 - **エラー処理**: 4 Issues
 - **運用機能**: 5 Issues
 - **ドキュメント**: 4 Issues
+- **グローバル機能**: 1 Issue
 
 ### 実装期間
 - **開始**: 2025年6月16日
-- **最新**: 2025年6月17日
-- **総Issue数**: 23+ Issues
+- **最新**: 2025年6月21日
+- **総Issue数**: 24+ Issues
 
 ## 🔍 詳細を見る
 
