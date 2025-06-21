@@ -14,10 +14,16 @@ const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const RestartScheduler = require('../scripts/restart-scheduler');
 const DashboardServer = require('../dashboard/server/index');
+const i18n = require('../lib/i18n');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
 const poppoConfig = configLoader.loadConfig();
+
+// Initialize i18n
+(async () => {
+  await i18n.init({ language: poppoConfig.language?.primary || 'en' });
+})();
 
 // メイン設定ファイルも読み込み（後方互換性のため）
 const mainConfig = JSON.parse(
@@ -133,7 +139,7 @@ function shouldProcessIssue(issue) {
 async function processIssue(issue) {
   const issueNumber = issue.number;
   logger.logIssue(issueNumber, 'START', { title: issue.title, labels: issue.labels });
-  console.log(`\nIssue #${issueNumber} の処理開始: ${issue.title}`);
+  console.log(`\n${i18n.t('issue.processing', { number: issueNumber, title: issue.title })}`);
 
   // 処理開始前に処理済みとして記録（二重起動防止）
   processedIssues.add(issueNumber);
@@ -194,16 +200,16 @@ async function processIssue(issue) {
     
     // より詳細なエラー情報をコメントに含める
     const errorDetails = [
-      `## エラーが発生しました`,
+      `## ${i18n.t('labels.execution.error')}`,
       ``,
-      `### エラーメッセージ`,
+      `### ${i18n.t('errors.message')}`,
       `\`\`\``,
       error.message || '(エラーメッセージなし)',
       `\`\`\``,
-      error.stderr ? `\n### エラー出力\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
-      error.stdout ? `\n### 標準出力\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
+      error.stderr ? `\n### ${i18n.t('errors.stderr')}\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
+      error.stdout ? `\n### ${i18n.t('errors.stdout')}\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
       ``,
-      `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
+      i18n.t('errors.detailedLog', { logPath: `logs/issue-${issueNumber}-*.log` })
     ].filter(Boolean).join('\n');
     
     await github.addComment(issueNumber, errorDetails);
@@ -298,7 +304,7 @@ async function processComment(issue, comment) {
     commentId: comment.id,
     commentAuthor: comment.author.login 
   });
-  console.log(`\nIssue #${issueNumber} のコメント処理開始`);
+  console.log(`\n${i18n.t('comment.processing', { number: issueNumber })}`);
 
   try {
     // awaiting-responseを削除、processingラベルを追加
@@ -395,7 +401,7 @@ async function checkComments() {
         
         if (!processed.has(commentId) && shouldProcessComment(issue, comment)) {
           // 処理対象のコメントを発見
-          console.log(`新規コメントを検出: Issue #${issue.number}, Comment: ${commentId}`);
+          console.log(i18n.t('comment.newFound', { number: issue.number, commentId }));
           
           // 処理済みとして記録
           if (!processedComments.has(issue.number)) {
@@ -507,7 +513,7 @@ async function checkCompletedTasks() {
       // GitHubコメント投稿
       const issueNumber = result.taskInfo.issueNumber;
       if (issueNumber && result.success) {
-        const comment = `## 実行完了\n\n${result.output}`;
+        const comment = `## ${i18n.t('labels.execution.completed')}\n\n${result.output}`;
         await github.addComment(issueNumber, comment);
         
         // ラベル更新
@@ -562,7 +568,7 @@ async function checkCompletedTasks() {
         }
       } else if (issueNumber && !result.success) {
         // エラー時の処理
-        const errorComment = `## エラーが発生しました\n\n\`\`\`\n${result.error}\n\`\`\`\n\n詳細なログは確認してください。`;
+        const errorComment = `## ${i18n.t('labels.execution.error')}\n\n\`\`\`\n${result.error}\n\`\`\`\n\n${i18n.t('errors.detailedLog', { logPath: 'logs/*.log' })}`;
         await github.addComment(issueNumber, errorComment);
         await github.removeLabels(issueNumber, ['processing']);
         
@@ -578,7 +584,7 @@ async function checkCompletedTasks() {
  * メインループ
  */
 async function mainLoop() {
-  console.log('PoppoBuilder 最小限実装 起動');
+  console.log(i18n.t('system.starting'));
   
   // 設定階層情報を表示
   configLoader.displayConfigHierarchy();
@@ -586,12 +592,12 @@ async function mainLoop() {
   console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
   
   // 独立プロセス方式の状態表示
-  console.log('🔄 独立プロセス方式: 有効（PoppoBuilder再起動時もタスクが継続）');
+  console.log(i18n.t('system.independentProcess.enabled'));
   
   if (config.dynamicTimeout?.enabled) {
-    console.log('✅ 動的タイムアウト機能: 有効');
+    console.log(i18n.t('system.dynamicTimeout.enabled'));
   } else {
-    console.log('❌ 動的タイムアウト機能: 無効（固定24時間タイムアウト使用）');
+    console.log(i18n.t('system.dynamicTimeout.disabled'));
   }
   
   // レート制限の初期チェック
@@ -609,16 +615,16 @@ async function mainLoop() {
       }
 
       // Issue取得
-      console.log('Issueをチェック中...');
+      console.log(i18n.t('system.checkingIssues'));
       const issues = await github.listIssues({ state: 'open' });
       
       // 処理対象のIssueを抽出
       const targetIssues = issues.filter(shouldProcessIssue);
       
       if (targetIssues.length === 0) {
-        console.log('処理対象のIssueはありません');
+        console.log(i18n.t('issue.noTarget'));
       } else {
-        console.log(`${targetIssues.length}件のIssueが見つかりました`);
+        console.log(i18n.t('issue.found', { count: targetIssues.length }));
         
         // 古い順に処理
         targetIssues.sort((a, b) => 
@@ -634,7 +640,7 @@ async function mainLoop() {
               issueNumber: issue.number,
               labels: issue.labels.map(l => l.name)
             });
-            console.log(`📋 Issue #${issue.number} をキューに追加 (タスクID: ${taskId})`);
+            console.log(`📋 ${i18n.t('issue.addedToQueue', { number: issue.number, taskId })}`);
           } catch (error) {
             console.error(`Issue #${issue.number} のキュー追加エラー:`, error.message);
           }
@@ -653,8 +659,8 @@ async function mainLoop() {
       // キューの状態を表示
       const queueStatus = taskQueue.getStatus();
       if (queueStatus.queued > 0 || queueStatus.running > 0) {
-        console.log(`📊 キュー状態: 実行中=${queueStatus.running}, 待機中=${queueStatus.queued}`);
-        console.log(`   優先度別: ${JSON.stringify(queueStatus.queuesByPriority)}`);
+        console.log(`📊 ${i18n.t('queue.status', { running: queueStatus.running, queued: queueStatus.queued })}`);
+        console.log(`   ${i18n.t('queue.priority', { priorities: JSON.stringify(queueStatus.queuesByPriority) })}`);
       }
 
     } catch (error) {
@@ -662,14 +668,14 @@ async function mainLoop() {
     }
 
     // ポーリング間隔待機
-    console.log(`\n${config.polling.interval / 1000}秒後に再チェック...`);
+    console.log(`\n${i18n.t('system.waitingNext', { seconds: config.polling.interval / 1000 })}`);
     await new Promise(resolve => setTimeout(resolve, config.polling.interval));
   }
 }
 
 // プロセス終了時のクリーンアップ
 process.on('SIGINT', () => {
-  console.log('\n\n終了します...');
+  console.log(`\n\n${i18n.t('system.shutdown')}`);
   processManager.killAll();
   dashboardServer.stop();
   process.exit(0);

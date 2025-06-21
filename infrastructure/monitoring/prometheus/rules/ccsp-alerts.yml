@@ -1,0 +1,274 @@
+groups:
+  # CCSP サービス関連アラート
+  - name: ccsp.service
+    rules:
+      # CCSPサービス停止
+      - alert: CCSPServiceDown
+        expr: up{job="ccsp-agent"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: ccsp-agent
+          category: service
+        annotations:
+          summary: "CCSP Agent service is down"
+          description: "CCSP Agent has been down for more than 1 minute"
+          runbook_url: "https://docs.example.com/runbooks/ccsp-service-down"
+
+      # CCSPセッションタイムアウト
+      - alert: CCSPSessionTimeout
+        expr: ccsp_session_status == 0
+        for: 0s
+        labels:
+          severity: critical
+          component: ccsp-session
+          category: auth
+        annotations:
+          summary: "CCSP Claude session timeout detected"
+          description: "Claude CLI session has timed out and requires manual login"
+          runbook_url: "https://docs.example.com/runbooks/claude-session-timeout"
+
+      # CCSPダッシュボード応答なし
+      - alert: CCSPDashboardUnresponsive
+        expr: up{job="ccsp-dashboard"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: ccsp-dashboard
+          category: service
+        annotations:
+          summary: "CCSP Dashboard is unresponsive"
+          description: "CCSP Dashboard has been unresponsive for more than 2 minutes"
+
+  # リソース使用量アラート
+  - name: ccsp.resources
+    rules:
+      # 高メモリ使用率
+      - alert: CCSPHighMemoryUsage
+        expr: (ccsp_memory_usage_bytes{type="rss"} / (1024*1024*1024)) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          component: ccsp-agent
+          category: resource
+        annotations:
+          summary: "CCSP Agent high memory usage"
+          description: "CCSP Agent memory usage is {{ $value }}GB (threshold: 1.5GB)"
+
+      # 極高メモリ使用率
+      - alert: CCSPCriticalMemoryUsage
+        expr: (ccsp_memory_usage_bytes{type="rss"} / (1024*1024*1024)) > 2.0
+        for: 2m
+        labels:
+          severity: critical
+          component: ccsp-agent
+          category: resource
+        annotations:
+          summary: "CCSP Agent critical memory usage"
+          description: "CCSP Agent memory usage is {{ $value }}GB (critical threshold: 2.0GB)"
+
+      # 高CPU使用率
+      - alert: CCSPHighCPUUsage
+        expr: rate(ccsp_process_cpu_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          component: ccsp-agent
+          category: resource
+        annotations:
+          summary: "CCSP Agent high CPU usage"
+          description: "CCSP Agent CPU usage is {{ $value }}% for more than 10 minutes"
+
+      # ディスク容量不足
+      - alert: CCSPLowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/opt/poppo-builder-suite"} / node_filesystem_size_bytes{mountpoint="/opt/poppo-builder-suite"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+          category: storage
+        annotations:
+          summary: "Low disk space on CCSP installation directory"
+          description: "Available disk space is {{ $value }}% (threshold: 20%)"
+
+  # キューとパフォーマンス
+  - name: ccsp.performance
+    rules:
+      # 大きなキューサイズ
+      - alert: CCSPLargeQueueSize
+        expr: sum(ccsp_queue_size) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: ccsp-queue
+          category: performance
+        annotations:
+          summary: "CCSP queue size is large"
+          description: "Total queue size is {{ $value }} items (threshold: 100)"
+
+      # 極大キューサイズ
+      - alert: CCSPCriticalQueueSize
+        expr: sum(ccsp_queue_size) > 500
+        for: 1m
+        labels:
+          severity: critical
+          component: ccsp-queue
+          category: performance
+        annotations:
+          summary: "CCSP queue size is critically large"
+          description: "Total queue size is {{ $value }} items (critical threshold: 500)"
+
+      # 高いリクエスト処理時間
+      - alert: CCSPSlowRequestProcessing
+        expr: histogram_quantile(0.95, rate(ccsp_request_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: ccsp-agent
+          category: performance
+        annotations:
+          summary: "CCSP request processing is slow"
+          description: "95th percentile request duration is {{ $value }}s (threshold: 30s)"
+
+      # キュー待機時間が長い
+      - alert: CCSPLongQueueWaitTime
+        expr: histogram_quantile(0.95, rate(ccsp_queue_wait_time_seconds_bucket[5m])) > 60
+        for: 3m
+        labels:
+          severity: warning
+          component: ccsp-queue
+          category: performance
+        annotations:
+          summary: "CCSP queue wait time is long"
+          description: "95th percentile queue wait time is {{ $value }}s (threshold: 60s)"
+
+  # エラー率とレート制限
+  - name: ccsp.errors
+    rules:
+      # 高エラー率
+      - alert: CCSPHighErrorRate
+        expr: (rate(ccsp_errors_total[5m]) / rate(ccsp_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: ccsp-agent
+          category: error
+        annotations:
+          summary: "CCSP high error rate"
+          description: "Error rate is {{ $value }}% (threshold: 5%)"
+
+      # 極高エラー率
+      - alert: CCSPCriticalErrorRate
+        expr: (rate(ccsp_errors_total[5m]) / rate(ccsp_requests_total[5m])) * 100 > 20
+        for: 1m
+        labels:
+          severity: critical
+          component: ccsp-agent
+          category: error
+        annotations:
+          summary: "CCSP critical error rate"
+          description: "Error rate is {{ $value }}% (critical threshold: 20%)"
+
+      # レート制限到達
+      - alert: CCSPRateLimitReached
+        expr: increase(ccsp_rate_limit_hits_total[5m]) > 10
+        for: 0s
+        labels:
+          severity: warning
+          component: ccsp-rate-limiter
+          category: limit
+        annotations:
+          summary: "CCSP rate limit reached"
+          description: "Rate limit has been hit {{ $value }} times in the last 5 minutes"
+
+      # セッションタイムアウト頻発
+      - alert: CCSPFrequentSessionTimeouts
+        expr: increase(ccsp_session_timeouts_total[1h]) > 3
+        for: 0s
+        labels:
+          severity: critical
+          component: ccsp-session
+          category: auth
+        annotations:
+          summary: "Frequent CCSP session timeouts"
+          description: "{{ $value }} session timeouts occurred in the last hour"
+
+  # ヘルスとアップタイム
+  - name: ccsp.health
+    rules:
+      # 低ヘルススコア
+      - alert: CCSPLowHealthScore
+        expr: ccsp_health_score < 70
+        for: 5m
+        labels:
+          severity: warning
+          component: ccsp-agent
+          category: health
+        annotations:
+          summary: "CCSP health score is low"
+          description: "Health score is {{ $value }} (threshold: 70)"
+
+      # 極低ヘルススコア
+      - alert: CCSPCriticalHealthScore
+        expr: ccsp_health_score < 50
+        for: 2m
+        labels:
+          severity: critical
+          component: ccsp-agent
+          category: health
+        annotations:
+          summary: "CCSP health score is critically low"
+          description: "Health score is {{ $value }} (critical threshold: 50)"
+
+      # 短いアップタイム（再起動検出）
+      - alert: CCSPServiceRestarted
+        expr: ccsp_uptime_seconds < 300
+        for: 0s
+        labels:
+          severity: info
+          component: ccsp-agent
+          category: lifecycle
+        annotations:
+          summary: "CCSP service was restarted"
+          description: "CCSP uptime is {{ $value }}s, indicating a recent restart"
+
+  # システムレベルアラート
+  - name: ccsp.system
+    rules:
+      # システム高負荷
+      - alert: CCSPSystemHighLoad
+        expr: ccsp_system_load_average{period="5m"} > 2.0
+        for: 10m
+        labels:
+          severity: warning
+          component: system
+          category: load
+        annotations:
+          summary: "System load is high"
+          description: "5-minute load average is {{ $value }} (threshold: 2.0)"
+
+      # Redis接続問題
+      - alert: CCSPRedisConnectionIssue
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: redis
+          category: storage
+        annotations:
+          summary: "Redis connection issue"
+          description: "Redis server is not responding"
+
+  # デッドマンスイッチ（監視システム自体の問題検出）
+  - name: ccsp.deadman
+    rules:
+      - alert: CCSPDeadManSwitch
+        expr: vector(1)
+        for: 0s
+        labels:
+          severity: info
+          component: monitoring
+          category: deadman
+        annotations:
+          summary: "CCSP monitoring system is alive"
+          description: "This alert should always be firing to indicate monitoring system health"

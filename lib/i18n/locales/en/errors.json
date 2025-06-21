@@ -1,0 +1,32 @@
+{
+  "general": {
+    "unknown": "An unknown error occurred",
+    "timeout": "Operation timed out",
+    "notFound": "Not found",
+    "forbidden": "Forbidden",
+    "unauthorized": "Unauthorized"
+  },
+  "process": {
+    "cannotExecute": "Cannot execute: rate limited or max concurrent reached",
+    "exitCode": "Process exited with code {{code}}: {{message}}"
+  },
+  "github": {
+    "rateLimit": "GitHub API rate limit exceeded",
+    "notFound": "GitHub resource not found",
+    "unauthorized": "GitHub authentication failed"
+  },
+  "claude": {
+    "rateLimit": "Claude API rate limit exceeded",
+    "timeout": "Claude execution timeout",
+    "invalidApiKey": "Invalid Claude API key"
+  },
+  "config": {
+    "notFound": "Configuration file not found",
+    "invalid": "Invalid configuration format",
+    "missingRequired": "Missing required configuration: {{field}}"
+  },
+  "agent": {
+    "notEnabled": "Agent mode is not enabled",
+    "taskTypeMissing": "No suitable task type found"
+  }
+}

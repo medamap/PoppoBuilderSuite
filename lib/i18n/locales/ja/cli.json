@@ -1,0 +1,70 @@
+{
+  "commands": {
+    "init": {
+      "description": "現在のディレクトリでPoppoBuilderを初期化",
+      "alreadyExists": "このディレクトリにはすでにPoppoBuilderが初期化されています",
+      "creating": "PoppoBuilder設定を作成しています...",
+      "githubToken": "GitHubトークンを入力してください:",
+      "repoOwner": "リポジトリオーナーを入力してください:",
+      "repoName": "リポジトリ名を入力してください:",
+      "language": "言語を選択してください:",
+      "success": "✅ PoppoBuilderの初期化が完了しました！",
+      "nextSteps": "次のステップ:",
+      "nextStep1": "1. .poppo/config.jsonで設定を調整してください",
+      "nextStep2": "2. 'poppobuilder start'を実行してIssue処理を開始してください"
+    },
+    "start": {
+      "description": "PoppoBuilderを起動",
+      "starting": "PoppoBuilderを起動しています...",
+      "alreadyRunning": "PoppoBuilderはすでに起動しています (PID: {{pid}})"
+    },
+    "stop": {
+      "description": "PoppoBuilderを停止",
+      "stopping": "PoppoBuilderを停止しています...",
+      "stopped": "PoppoBuilderが停止しました",
+      "notRunning": "PoppoBuilderは起動していません"
+    },
+    "status": {
+      "description": "PoppoBuilderのステータスを表示",
+      "running": "PoppoBuilderは起動しています (PID: {{pid}})",
+      "notRunning": "PoppoBuilderは起動していません",
+      "uptime": "稼働時間: {{uptime}}",
+      "processedIssues": "処理済みIssue: {{count}}件",
+      "runningTasks": "実行中タスク: {{count}}件"
+    },
+    "config": {
+      "description": "PoppoBuilderの設定を管理",
+      "show": "現在の設定を表示",
+      "set": "{{key}}を{{value}}に設定",
+      "get": "{{key}}: {{value}}"
+    },
+    "logs": {
+      "description": "PoppoBuilderのログを表示",
+      "follow": "ログを追跡中 (Ctrl+Cで停止)...",
+      "noLogs": "ログが見つかりません"
+    },
+    "doctor": {
+      "description": "PoppoBuilderのセットアップと依存関係をチェック",
+      "checking": "PoppoBuilderのセットアップをチェック中...",
+      "nodeVersion": "Node.jsバージョン: {{version}}",
+      "githubAuth": "GitHub認証: {{status}}",
+      "claudeCli": "Claude CLI: {{status}}",
+      "configFile": "設定ファイル: {{status}}"
+    },
+    "upgrade": {
+      "description": "PoppoBuilderを最新バージョンにアップグレード",
+      "checking": "アップデートを確認中...",
+      "current": "現在のバージョン: {{version}}",
+      "latest": "最新バージョン: {{version}}",
+      "upToDate": "PoppoBuilderは最新です",
+      "upgrading": "バージョン{{version}}にアップグレード中..."
+    }
+  },
+  "options": {
+    "daemon": "デーモンとして実行",
+    "verbose": "詳細出力",
+    "config": "設定ファイルのパス",
+    "help": "ヘルプを表示",
+    "version": "バージョンを表示"
+  }
+}

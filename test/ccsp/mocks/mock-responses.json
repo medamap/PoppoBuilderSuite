@@ -1,0 +1,33 @@
+{
+  "default": {
+    "success": true,
+    "output": "Task completed successfully"
+  },
+  "issue_processing": {
+    "success": true,
+    "output": "Issue #123 has been processed. Added implementation for the requested feature."
+  },
+  "code_generation": {
+    "success": true,
+    "output": "Generated code:\n```javascript\nfunction hello() {\n  console.log('Hello, World!');\n}\n```"
+  },
+  "error_analysis": {
+    "success": true,
+    "output": "Error analysis complete. The issue is caused by a missing dependency. Run `npm install express` to fix."
+  },
+  "rate_limit": {
+    "success": false,
+    "error": "Error: Rate limit exceeded. Please wait before making another request.",
+    "exitCode": 1
+  },
+  "session_timeout": {
+    "success": false,
+    "error": "Error: Invalid API key. Please run /login to authenticate.",
+    "exitCode": 1
+  },
+  "network_error": {
+    "success": false,
+    "error": "Error: Network connection failed",
+    "exitCode": 1
+  }
+}

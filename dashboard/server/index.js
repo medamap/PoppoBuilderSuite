@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const LogSearchAPI = require('./api/logs');
 const AnalyticsAPI = require('./api/analytics');
+const i18n = require('../../lib/i18n');
 
 /**
  * PoppoBuilder Process Dashboard Server
@@ -21,8 +22,15 @@ class DashboardServer {
     this.stateManager = processStateManager;
     this.logger = logger;
     
+    // Initialize i18n if not already done
+    if (!i18n.initialized) {
+      i18n.init({ language: i18n.getUserLanguage() }).catch(err => {
+        console.error('Failed to initialize i18n:', err);
+      });
+    }
+    
     if (!this.config.enabled) {
-      this.logger?.info('ダッシュボードは無効化されています');
+      this.logger?.info(i18n.t('dashboard.disabled'));
       return;
     }
     
@@ -117,7 +125,7 @@ class DashboardServer {
    */
   setupWebSocket() {
     this.wss.on('connection', (ws) => {
-      this.logger?.info('WebSocket接続が確立されました');
+      this.logger?.info(i18n.t('dashboard.websocket.connected'));
       
       // 初回接続時に現在の状態を送信
       const currentState = {
@@ -147,12 +155,12 @@ class DashboardServer {
       // 切断時のクリーンアップ
       ws.on('close', () => {
         clearInterval(updateInterval);
-        this.logger?.info('WebSocket接続が切断されました');
+        this.logger?.info(i18n.t('dashboard.websocket.disconnected'));
       });
       
       // エラーハンドリング
       ws.on('error', (error) => {
-        this.logger?.error('WebSocketエラー', error);
+        this.logger?.error(i18n.t('dashboard.websocket.error'), error);
       });
     });
   }
@@ -166,8 +174,9 @@ class DashboardServer {
     }
     
     this.server.listen(this.config.port, this.config.host, () => {
-      this.logger?.info(`ダッシュボードサーバーが起動しました: http://${this.config.host}:${this.config.port}`);
-      console.log(`📊 プロセスダッシュボード: http://${this.config.host}:${this.config.port}`);
+      const url = `http://${this.config.host}:${this.config.port}`;
+      this.logger?.info(i18n.t('dashboard.starting', { url }));
+      console.log(`📊 ${i18n.t('dashboard.started', { url })}`);
     });
   }
 
@@ -177,7 +186,7 @@ class DashboardServer {
   stop() {
     if (this.server) {
       this.server.close(() => {
-        this.logger?.info('ダッシュボードサーバーが停止しました');
+        this.logger?.info(i18n.t('dashboard.stopped'));
       });
     }
   }

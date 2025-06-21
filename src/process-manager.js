@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const ProcessStateManager = require('./process-state-manager');
 const TimeoutController = require('./timeout-controller');
+const i18n = require('../lib/i18n');
 
 /**
  * Claude CLIプロセスの管理
@@ -37,7 +38,7 @@ class ProcessManager {
    */
   async execute(taskId, instruction) {
     if (!await this.canExecute()) {
-      throw new Error('Cannot execute: rate limited or max concurrent reached');
+      throw new Error(i18n.t('errors.process.cannotExecute'));
     }
 
     return new Promise((resolve, reject) => {

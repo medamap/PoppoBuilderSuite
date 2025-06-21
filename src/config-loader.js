@@ -39,7 +39,7 @@ class ConfigLoader {
     // フォールバック用のハードコードされたデフォルト
     return {
       language: {
-        primary: 'ja',
+        primary: 'en',
         fallback: 'en'
       },
       systemPrompt: {

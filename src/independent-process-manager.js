@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const i18n = require('../lib/i18n');
 
 /**
  * 独立プロセス方式のClaude CLI管理
@@ -120,7 +121,7 @@ class IndependentProcessManager {
    */
   async execute(taskId, instruction) {
     if (!await this.canExecute()) {
-      throw new Error('Cannot execute: rate limited or max concurrent reached');
+      throw new Error(i18n.t('errors.process.cannotExecute'));
     }
 
     console.log(`🚀 独立プロセスでタスク ${taskId} を開始`);

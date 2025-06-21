@@ -1,0 +1,70 @@
+{
+  "commands": {
+    "init": {
+      "description": "Initialize PoppoBuilder in the current directory",
+      "alreadyExists": "PoppoBuilder is already initialized in this directory",
+      "creating": "Creating PoppoBuilder configuration...",
+      "githubToken": "Enter your GitHub token:",
+      "repoOwner": "Enter repository owner:",
+      "repoName": "Enter repository name:",
+      "language": "Select language:",
+      "success": "✅ PoppoBuilder initialized successfully!",
+      "nextSteps": "Next steps:",
+      "nextStep1": "1. Configure your settings in .poppo/config.json",
+      "nextStep2": "2. Run 'poppobuilder start' to begin processing issues"
+    },
+    "start": {
+      "description": "Start PoppoBuilder",
+      "starting": "Starting PoppoBuilder...",
+      "alreadyRunning": "PoppoBuilder is already running (PID: {{pid}})"
+    },
+    "stop": {
+      "description": "Stop PoppoBuilder",
+      "stopping": "Stopping PoppoBuilder...",
+      "stopped": "PoppoBuilder stopped",
+      "notRunning": "PoppoBuilder is not running"
+    },
+    "status": {
+      "description": "Show PoppoBuilder status",
+      "running": "PoppoBuilder is running (PID: {{pid}})",
+      "notRunning": "PoppoBuilder is not running",
+      "uptime": "Uptime: {{uptime}}",
+      "processedIssues": "Processed issues: {{count}}",
+      "runningTasks": "Running tasks: {{count}}"
+    },
+    "config": {
+      "description": "Manage PoppoBuilder configuration",
+      "show": "Showing current configuration",
+      "set": "Setting {{key}} to {{value}}",
+      "get": "{{key}}: {{value}}"
+    },
+    "logs": {
+      "description": "View PoppoBuilder logs",
+      "follow": "Following logs (Ctrl+C to stop)...",
+      "noLogs": "No logs found"
+    },
+    "doctor": {
+      "description": "Check PoppoBuilder setup and dependencies",
+      "checking": "Checking PoppoBuilder setup...",
+      "nodeVersion": "Node.js version: {{version}}",
+      "githubAuth": "GitHub authentication: {{status}}",
+      "claudeCli": "Claude CLI: {{status}}",
+      "configFile": "Configuration file: {{status}}"
+    },
+    "upgrade": {
+      "description": "Upgrade PoppoBuilder to the latest version",
+      "checking": "Checking for updates...",
+      "current": "Current version: {{version}}",
+      "latest": "Latest version: {{version}}",
+      "upToDate": "PoppoBuilder is up to date",
+      "upgrading": "Upgrading to version {{version}}..."
+    }
+  },
+  "options": {
+    "daemon": "Run as daemon",
+    "verbose": "Verbose output",
+    "config": "Path to configuration file",
+    "help": "Show help",
+    "version": "Show version"
+  }
+}
