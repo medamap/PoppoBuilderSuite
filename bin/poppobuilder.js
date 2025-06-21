@@ -34,6 +34,15 @@ program
   .description('Initialize PoppoBuilder for this project')
   .option('-f, --force', 'overwrite existing configuration')
   .option('-l, --lang <language>', 'primary language (en/ja)', 'en')
+  .option('-d, --dir <directory>', 'project directory to initialize')
+  .option('--description <desc>', 'project description')
+  .option('--priority <priority>', 'project priority (0-100)', '50')
+  .option('--tags <tags>', 'comma-separated project tags')
+  .option('--check-interval <ms>', 'check interval in milliseconds')
+  .option('--max-concurrent <num>', 'maximum concurrent tasks')
+  .option('--cpu-weight <weight>', 'CPU weight for resource allocation')
+  .option('--memory-limit <limit>', 'memory limit (e.g., 512M, 2G)')
+  .option('--disabled', 'register project as disabled')
   .option('--no-agents', 'disable agent features')
   .option('--no-interactive', 'skip interactive setup')
   .action(async (options) => {
@@ -97,15 +106,28 @@ program
 
 // config コマンド - 設定管理
 program
-  .command('config [action]')
+  .command('config [action] [args...]')
   .description('Manage PoppoBuilder configuration')
   .option('-g, --global', 'use global config')
   .option('-l, --list', 'list all settings')
   .option('-e, --edit', 'open config in editor')
-  .action(async (action, options) => {
+  .option('--max-processes <n>', 'set maximum concurrent processes')
+  .option('--strategy <strategy>', 'set scheduling strategy (round-robin, priority, weighted)')
+  .allowUnknownOption()
+  .action(async (action, args, options) => {
     try {
       const configCommand = new ConfigCommand();
-      await configCommand.execute(action, options);
+      
+      // Handle special option flags
+      if (options.maxProcesses) {
+        await configCommand.execute('--max-processes', [options.maxProcesses]);
+      } else if (options.strategy) {
+        await configCommand.execute('--strategy', [options.strategy]);
+      } else if (options.list) {
+        await configCommand.execute('--list', []);
+      } else {
+        await configCommand.execute(action, args);
+      }
     } catch (error) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
@@ -135,21 +157,49 @@ program
   });
 
 // daemon コマンド - デーモン管理
+const DaemonCommand = require('../lib/commands/daemon');
 program
   .command('daemon <action>')
-  .description('Manage PoppoBuilder daemon')
-  .action(async (action) => {
+  .description('Manage PoppoBuilder daemon (start|stop|restart|status|reload|logs)')
+  .option('-j, --json', 'output as JSON')
+  .option('-v, --verbose', 'verbose output')
+  .option('--detach', 'run daemon in detached mode', true)
+  .option('--no-detach', 'run daemon in foreground')
+  .action(async (action, options) => {
     try {
-      // Spawn the daemon command
-      const { spawn } = require('child_process');
-      const daemonPath = path.join(__dirname, '..', 'lib', 'commands', 'daemon.js');
-      const child = spawn('node', [daemonPath, action], {
-        stdio: 'inherit'
-      });
-      
-      child.on('exit', (code) => {
-        process.exit(code);
-      });
+      const daemonCommand = new DaemonCommand();
+      await daemonCommand.execute(action, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      if (options.verbose) {
+        console.error(error.stack);
+      }
+      process.exit(1);
+    }
+  });
+
+// project コマンド - プロジェクト管理
+program.addCommand(require('../lib/commands/project')());
+
+// list コマンド - プロジェクト一覧
+const ListCommand = require('../lib/commands/list');
+program
+  .command('list')
+  .alias('ls')
+  .description('List all registered PoppoBuilder projects')
+  .option('--enabled', 'show only enabled projects')
+  .option('--disabled', 'show only disabled projects')
+  .option('--tag <tag>', 'filter by tag')
+  .option('--sort <field>', 'sort by field (name|priority|path|created|updated|activity)', 'name')
+  .option('--table', 'display as table')
+  .option('--json', 'output as JSON')
+  .option('--status', 'include runtime status information')
+  .option('-v, --verbose', 'show detailed information')
+  .option('-q, --quiet', 'minimal output')
+  .action(async (options) => {
+    try {
+      const listCommand = new ListCommand();
+      await listCommand.execute(options);
     } catch (error) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
@@ -157,22 +207,32 @@ program
   });
 
 // logs コマンド - ログ表示
-program
-  .command('logs')
-  .description('Show PoppoBuilder logs')
-  .option('-f, --follow', 'follow log output')
-  .option('-n, --lines <number>', 'number of lines to show', '50')
-  .option('--since <time>', 'show logs since timestamp')
-  .option('--level <level>', 'filter by log level')
-  .action(async (options) => {
-    try {
-      const { showLogs } = require('../lib/commands/logs');
-      await showLogs(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
+const LogsCommand = require('../lib/commands/logs');
+const logsCommandDef = LogsCommand.getCommandDefinition();
+const logsCommand = program
+  .command(logsCommandDef.command)
+  .description(logsCommandDef.description);
+
+// Add all options from command definition
+logsCommandDef.options.forEach(option => {
+  logsCommand.option(...option);
+});
+
+logsCommand.action(logsCommandDef.action);
+
+// monitor コマンド - システム監視
+const MonitorCommand = require('../lib/commands/monitor');
+const monitorCommandDef = MonitorCommand.getCommandDefinition();
+const monitorCommand = program
+  .command(monitorCommandDef.command)
+  .description(monitorCommandDef.description);
+
+// Add all options from command definition
+monitorCommandDef.options.forEach(option => {
+  monitorCommand.option(...option);
+});
+
+monitorCommand.action(monitorCommandDef.action);
 
 // doctor コマンド - 診断
 program
@@ -226,6 +286,12 @@ program.on('--help', () => {
   console.log('  $ poppobuilder global-config init      # Initialize global config');
   console.log('  $ poppobuilder daemon start            # Start daemon process');
   console.log('  $ poppobuilder daemon status           # Check daemon status');
+  console.log('  $ poppobuilder project register ./     # Register current directory as project');
+  console.log('  $ poppobuilder project list            # List all registered projects');
+  console.log('  $ poppobuilder project show <id>       # Show project details');
+  console.log('  $ poppobuilder list                    # List projects (default view)');
+  console.log('  $ poppobuilder ls --table --verbose    # Detailed table view');
+  console.log('  $ poppobuilder list --enabled --sort priority  # Enabled projects by priority');
   console.log('');
   console.log('For more information, visit:');
   console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));

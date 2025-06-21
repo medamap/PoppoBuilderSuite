@@ -40,6 +40,10 @@ PoppoBuilderのDogfooding機能により実装されたIssueの履歴です。
 ### グローバル機能実装
 - [Issue #149: Global Configuration Management System](issue-149-global-config.md) - グローバル設定管理
 - [Issue #151: Daemon Process Foundation](issue-151-daemon-process.md) - デーモンプロセス基盤
+- [Issue #150: Project Registry Implementation](issue-150-project-registry.md) - プロジェクトレジストリ
+- [Issue #152: initコマンドの実装](issue-152-init-command.md) - 初期化コマンド強化
+- [Issue #153: list（ls）コマンドの実装](issue-153-list-command.md) - プロジェクト一覧表示
+- [Issue #160: Daemon API Server Implementation](issue-160-daemon-api-server.md) - デーモンAPIサーバー
 
 ## 📈 実装統計
 
@@ -49,12 +53,12 @@ PoppoBuilderのDogfooding機能により実装されたIssueの履歴です。
 - **エラー処理**: 4 Issues
 - **運用機能**: 5 Issues
 - **ドキュメント**: 4 Issues
-- **グローバル機能**: 2 Issues
+- **グローバル機能**: 6 Issues
 
 ### 実装期間
 - **開始**: 2025年6月16日
 - **最新**: 2025年6月21日
-- **総Issue数**: 25+ Issues
+- **総Issue数**: 29+ Issues
 
 ## 🔍 詳細を見る
 
