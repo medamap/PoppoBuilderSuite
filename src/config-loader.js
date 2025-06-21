@@ -7,13 +7,13 @@ const path = require('path');
  * 設定の優先順位:
  * 1. 環境変数 (POPPO_*)
  * 2. プロジェクト設定 (.poppo/config.json)
- * 3. グローバル設定 (~/.poppo/config.json)
+ * 3. グローバル設定 (~/.poppobuilder/config.json)
  * 4. システムデフォルト (config/defaults.json)
  */
 class ConfigLoader {
   constructor() {
     this.projectConfigPath = path.join(process.cwd(), '.poppo', 'config.json');
-    this.globalConfigPath = path.join(require('os').homedir(), '.poppo', 'config.json');
+    this.globalConfigPath = path.join(require('os').homedir(), '.poppobuilder', 'config.json');
     this.systemDefaultPath = path.join(__dirname, '../config/defaults.json');
     
     // システムデフォルト設定を読み込み

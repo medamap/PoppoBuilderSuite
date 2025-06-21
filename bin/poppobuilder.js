@@ -112,6 +112,28 @@ program
     }
   });
 
+// global-config コマンド - グローバル設定管理
+program
+  .command('global-config <action> [args...]')
+  .description('Manage PoppoBuilder global configuration')
+  .action(async (action, args) => {
+    try {
+      // Spawn the global-config command
+      const { spawn } = require('child_process');
+      const globalConfigPath = path.join(__dirname, '..', 'lib', 'commands', 'global-config.js');
+      const child = spawn('node', [globalConfigPath, action, ...args], {
+        stdio: 'inherit'
+      });
+      
+      child.on('exit', (code) => {
+        process.exit(code);
+      });
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
 // logs コマンド - ログ表示
 program
   .command('logs')
@@ -178,6 +200,8 @@ program.on('--help', () => {
   console.log('  $ poppobuilder status                  # Check service status');
   console.log('  $ poppobuilder logs -f                 # Follow logs in real-time');
   console.log('  $ poppobuilder config --list           # Show all configuration');
+  console.log('  $ poppobuilder global-config show      # Show global configuration');
+  console.log('  $ poppobuilder global-config init      # Initialize global config');
   console.log('');
   console.log('For more information, visit:');
   console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));

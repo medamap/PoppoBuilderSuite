@@ -58,6 +58,49 @@
       "latest": "最新バージョン: {{version}}",
       "upToDate": "PoppoBuilderは最新です",
       "upgrading": "バージョン{{version}}にアップグレード中..."
+    },
+    "globalConfig": {
+      "description": "PoppoBuilderグローバル設定を管理",
+      "show": {
+        "description": "グローバル設定を表示",
+        "title": "グローバル設定",
+        "notFound": "設定パス '{{path}}' が見つかりません"
+      },
+      "set": {
+        "description": "設定値を変更",
+        "success": "{{path}} = {{value}} に設定しました"
+      },
+      "reset": {
+        "description": "設定をデフォルトにリセット",
+        "skipConfirmation": "確認プロンプトをスキップ",
+        "confirm": "すべてのグローバル設定をリセットしてもよろしいですか？",
+        "success": "設定をデフォルトにリセットしました"
+      },
+      "path": {
+        "description": "設定ファイルのパスを表示",
+        "title": "設定パス"
+      },
+      "export": {
+        "description": "設定をファイルにエクスポート",
+        "success": "設定を {{file}} にエクスポートしました"
+      },
+      "import": {
+        "description": "ファイルから設定をインポート",
+        "success": "{{file}} から設定をインポートしました"
+      },
+      "validate": {
+        "description": "設定を検証",
+        "valid": "設定は有効です",
+        "invalid": "設定が無効です:"
+      },
+      "init": {
+        "description": "グローバル設定を初期化",
+        "exists": "グローバル設定はすでに存在します",
+        "success": "グローバル設定を {{path}} に作成しました"
+      }
+    },
+    "common": {
+      "cancelled": "操作がキャンセルされました"
     }
   },
   "options": {
@@ -66,5 +109,8 @@
     "config": "設定ファイルのパス",
     "help": "ヘルプを表示",
     "version": "バージョンを表示"
+  },
+  "errors": {
+    "commandFailed": "コマンドが失敗しました:"
   }
 }

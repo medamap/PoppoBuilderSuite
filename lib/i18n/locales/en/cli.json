@@ -58,6 +58,49 @@
       "latest": "Latest version: {{version}}",
       "upToDate": "PoppoBuilder is up to date",
       "upgrading": "Upgrading to version {{version}}..."
+    },
+    "globalConfig": {
+      "description": "Manage PoppoBuilder global configuration",
+      "show": {
+        "description": "Show global configuration",
+        "title": "Global Configuration",
+        "notFound": "Configuration path '{{path}}' not found"
+      },
+      "set": {
+        "description": "Set a configuration value",
+        "success": "Set {{path}} = {{value}}"
+      },
+      "reset": {
+        "description": "Reset configuration to defaults",
+        "skipConfirmation": "Skip confirmation prompt",
+        "confirm": "Are you sure you want to reset all global configuration?",
+        "success": "Configuration reset to defaults"
+      },
+      "path": {
+        "description": "Show configuration file paths",
+        "title": "Configuration Paths"
+      },
+      "export": {
+        "description": "Export configuration to file",
+        "success": "Configuration exported to {{file}}"
+      },
+      "import": {
+        "description": "Import configuration from file",
+        "success": "Configuration imported from {{file}}"
+      },
+      "validate": {
+        "description": "Validate configuration",
+        "valid": "Configuration is valid",
+        "invalid": "Configuration is invalid:"
+      },
+      "init": {
+        "description": "Initialize global configuration",
+        "exists": "Global configuration already exists",
+        "success": "Global configuration created at {{path}}"
+      }
+    },
+    "common": {
+      "cancelled": "Operation cancelled"
     }
   },
   "options": {
@@ -66,5 +109,8 @@
     "config": "Path to configuration file",
     "help": "Show help",
     "version": "Show version"
+  },
+  "errors": {
+    "commandFailed": "Command failed:"
   }
 }

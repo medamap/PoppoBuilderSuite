@@ -1,17 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="PoppoBuilder Notification Tests" tests="6" failures="0" errors="0" time="0.209">
-  <testsuite name="i18n internationalization" errors="0" failures="0" skipped="0" timestamp="2025-06-21T06:05:56" time="0.178" tests="6">
-    <testcase classname="i18n internationalization" name="should initialize with English by default" time="0.005">
-    </testcase>
-    <testcase classname="i18n internationalization" name="should translate English strings" time="0.003">
-    </testcase>
-    <testcase classname="i18n internationalization" name="should translate Japanese strings" time="0.002">
-    </testcase>
-    <testcase classname="i18n internationalization" name="should handle interpolation" time="0.001">
-    </testcase>
-    <testcase classname="i18n internationalization" name="should fall back to key if not initialized" time="0.008">
-    </testcase>
-    <testcase classname="i18n internationalization" name="should change language dynamically" time="0.002">
-    </testcase>
-  </testsuite>
+<testsuites name="PoppoBuilder Notification Tests" tests="0" failures="0" errors="0" time="0.285">
 </testsuites>
