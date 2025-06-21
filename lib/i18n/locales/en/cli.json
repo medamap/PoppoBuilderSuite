@@ -101,6 +101,40 @@
     },
     "common": {
       "cancelled": "Operation cancelled"
+    },
+    "daemon": {
+      "description": "Manage PoppoBuilder daemon process",
+      "start": {
+        "description": "Start the daemon",
+        "foreground": "Run in foreground (don't detach)",
+        "starting": "Starting PoppoBuilder daemon..."
+      },
+      "stop": {
+        "description": "Stop the daemon",
+        "notRunning": "Daemon is not running",
+        "stopping": "Stopping daemon (PID: {{pid}})...",
+        "stopped": "Daemon stopped",
+        "timeout": "Timeout waiting for daemon to stop",
+        "error": "Error stopping daemon:"
+      },
+      "restart": {
+        "description": "Restart the daemon",
+        "stopping": "Stopping daemon...",
+        "started": "Daemon restarted"
+      },
+      "status": {
+        "description": "Show daemon status",
+        "json": "Output as JSON",
+        "running": "Daemon is running (PID: {{pid}})",
+        "notRunning": "Daemon is not running",
+        "workers": "Workers:"
+      },
+      "reload": {
+        "description": "Reload daemon configuration",
+        "notRunning": "Daemon is not running",
+        "sent": "Reload signal sent",
+        "error": "Error sending reload signal:"
+      }
     }
   },
   "options": {

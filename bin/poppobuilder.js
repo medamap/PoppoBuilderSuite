@@ -134,6 +134,28 @@ program
     }
   });
 
+// daemon コマンド - デーモン管理
+program
+  .command('daemon <action>')
+  .description('Manage PoppoBuilder daemon')
+  .action(async (action) => {
+    try {
+      // Spawn the daemon command
+      const { spawn } = require('child_process');
+      const daemonPath = path.join(__dirname, '..', 'lib', 'commands', 'daemon.js');
+      const child = spawn('node', [daemonPath, action], {
+        stdio: 'inherit'
+      });
+      
+      child.on('exit', (code) => {
+        process.exit(code);
+      });
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
 // logs コマンド - ログ表示
 program
   .command('logs')
@@ -202,6 +224,8 @@ program.on('--help', () => {
   console.log('  $ poppobuilder config --list           # Show all configuration');
   console.log('  $ poppobuilder global-config show      # Show global configuration');
   console.log('  $ poppobuilder global-config init      # Initialize global config');
+  console.log('  $ poppobuilder daemon start            # Start daemon process');
+  console.log('  $ poppobuilder daemon status           # Check daemon status');
   console.log('');
   console.log('For more information, visit:');
   console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));

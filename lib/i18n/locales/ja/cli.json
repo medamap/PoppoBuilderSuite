@@ -101,6 +101,40 @@
     },
     "common": {
       "cancelled": "操作がキャンセルされました"
+    },
+    "daemon": {
+      "description": "PoppoBuilderデーモンプロセスを管理",
+      "start": {
+        "description": "デーモンを起動",
+        "foreground": "フォアグラウンドで実行（デタッチしない）",
+        "starting": "PoppoBuilderデーモンを起動しています..."
+      },
+      "stop": {
+        "description": "デーモンを停止",
+        "notRunning": "デーモンは起動していません",
+        "stopping": "デーモンを停止しています (PID: {{pid}})...",
+        "stopped": "デーモンが停止しました",
+        "timeout": "デーモンの停止がタイムアウトしました",
+        "error": "デーモン停止エラー:"
+      },
+      "restart": {
+        "description": "デーモンを再起動",
+        "stopping": "デーモンを停止しています...",
+        "started": "デーモンを再起動しました"
+      },
+      "status": {
+        "description": "デーモンの状態を表示",
+        "json": "JSON形式で出力",
+        "running": "デーモンは起動しています (PID: {{pid}})",
+        "notRunning": "デーモンは起動していません",
+        "workers": "ワーカー:"
+      },
+      "reload": {
+        "description": "デーモンの設定を再読み込み",
+        "notRunning": "デーモンは起動していません",
+        "sent": "再読み込みシグナルを送信しました",
+        "error": "再読み込みシグナル送信エラー:"
+      }
     }
   },
   "options": {
