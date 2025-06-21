@@ -35,6 +35,7 @@ program
   .option('-f, --force', 'overwrite existing configuration')
   .option('-l, --lang <language>', 'primary language (en/ja)', 'en')
   .option('-d, --dir <directory>', 'project directory to initialize')
+  .option('-t, --template <template>', 'use a project template (default/minimal/advanced)')
   .option('--description <desc>', 'project description')
   .option('--priority <priority>', 'project priority (0-100)', '50')
   .option('--tags <tags>', 'comma-separated project tags')
@@ -181,6 +182,11 @@ program
 // project コマンド - プロジェクト管理
 program.addCommand(require('../lib/commands/project')());
 
+// template コマンド - テンプレート管理
+const TemplateCommand = require('../lib/commands/template');
+const templateCommand = new TemplateCommand();
+templateCommand.register(program);
+
 // list コマンド - プロジェクト一覧
 const ListCommand = require('../lib/commands/list');
 program
@@ -277,11 +283,14 @@ program.on('--help', () => {
   console.log('Examples:');
   console.log('');
   console.log('  $ poppobuilder init                    # Initialize in current directory');
+  console.log('  $ poppobuilder init --template advanced # Initialize with advanced template');
   console.log('  $ poppobuilder start                   # Start processing issues');
   console.log('  $ poppobuilder start --daemon          # Start as background service');
   console.log('  $ poppobuilder status                  # Check service status');
   console.log('  $ poppobuilder logs -f                 # Follow logs in real-time');
   console.log('  $ poppobuilder config --list           # Show all configuration');
+  console.log('  $ poppobuilder template list           # List available templates');
+  console.log('  $ poppobuilder template create mytemp  # Create custom template');
   console.log('  $ poppobuilder global-config show      # Show global configuration');
   console.log('  $ poppobuilder global-config init      # Initialize global config');
   console.log('  $ poppobuilder daemon start            # Start daemon process');

@@ -135,6 +135,48 @@
         "sent": "再読み込みシグナルを送信しました",
         "error": "再読み込みシグナル送信エラー:"
       }
+    },
+    "template": {
+      "description": "プロジェクトテンプレートを管理",
+      "list": {
+        "description": "利用可能なテンプレートを一覧表示",
+        "jsonOption": "JSON形式で出力",
+        "noTemplates": "テンプレートが見つかりません",
+        "name": "名前",
+        "type": "タイプ",
+        "tags": "タグ",
+        "total": "合計: {{count}}個のテンプレート"
+      },
+      "create": {
+        "description": "カスタムテンプレートを作成",
+        "fromOption": "既存プロジェクトからテンプレートを作成",
+        "interactiveOption": "対話モード",
+        "creating": "テンプレート「{{name}}」を作成中...",
+        "success": "テンプレート「{{name}}」が正常に作成されました！",
+        "location": "場所: {{path}}",
+        "descriptionPrompt": "テンプレートの説明:",
+        "tagsPrompt": "タグ（カンマ区切り）:",
+        "fromProjectPrompt": "既存プロジェクトから作成しますか？",
+        "projectPathPrompt": "プロジェクトパス:"
+      },
+      "delete": {
+        "description": "カスタムテンプレートを削除",
+        "forceOption": "確認をスキップ",
+        "confirmPrompt": "テンプレート「{{name}}」を削除してもよろしいですか？",
+        "cancelled": "削除がキャンセルされました",
+        "deleting": "テンプレート「{{name}}」を削除中...",
+        "success": "テンプレート「{{name}}」が正常に削除されました！"
+      },
+      "info": {
+        "description": "テンプレートの詳細を表示",
+        "title": "テンプレート情報",
+        "name": "名前:",
+        "type": "タイプ:",
+        "version": "バージョン:",
+        "author": "作成者:",
+        "created": "作成日時:",
+        "contents": "テンプレート内容"
+      }
     }
   },
   "options": {

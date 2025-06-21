@@ -28,5 +28,15 @@
   "agent": {
     "notEnabled": "Agent mode is not enabled",
     "taskTypeMissing": "No suitable task type found"
+  },
+  "template": {
+    "listFailed": "Failed to list templates: {{error}}",
+    "createFailed": "Failed to create template: {{error}}",
+    "deleteFailed": "Failed to delete template: {{error}}",
+    "infoFailed": "Failed to show template info: {{error}}",
+    "notFound": "Template \"{{name}}\" not found",
+    "alreadyExists": "Template \"{{name}}\" already exists",
+    "cannotDeleteSystem": "Cannot delete system template",
+    "cannotReadContents": "Cannot read template contents"
   }
 }

@@ -1,0 +1,10 @@
+{
+  "name": "minimal",
+  "description": "最小構成のPoppoBuilderテンプレート",
+  "version": "1.0.0",
+  "author": "PoppoBuilder Team",
+  "tags": [
+    "minimal",
+    "lightweight"
+  ]
+}

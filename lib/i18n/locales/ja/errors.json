@@ -28,5 +28,15 @@
   "agent": {
     "notEnabled": "エージェントモードが有効ではありません",
     "taskTypeMissing": "適切なタスクタイプが見つかりません"
+  },
+  "template": {
+    "listFailed": "テンプレートの一覧表示に失敗しました: {{error}}",
+    "createFailed": "テンプレートの作成に失敗しました: {{error}}",
+    "deleteFailed": "テンプレートの削除に失敗しました: {{error}}",
+    "infoFailed": "テンプレート情報の表示に失敗しました: {{error}}",
+    "notFound": "テンプレート「{{name}}」が見つかりません",
+    "alreadyExists": "テンプレート「{{name}}」は既に存在します",
+    "cannotDeleteSystem": "システムテンプレートは削除できません",
+    "cannotReadContents": "テンプレート内容を読み込めません"
   }
 }

@@ -135,6 +135,48 @@
         "sent": "Reload signal sent",
         "error": "Error sending reload signal:"
       }
+    },
+    "template": {
+      "description": "Manage project templates",
+      "list": {
+        "description": "List available templates",
+        "jsonOption": "Output in JSON format",
+        "noTemplates": "No templates found",
+        "name": "Name",
+        "type": "Type",
+        "tags": "Tags",
+        "total": "Total: {{count}} templates"
+      },
+      "create": {
+        "description": "Create a custom template",
+        "fromOption": "Create template from existing project",
+        "interactiveOption": "Interactive mode",
+        "creating": "Creating template \"{{name}}\"...",
+        "success": "Template \"{{name}}\" created successfully!",
+        "location": "Location: {{path}}",
+        "descriptionPrompt": "Template description:",
+        "tagsPrompt": "Tags (comma separated):",
+        "fromProjectPrompt": "Create from existing project?",
+        "projectPathPrompt": "Project path:"
+      },
+      "delete": {
+        "description": "Delete a custom template",
+        "forceOption": "Skip confirmation",
+        "confirmPrompt": "Are you sure you want to delete template \"{{name}}\"?",
+        "cancelled": "Deletion cancelled",
+        "deleting": "Deleting template \"{{name}}\"...",
+        "success": "Template \"{{name}}\" deleted successfully!"
+      },
+      "info": {
+        "description": "Show template details",
+        "title": "Template Information",
+        "name": "Name:",
+        "type": "Type:",
+        "version": "Version:",
+        "author": "Author:",
+        "created": "Created:",
+        "contents": "Template Contents"
+      }
     }
   },
   "options": {

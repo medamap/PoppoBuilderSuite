@@ -1,0 +1,10 @@
+{
+  "language": "ja",
+  "features": {
+    "dogfooding": true,
+    "autoRepair": true,
+    "errorCollection": true,
+    "traceability": true,
+    "dynamicTimeout": true
+  }
+}
