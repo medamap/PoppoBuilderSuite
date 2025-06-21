@@ -103,7 +103,8 @@ npm test
 git branch
 
 # コミット（Claude Code署名付き）
-git commit -m "メッセージ
+# IMPORTANT: All commit messages should be in English
+git commit -m "Your message in English
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 
@@ -116,6 +117,19 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 2. **レート制限**: 自動的に待機して再試行
 3. **言語設定**: `.poppo/config.json`で`ja`/`en`を切り替え
 4. **認証**: ダッシュボードのデフォルトパスワードは必ず変更
+
+## 🌐 Language Policy / 言語ポリシー
+
+**IMPORTANT: GitHub Outputs in English**
+- All commit messages must be in English
+- All Issue titles and descriptions must be in English  
+- All PR titles and descriptions must be in English
+- All GitHub comments and error reports must be in English
+
+**User Interaction**
+- Communication with the user (you) remains in Japanese
+- This CLAUDE.md document remains in Japanese for your reference
+- The language policy is for global accessibility of the project
 
 ## 🔗 関連ドキュメント
 
