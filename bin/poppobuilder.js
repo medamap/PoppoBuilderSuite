@@ -91,14 +91,14 @@ program
 
 // status コマンド - 状態確認
 program
-  .command('status')
-  .description('Show PoppoBuilder status')
+  .command('status [projectId]')
+  .description('Show PoppoBuilder status (optionally for specific project)')
   .option('-j, --json', 'output as JSON')
   .option('-w, --watch', 'watch mode')
-  .action(async (options) => {
+  .action(async (projectId, options) => {
     try {
       const statusCommand = new StatusCommand();
-      await statusCommand.execute(options);
+      await statusCommand.execute({ ...options, projectId });
     } catch (error) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);

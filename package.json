@@ -34,7 +34,8 @@
     "analytics:report": "node scripts/poppo-analytics.js report",
     "analytics:stats": "node scripts/poppo-analytics.js stats",
     "analytics:archive": "node scripts/poppo-analytics.js archive",
-    "demo:logs": "node examples/log-management-demo.js"
+    "demo:logs": "node examples/log-management-demo.js",
+    "demo:scheduler": "node examples/task-scheduler-demo.js"
   },
   "keywords": [
     "ai",

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "task-1",
+    "type": "claude-cli",
+    "status": "running",
+    "startTime": "2025-06-21T13:47:48.914Z",
+    "pid": 12345
+  },
+  {
+    "id": "task-2",
+    "type": "github-issue",
+    "status": "pending",
+    "startTime": "2025-06-21T13:52:48.914Z",
+    "pid": 12346
+  }
+]

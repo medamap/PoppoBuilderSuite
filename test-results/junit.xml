@@ -1,3 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="PoppoBuilder Notification Tests" tests="0" failures="0" errors="0" time="0.199">
+<testsuites name="PoppoBuilder Notification Tests" tests="20" failures="0" errors="0" time="0.132">
+  <testsuite name="TaskScheduler" errors="0" failures="0" skipped="0" timestamp="2025-06-21T13:38:52" time="0.115" tests="20">
+    <testcase classname="TaskScheduler › 初期化" name="スケジューラーを初期化できる" time="0.002">
+    </testcase>
+    <testcase classname="TaskScheduler › 初期化" name="デフォルト戦略が設定される" time="0.001">
+    </testcase>
+    <testcase classname="TaskScheduler › プロジェクト管理" name="プロジェクトを登録できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › プロジェクト管理" name="プロジェクトを削除できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › プロジェクト管理" name="プロジェクトの優先度を更新できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › プロジェクト管理" name="プロジェクトの重みを更新できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › タスクスケジューリング" name="ラウンドロビン戦略でタスクをスケジュールできる" time="0.001">
+    </testcase>
+    <testcase classname="TaskScheduler › タスクスケジューリング" name="優先度戦略でタスクをスケジュールできる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 戦略切り替え" name="戦略を切り替えられる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 戦略切り替え" name="存在しない戦略を設定するとエラーになる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 統計とメトリクス" name="タスク完了を記録できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 統計とメトリクス" name="フェアネススコアを計算できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 統計とメトリクス" name="全体のメトリクスを取得できる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › 並行実行制限" name="プロジェクトの並行実行数を制限する" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › エラーハンドリング" name="初期化前にスケジュールするとエラーになる" time="0">
+    </testcase>
+    <testcase classname="TaskScheduler › エラーハンドリング" name="プロジェクトがない場合にスケジュールするとエラーになる" time="0">
+    </testcase>
+    <testcase classname="Scheduling Strategies › Round Robin Strategy" name="順番にプロジェクトを選択する" time="0">
+    </testcase>
+    <testcase classname="Scheduling Strategies › Priority Strategy" name="優先度の高いプロジェクトを優先する" time="0.001">
+    </testcase>
+    <testcase classname="Scheduling Strategies › Weighted Strategy" name="重みに応じてプロジェクトを選択する" time="0">
+    </testcase>
+    <testcase classname="Scheduling Strategies › Fair Share Strategy" name="公平にタスクを配分する" time="0">
+    </testcase>
+  </testsuite>
 </testsuites>
