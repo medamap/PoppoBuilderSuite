@@ -1,0 +1,137 @@
+# CCSP Agent アラートルール
+
+groups:
+  - name: ccsp_availability
+    interval: 30s
+    rules:
+      # CCSPエージェント停止
+      - alert: CCSPAgentDown
+        expr: up{job="ccsp-agent"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: ccsp
+        annotations:
+          summary: "CCSP Agent is down"
+          description: "CCSP Agent has been down for more than 2 minutes."
+          action: "Check systemd status: systemctl status ccsp-agent"
+
+      # セッションタイムアウト
+      - alert: CCSPSessionTimeout
+        expr: ccsp_session_status == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: ccsp
+        annotations:
+          summary: "Claude session is inactive"
+          description: "Claude CLI session has been inactive for more than 5 minutes."
+          action: "Manual login required: claude login"
+
+      # ヘルススコア低下
+      - alert: CCSPHealthScoreLow
+        expr: ccsp_health_score{component="overall"} < 60
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "CCSP health score is low"
+          description: "Overall health score is {{ $value }}%, below threshold."
+
+  - name: ccsp_performance
+    interval: 30s
+    rules:
+      # キュー満杯
+      - alert: CCSPQueueFull
+        expr: (sum(ccsp_queue_size) / ccsp_queue_capacity) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "CCSP queue is almost full"
+          description: "Queue utilization is {{ $value | humanizePercentage }}."
+          
+      # タスク処理遅延
+      - alert: CCSPTaskProcessingSlow
+        expr: histogram_quantile(0.95, rate(ccsp_task_duration_seconds_bucket[5m])) > 300
+        for: 10m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "Task processing is slow"
+          description: "95th percentile task duration is {{ $value }}s."
+
+      # レート制限枯渇
+      - alert: CCSPRateLimitExhausted
+        expr: (ccsp_rate_limit_remaining / ccsp_rate_limit_total) < 0.1
+        for: 2m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "Rate limit almost exhausted"
+          description: "Only {{ $value | humanizePercentage }} of rate limit remaining."
+
+  - name: ccsp_errors
+    interval: 30s
+    rules:
+      # エラー率上昇
+      - alert: CCSPHighErrorRate
+        expr: rate(ccsp_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec."
+
+      # セッションタイムアウト頻発
+      - alert: CCSPFrequentSessionTimeouts
+        expr: increase(ccsp_session_timeouts_total[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "Frequent session timeouts"
+          description: "{{ $value }} session timeouts in the last hour."
+
+  - name: ccsp_resources
+    interval: 30s
+    rules:
+      # メモリ使用量高
+      - alert: CCSPHighMemoryUsage
+        expr: (ccsp_process_resident_memory_bytes / 1024 / 1024 / 1024) > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}GB."
+
+      # CPU使用率高
+      - alert: CCSPHighCPUUsage
+        expr: rate(ccsp_process_cpu_seconds_total[5m]) > 1.5
+        for: 5m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }}."
+
+      # ワーカー飽和
+      - alert: CCSPWorkerSaturation
+        expr: ccsp_worker_utilization_ratio > 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: ccsp
+        annotations:
+          summary: "Workers are saturated"
+          description: "Worker utilization is {{ $value | humanizePercentage }}."
