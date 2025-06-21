@@ -35,7 +35,27 @@
     "analytics:stats": "node scripts/poppo-analytics.js stats",
     "analytics:archive": "node scripts/poppo-analytics.js archive",
     "demo:logs": "node examples/log-management-demo.js",
-    "demo:scheduler": "node examples/task-scheduler-demo.js"
+    "demo:scheduler": "node examples/task-scheduler-demo.js",
+    "demo:setup-wizard": "node examples/setup-wizard-demo.js",
+    "wizard": "node lib/commands/setup-wizard.js",
+    "setup:wizard": "node lib/commands/setup-wizard.js",
+    "deps:check": "node test/test-dependency-check.js",
+    "slo": "node scripts/poppo-slo.js",
+    "slo:status": "node scripts/poppo-slo.js status",
+    "slo:report": "node scripts/poppo-slo.js report",
+    "slo:budget": "node scripts/poppo-slo.js budget",
+    "test:sla": "node test/test-sla-monitoring.js",
+    "monitoring:start": "bash scripts/start-monitoring.sh start",
+    "monitoring:stop": "bash scripts/start-monitoring.sh stop",
+    "monitoring:status": "bash scripts/start-monitoring.sh status",
+    "monitoring:logs": "bash scripts/start-monitoring.sh logs",
+    "monitoring:restart": "bash scripts/start-monitoring.sh restart",
+    "monitoring:info": "bash scripts/start-monitoring.sh info",
+    "ccsp:start": "node scripts/start-ccsp.js",
+    "ccsp:test": "jest test/ccsp/ccsp-phase4.test.js",
+    "ccsp:verify": "node scripts/verify-ccsp.js",
+    "ccsp:status": "curl -s http://localhost:3003/health | jq",
+    "ccsp:metrics": "curl -s http://localhost:3003/metrics"
   },
   "keywords": [
     "ai",
@@ -46,7 +66,7 @@
   "author": "medamap",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=14.0.0"
   },
   "dependencies": {
     "ajv": "^8.12.0",
@@ -54,12 +74,16 @@
     "axios": "^1.10.0",
     "better-sqlite3": "^11.10.0",
     "chalk": "^4.1.2",
+    "cli-table3": "^0.6.5",
     "colors": "^1.4.0",
     "commander": "^11.1.0",
     "express": "^5.1.0",
     "i18next": "^23.7.6",
     "i18next-fs-backend": "^2.3.1",
     "js-yaml": "^4.1.0",
+    "prom-client": "^15.1.0",
+    "redis": "^5.5.6",
+    "socket.io": "^4.8.1",
     "uuid": "^9.0.1",
     "ws": "^8.18.2"
   },
@@ -70,6 +94,7 @@
     "jest-watch-typeahead": "^2.2.2",
     "mocha": "^11.6.0",
     "sinon": "^21.0.0",
-    "sinon-chai": "^4.0.0"
+    "sinon-chai": "^4.0.0",
+    "socket.io-client": "^4.8.1"
   }
 }

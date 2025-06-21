@@ -177,6 +177,32 @@
         "created": "Created:",
         "contents": "Template Contents"
       }
+    },
+    "project": {
+      "disable": {
+        "not_found": "Project '{{name}}' not found",
+        "already_disabled": "Project '{{name}}' is already disabled",
+        "running_tasks": "Project '{{name}}' has {{count}} running task(s)",
+        "running_tasks_warning": "These tasks will continue to run but no new tasks will be started.",
+        "force_hint": "Use --force flag to disable anyway",
+        "success": "Project '{{name}}' disabled successfully",
+        "tasks_note": "Note: Existing tasks will continue to run. Use daemon commands to stop them if needed.",
+        "error": "Failed to disable project"
+      },
+      "remove": {
+        "not_found": "Project '{{name}}' not found",
+        "running_tasks": "Project '{{name}}' has {{count}} running task(s)",
+        "running_tasks_warning": "Please stop all tasks before removing the project.",
+        "confirm": "Are you sure you want to remove project '{{name}}'?",
+        "cancelled": "Removal cancelled",
+        "success": "Project '{{name}}' removed successfully",
+        "error": "Failed to remove project",
+        "cleaning": "Cleaning up project files...",
+        "clean_warnings": "Some files could not be cleaned:",
+        "clean_success": "Project files cleaned successfully",
+        "clean_summary": "Cleaned {{files}} files, {{bytes}} bytes freed",
+        "clean_error": "Error cleaning project files:"
+      }
     }
   },
   "options": {

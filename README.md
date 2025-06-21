@@ -95,10 +95,34 @@ PoppoBuilderSuite/
 ## 🚀 クイックスタート
 
 ### 前提条件
-- Node.js 18以上
+- Node.js 14以上
+- npm 6.0.0以上
+- Git 2.0.0以上
 - Claude CLI (インストール済み)
 - GitHub CLI (`gh` コマンド、認証済み)
-- Git
+
+### セットアップウィザード
+
+PoppoBuilderには、環境セットアップを支援する対話型ウィザードが含まれています：
+
+```bash
+# セットアップウィザードを実行
+npm run setup:wizard
+
+# または直接実行
+node lib/commands/setup-wizard.js
+
+# 依存関係のチェックのみ
+npm run deps:check
+```
+
+セットアップウィザードの機能：
+- ✅ 必要な依存関係の自動チェック（Node.js、npm、Git、Claude CLI）
+- ✅ 不足している依存関係の検出とインストールガイド
+- ✅ Gitリポジトリの初期化と設定
+- ✅ GitHub CLIの認証確認
+- ✅ 作業ブランチの自動作成
+- ✅ Claude CLIとの対話的セットアップ（利用可能な場合）
 
 ### インストール
 詳細なインストール手順は[インストールガイド](docs/INSTALL.md)（[English](docs/INSTALL_en.md)）を参照してください。
@@ -121,6 +145,34 @@ node scripts/setup-labels.js
 # PoppoBuilder起動
 npm start
 ```
+
+### CLIコマンド
+
+PoppoBuilderは様々なCLIコマンドを提供しています：
+
+```bash
+# プロジェクト初期化
+poppobuilder init
+
+# サービス起動
+poppobuilder start
+poppobuilder start --daemon  # デーモンモードで起動
+
+# 状態確認
+poppobuilder status
+
+# PR作成ガイド（NEW!）
+poppobuilder pr              # 対話型PR作成ガイド
+poppobuilder pr --draft      # ドラフトPRを作成
+poppobuilder pr --base develop  # 特定ブランチへのPR
+
+# その他のコマンド
+poppobuilder config --list   # 設定一覧表示
+poppobuilder logs -f         # ログのリアルタイム表示
+poppobuilder doctor          # 環境診断
+```
+
+詳細は `poppobuilder --help` を参照してください。
 
 ### 基本的な使い方
 

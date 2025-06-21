@@ -127,5 +127,82 @@
       "maxFiles": 4,
       "compress": true
     }
+  },
+  "sla": {
+    "enabled": true,
+    "metricsRetentionDays": 30,
+    "checkInterval": 60000,
+    "reportSchedule": {
+      "weekly": "0 0 * * 0",
+      "monthly": "0 0 1 * *"
+    },
+    "alerts": {
+      "channels": ["log", "github-issue"],
+      "errorBudgetWarningThreshold": 0.2,
+      "errorBudgetCriticalThreshold": 0.8
+    },
+    "customSLOs": {
+      "comment": "カスタムSLO定義をここに追加できます"
+    }
+  },
+  "ccsp": {
+    "enabled": true,
+    "port": 3003,
+    "maxConcurrentRequests": 5,
+    "throttleDelay": 1000,
+    "enableMetrics": true,
+    "enableDashboard": true,
+    "autoOptimization": false,
+    "queueManager": {
+      "maxQueueSize": 10000,
+      "schedulerInterval": 5000,
+      "priorityWeights": {
+        "urgent": 1000,
+        "high": 100,
+        "normal": 10,
+        "low": 1
+      }
+    },
+    "usageMonitor": {
+      "windowSize": 3600000,
+      "maxDataPoints": 1440,
+      "alertThreshold": 0.8,
+      "predictionWindow": 1800000
+    },
+    "claudeExecutor": {
+      "maxRetries": 3,
+      "retryDelay": 5000,
+      "timeout": 120000,
+      "tempDir": "/tmp/ccsp-claude"
+    },
+    "notifications": {
+      "enableGitHub": true,
+      "enableSlack": false,
+      "enableEmail": false,
+      "githubRepo": "medamap/PoppoBuilderSuite"
+    },
+    "prometheus": {
+      "enabled": true,
+      "prefix": "ccsp_",
+      "endpoint": "/metrics"
+    },
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "retryDelayOnFailover": 100,
+      "maxRetriesPerRequest": 3
+    },
+    "sessionMonitoring": {
+      "enabled": true,
+      "checkInterval": 300000,
+      "timeoutWarnings": 3
+    },
+    "emergencyStop": {
+      "enabled": true,
+      "patterns": {
+        "sessionTimeout": ["Invalid API key", "Please run /login", "API Login Failure"],
+        "rateLimit": ["usage limit reached", "rate limit", "too many requests"]
+      }
+    }
   }
 }

@@ -240,6 +240,58 @@ monitorCommandDef.options.forEach(option => {
 
 monitorCommand.action(monitorCommandDef.action);
 
+// enable コマンド - プロジェクト有効化
+const EnableCommand = require('../lib/commands/enable');
+program
+  .command('enable <projectname>')
+  .alias('on')
+  .description('Enable a PoppoBuilder project')
+  .action(async (projectName, options) => {
+    try {
+      const enableCommand = new EnableCommand();
+      await enableCommand.execute(projectName, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// disable コマンド - プロジェクト無効化
+const DisableCommand = require('../lib/commands/disable');
+program
+  .command('disable <projectname>')
+  .alias('off')
+  .description('Disable a PoppoBuilder project')
+  .option('--force', 'disable even if there are running tasks')
+  .action(async (projectName, options) => {
+    try {
+      const disableCommand = new DisableCommand();
+      await disableCommand.execute(projectName, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// remove コマンド - プロジェクト削除
+const RemoveCommand = require('../lib/commands/remove');
+program
+  .command('remove <projectname>')
+  .alias('rm')
+  .alias('del')
+  .description('Remove a PoppoBuilder project from the registry')
+  .option('--force', 'skip confirmation prompt')
+  .option('--clean', 'remove project-related files')
+  .action(async (projectName, options) => {
+    try {
+      const removeCommand = new RemoveCommand();
+      await removeCommand.execute(projectName, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
 // doctor コマンド - 診断
 program
   .command('doctor')
@@ -269,6 +321,20 @@ program
       process.exit(1);
     }
   });
+
+// pr コマンド - PR作成ガイド
+const PRCommand = require('../lib/commands/pr');
+const prCommandDef = PRCommand.getCommandDefinition();
+const prCommand = program
+  .command(prCommandDef.command)
+  .description(prCommandDef.description);
+
+// Add all options from command definition
+prCommandDef.options.forEach(option => {
+  prCommand.option(...option);
+});
+
+prCommand.action(prCommandDef.action);
 
 // エラーハンドリング
 program.on('command:*', () => {
@@ -301,6 +367,13 @@ program.on('--help', () => {
   console.log('  $ poppobuilder list                    # List projects (default view)');
   console.log('  $ poppobuilder ls --table --verbose    # Detailed table view');
   console.log('  $ poppobuilder list --enabled --sort priority  # Enabled projects by priority');
+  console.log('  $ poppobuilder enable project-a        # Enable a project');
+  console.log('  $ poppobuilder on project-a            # Enable (alias)');
+  console.log('  $ poppobuilder disable project-b       # Disable a project');
+  console.log('  $ poppobuilder off project-b           # Disable (alias)');
+  console.log('  $ poppobuilder pr                      # Create PR with guided assistance');
+  console.log('  $ poppobuilder pr --draft              # Create draft PR');
+  console.log('  $ poppobuilder pr --base develop       # Create PR to specific branch');
   console.log('');
   console.log('For more information, visit:');
   console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));
