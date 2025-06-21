@@ -1,0 +1,34 @@
+{
+  "spec": "test/**/*.test.js",
+  "exclude": [
+    "test/dangerous/**",
+    "test/cleanup/**",
+    "test/e2e/**",
+    "test/performance/**",
+    "test/ccqa-agent.test.js",
+    "test/discord-provider.test.js",
+    "test/pushover-provider.test.js",
+    "test/telegram-provider.test.js",
+    "test/notification-integration.test.js",
+    "test/integration/**"
+  ],
+  "timeout": 10000,
+  "slow": 3000,
+  "require": [
+    "test/helpers/test-setup.js"
+  ],
+  "recursive": true,
+  "exit": true,
+  "reporter": "spec",
+  "color": true,
+  "bail": false,
+  "grep": "",
+  "invert": false,
+  "checkLeaks": true,
+  "fullTrace": true,
+  "growl": false,
+  "inline-diffs": true,
+  "reporter-options": {
+    "maxDiffSize": 8192
+  }
+}

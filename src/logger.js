@@ -1,13 +1,40 @@
 const fs = require('fs');
 const path = require('path');
+const LogRotator = require('./log-rotator');
 
 /**
- * シンプルなロガークラス
+ * シンプルなロガークラス（ログローテーション機能付き）
  */
 class Logger {
-  constructor(logDir = path.join(__dirname, '../logs')) {
-    this.logDir = logDir;
+  constructor(categoryOrLogDir = 'default', options = {}) {
+    // 後方互換性のチェック
+    // 第一引数がパスのような文字列の場合は、旧形式として扱う
+    if (typeof categoryOrLogDir === 'string' && 
+        (categoryOrLogDir.includes('/') || categoryOrLogDir.includes('\\') || categoryOrLogDir === path.join(__dirname, '../logs'))) {
+      // 旧形式: constructor(logDir, rotationConfig)
+      this.category = 'default';
+      this.logDir = categoryOrLogDir;
+      this.rotationConfig = options;
+    } else {
+      // 新形式: constructor(category, options)
+      this.category = categoryOrLogDir || 'default';
+      this.logDir = options.logDir || path.join(__dirname, '../logs');
+      this.rotationConfig = options.rotationConfig || {};
+    }
+    
     this.ensureLogDir();
+    
+    // ログローテーターを初期化
+    this.rotator = new LogRotator(this.rotationConfig);
+    
+    // ログレベルの設定（デフォルトはINFO以上を出力）
+    this.logLevels = {
+      ERROR: 0,
+      WARN: 1,
+      INFO: 2,
+      DEBUG: 3
+    };
+    this.currentLogLevel = this.rotationConfig.logLevel || 'INFO';
   }
 
   ensureLogDir() {
@@ -26,9 +53,38 @@ class Logger {
   }
 
   /**
+   * ログレベルをチェック
+   */
+  shouldLog(level) {
+    return this.logLevels[level] <= this.logLevels[this.currentLogLevel];
+  }
+
+  /**
    * ログ出力（ファイルとコンソール）
    */
   log(level, category, message, data = null) {
+    // 引数の調整（categoryが省略された場合）
+    if (arguments.length === 2) {
+      // log(level, message) の形式
+      data = null;
+      message = category;
+      category = this.category;
+    } else if (arguments.length === 3 && typeof message !== 'string') {
+      // log(level, message, data) の形式
+      data = message;
+      message = category;
+      category = this.category;
+    } else if (arguments.length === 4 && typeof category === 'string' && typeof message === 'string') {
+      // 正しい形式なので何もしない
+    } else {
+      // その他の場合は、第2引数をカテゴリとして扱う
+    }
+    
+    // ログレベルチェック
+    if (!this.shouldLog(level)) {
+      return;
+    }
+    
     const timestamp = new Date().toISOString();
     const logEntry = {
       timestamp,
@@ -96,19 +152,47 @@ class Logger {
 
   // 便利メソッド
   info(category, message, data) {
-    this.log('INFO', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('INFO', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('INFO', this.category, category, message);
+    } else {
+      this.log('INFO', category, message, data);
+    }
   }
 
   error(category, message, data) {
-    this.log('ERROR', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('ERROR', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('ERROR', this.category, category, message);
+    } else {
+      this.log('ERROR', category, message, data);
+    }
   }
 
   warn(category, message, data) {
-    this.log('WARN', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('WARN', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('WARN', this.category, category, message);
+    } else {
+      this.log('WARN', category, message, data);
+    }
   }
 
   debug(category, message, data) {
-    this.log('DEBUG', category, message, data);
+    // 引数の数に応じて調整
+    if (arguments.length === 1) {
+      this.log('DEBUG', this.category, category);
+    } else if (arguments.length === 2) {
+      this.log('DEBUG', this.category, category, message);
+    } else {
+      this.log('DEBUG', category, message, data);
+    }
   }
 
   /**
@@ -116,6 +200,44 @@ class Logger {
    */
   logSystem(event, data) {
     this.log('INFO', 'SYSTEM', event, data);
+  }
+
+  /**
+   * ログレベルを変更
+   */
+  setLogLevel(level) {
+    if (this.logLevels.hasOwnProperty(level)) {
+      this.currentLogLevel = level;
+      this.logSystem(`ログレベル変更: ${level}`);
+    }
+  }
+
+  /**
+   * ログローテーターを停止
+   */
+  close() {
+    if (this.rotator) {
+      this.rotator.stopWatching();
+    }
+  }
+
+  /**
+   * 手動でログローテーションを実行
+   */
+  async rotate() {
+    if (this.rotator) {
+      await this.rotator.rotateAll();
+    }
+  }
+
+  /**
+   * アーカイブ統計情報を取得
+   */
+  async getArchiveStats() {
+    if (this.rotator) {
+      return await this.rotator.getArchiveStats();
+    }
+    return null;
   }
 }
 

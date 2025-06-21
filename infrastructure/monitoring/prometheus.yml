@@ -1,0 +1,56 @@
+# Prometheus設定ファイル - CCSP Agent監視用
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'poppo-suite'
+    environment: 'production'
+
+# アラートマネージャー設定
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+# ルールファイル
+rule_files:
+  - 'alerts/ccsp-alerts.yml'
+
+# スクレイプ設定
+scrape_configs:
+  # CCSPエージェントメトリクス
+  - job_name: 'ccsp-agent'
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          service: 'ccsp'
+          component: 'agent'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Node Exporter（システムメトリクス用）
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9101']
+        labels:
+          service: 'ccsp'
+          component: 'system'
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['localhost:9121']
+        labels:
+          service: 'ccsp'
+          component: 'redis'
+
+  # PoppoBuilder本体（将来の拡張用）
+  - job_name: 'poppo-builder'
+    static_configs:
+      - targets: ['localhost:9102']
+        labels:
+          service: 'poppo-builder'
+          component: 'main'
+    scrape_interval: 30s

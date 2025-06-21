@@ -13,6 +13,7 @@ class DashboardApp {
     this.bindEvents();
     this.connectWebSocket();
     this.loadInitialData();
+    this.startConnectionMonitor();
   }
 
   initializeElements() {
@@ -104,12 +105,32 @@ class DashboardApp {
         break;
         
       case 'update':
-        this.updateProcessList(message.data.processes);
+        this.updateProcessList(message.data.processes, true);
         this.updateStats(message.data.stats);
         break;
         
       case 'process-event':
         this.handleProcessEvent(message.event);
+        break;
+        
+      case 'process-added':
+        this.handleProcessAdded(message.process);
+        break;
+        
+      case 'process-updated':
+        this.handleProcessUpdated(message.process);
+        break;
+        
+      case 'process-removed':
+        this.handleProcessRemoved(message.processId);
+        break;
+        
+      case 'log':
+        this.handleLogMessage(message.log);
+        break;
+        
+      case 'notification':
+        this.showNotification(message.notification);
         break;
     }
   }
@@ -148,7 +169,7 @@ class DashboardApp {
     }
   }
 
-  updateProcessList(processes) {
+  updateProcessList(processes, animate = false) {
     const container = this.elements.processListContainer;
     
     if (processes.length === 0) {
@@ -156,28 +177,83 @@ class DashboardApp {
       return;
     }
     
-    container.innerHTML = processes.map(process => {
-      const elapsedTime = this.formatElapsedTime(process.metrics.elapsedTime);
-      const statusClass = `status-${process.status}`;
+    // 既存のプロセスIDを取得
+    const existingIds = new Set(
+      Array.from(container.querySelectorAll('.process-item'))
+        .map(el => el.dataset.processId)
+    );
+    
+    // 新しいプロセスIDを取得
+    const newIds = new Set(processes.map(p => p.processId));
+    
+    // 削除されたプロセスを検出
+    if (animate) {
+      existingIds.forEach(id => {
+        if (!newIds.has(id)) {
+          const element = container.querySelector(`[data-process-id="${id}"]`);
+          if (element) {
+            element.classList.add('process-removing');
+            setTimeout(() => element.remove(), 300);
+          }
+        }
+      });
+    }
+    
+    // プロセスリストを更新
+    processes.forEach(process => {
+      const existingElement = container.querySelector(`[data-process-id="${process.processId}"]`);
+      const processHtml = this.createProcessElement(process);
       
-      return `
-        <div class="process-item" data-process-id="${process.processId}">
-          <div class="process-id">#${process.issueNumber}</div>
-          <div class="process-type">${process.type}</div>
-          <div class="process-status ${statusClass}">${this.getStatusText(process.status)}</div>
-          <div class="process-metrics">CPU: ${process.metrics.cpuUsage}%</div>
-          <div class="process-metrics">MEM: ${process.metrics.memoryUsage}MB</div>
-          <div class="process-time">${elapsedTime}</div>
-          <div class="process-output">${process.lastOutput || '...'}</div>
-          <div class="process-actions">
-            <button class="btn btn-small btn-primary" onclick="app.showProcessDetail('${process.processId}')">詳細</button>
-            ${process.status === 'running' ? 
-              `<button class="btn btn-small btn-danger" onclick="app.stopProcess('${process.processId}')">停止</button>` : 
-              ''}
-          </div>
+      if (existingElement) {
+        // 既存要素を更新
+        existingElement.outerHTML = processHtml;
+        if (animate) {
+          const newElement = container.querySelector(`[data-process-id="${process.processId}"]`);
+          newElement.classList.add('process-updated');
+          setTimeout(() => newElement.classList.remove('process-updated'), 300);
+        }
+      } else {
+        // 新規要素を追加
+        const temp = document.createElement('div');
+        temp.innerHTML = processHtml;
+        const newElement = temp.firstElementChild;
+        if (animate) {
+          newElement.classList.add('process-added');
+          setTimeout(() => newElement.classList.remove('process-added'), 300);
+        }
+        container.appendChild(newElement);
+      }
+    });
+    
+    // プロセスを順序通りに並べ替え
+    const sortedElements = processes.map(p => 
+      container.querySelector(`[data-process-id="${p.processId}"]`)
+    ).filter(Boolean);
+    
+    sortedElements.forEach(el => container.appendChild(el));
+  }
+  
+  createProcessElement(process) {
+    const elapsedTime = this.formatElapsedTime(process.metrics.elapsedTime);
+    const statusClass = `status-${process.status}`;
+    
+    return `
+      <div class="process-item" data-process-id="${process.processId}">
+        <div class="process-id">#${process.issueNumber}</div>
+        <div class="process-type">${process.type}</div>
+        <div class="process-status ${statusClass}">${this.getStatusText(process.status)}</div>
+        <div class="process-metrics">CPU: ${process.metrics.cpuUsage}%</div>
+        <div class="process-metrics">MEM: ${process.metrics.memoryUsage}MB</div>
+        <div class="process-time">${elapsedTime}</div>
+        <div class="process-output">${process.lastOutput || '...'}</div>
+        <div class="process-actions">
+          <button class="btn btn-small btn-primary" onclick="app.showProcessDetail('${process.processId}')">詳細</button>
+          ${process.status === 'running' ? 
+            `<button class="btn btn-small btn-danger" onclick="app.stopProcess('${process.processId}')">停止</button>` : 
+            ''}
         </div>
-      `;
-    }).join('');
+      </div>
+    `;
   }
 
   updateStats(stats) {
@@ -283,8 +359,47 @@ class DashboardApp {
       return;
     }
     
-    this.addLog(`プロセス停止機能は未実装です: ${processId}`, 'warning');
-    // TODO: プロセス停止APIの実装
+    try {
+      const response = await fetch(`/api/process/${processId}/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ force: false })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        this.addLog(`✅ タスク ${processId} を停止しました`, 'success');
+        // プロセスリストを更新
+        this.fetchProcesses();
+      } else {
+        this.addLog(`❌ プロセス停止エラー: ${result.error || 'Unknown error'}`, 'error');
+        // 強制終了を提案
+        if (result.error && result.error.includes('force')) {
+          if (confirm('プロセスが終了しません。強制終了しますか？')) {
+            const forceResponse = await fetch(`/api/process/${processId}/stop`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ force: true })
+            });
+            
+            const forceResult = await forceResponse.json();
+            if (forceResponse.ok && forceResult.success) {
+              this.addLog(`✅ タスク ${processId} を強制終了しました`, 'success');
+              this.fetchProcesses();
+            } else {
+              this.addLog(`❌ 強制終了も失敗しました: ${forceResult.error}`, 'error');
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.addLog(`❌ ネットワークエラー: ${error.message}`, 'error');
+    }
   }
 
   async stopAllProcesses() {
@@ -292,8 +407,36 @@ class DashboardApp {
       return;
     }
     
-    this.addLog('全プロセス停止機能は未実装です', 'warning');
-    // TODO: 全プロセス停止APIの実装
+    try {
+      const response = await fetch('/api/process/stop-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ confirm: true, force: false })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        this.addLog(`✅ ${result.stoppedCount}個のタスクを停止しました`, 'success');
+        if (result.failedCount > 0) {
+          this.addLog(`⚠️ ${result.failedCount}個のタスクの停止に失敗しました`, 'warning');
+          // 失敗したタスクの詳細を表示
+          if (result.results && result.results.failed) {
+            result.results.failed.forEach(task => {
+              this.addLog(`  - ${task.taskId}: ${task.error}`, 'error');
+            });
+          }
+        }
+        // プロセスリストを更新
+        this.fetchProcesses();
+      } else {
+        this.addLog(`❌ 全プロセス停止エラー: ${result.error || 'Unknown error'}`, 'error');
+      }
+    } catch (error) {
+      this.addLog(`❌ ネットワークエラー: ${error.message}`, 'error');
+    }
   }
 
   refresh() {
@@ -460,6 +603,118 @@ class DashboardApp {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+  
+  // 新しいプロセスが追加された時の処理
+  handleProcessAdded(process) {
+    // プロセスリストに追加
+    const container = this.elements.processListContainer;
+    const temp = document.createElement('div');
+    temp.innerHTML = this.createProcessElement(process);
+    const newElement = temp.firstElementChild;
+    
+    // アニメーション付きで追加
+    newElement.classList.add('process-added');
+    container.prepend(newElement);
+    setTimeout(() => newElement.classList.remove('process-added'), 300);
+    
+    // 通知を表示
+    this.showNotification({
+      type: 'info',
+      message: `新しいプロセスが開始されました: Issue #${process.issueNumber}`
+    });
+    
+    // ログに追加
+    this.addLog(`プロセス開始: ${process.processId} (Issue #${process.issueNumber})`, 'info');
+  }
+  
+  // プロセスが更新された時の処理
+  handleProcessUpdated(process) {
+    const element = this.elements.processListContainer.querySelector(`[data-process-id="${process.processId}"]`);
+    if (element) {
+      const newHtml = this.createProcessElement(process);
+      element.outerHTML = newHtml;
+      
+      // 更新されたことを視覚的に示す
+      const updatedElement = this.elements.processListContainer.querySelector(`[data-process-id="${process.processId}"]`);
+      updatedElement.classList.add('process-updated');
+      setTimeout(() => updatedElement.classList.remove('process-updated'), 300);
+    }
+  }
+  
+  // プロセスが削除された時の処理
+  handleProcessRemoved(processId) {
+    const element = this.elements.processListContainer.querySelector(`[data-process-id="${processId}"]`);
+    if (element) {
+      element.classList.add('process-removing');
+      setTimeout(() => element.remove(), 300);
+    }
+  }
+  
+  // ログメッセージの処理
+  handleLogMessage(log) {
+    this.addLog(log.message, log.level || 'info');
+  }
+  
+  // 通知の表示
+  showNotification(notification) {
+    // 既存の通知要素があれば使用、なければ作成
+    let notificationEl = document.getElementById('notification');
+    if (!notificationEl) {
+      notificationEl = document.createElement('div');
+      notificationEl.id = 'notification';
+      notificationEl.className = 'notification';
+      document.body.appendChild(notificationEl);
+    }
+    
+    // 通知を表示
+    notificationEl.className = `notification notification-${notification.type} notification-show`;
+    notificationEl.textContent = notification.message;
+    
+    // 3秒後に非表示
+    setTimeout(() => {
+      notificationEl.classList.remove('notification-show');
+    }, 3000);
+  }
+  
+  // WebSocket再接続
+  reconnectWebSocket() {
+    if (this.ws.readyState === WebSocket.CLOSED) {
+      this.addLog('WebSocket再接続を試みています...', 'info');
+      this.connectWebSocket();
+    }
+  }
+  
+  // 接続状態の監視
+  startConnectionMonitor() {
+    setInterval(() => {
+      if (this.ws.readyState === WebSocket.CLOSED) {
+        this.updateSystemStatus('切断', 'error');
+        this.reconnectWebSocket();
+      } else if (this.ws.readyState === WebSocket.OPEN) {
+        // Pingメッセージを送信して接続確認
+        this.ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000); // 30秒ごとにチェック
+  }
+  
+  // ログのリアルタイムストリーミング
+  startLogStreaming(processId) {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'subscribe-logs',
+        processId: processId
+      }));
+    }
+  }
+  
+  stopLogStreaming(processId) {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'unsubscribe-logs',
+        processId: processId
+      }));
+    }
   }
 }
 

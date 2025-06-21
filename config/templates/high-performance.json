@@ -1,0 +1,213 @@
+{
+  "name": "High Performance Configuration",
+  "description": "Optimized for maximum throughput and minimal latency",
+  "service": {
+    "name": "PoppoBuilder Performance",
+    "version": "1.0.0",
+    "environment": "production",
+    "optimization": "performance"
+  },
+  "github": {
+    "owner": "",
+    "repo": "",
+    "token": "",
+    "rateLimitBuffer": 5,
+    "pollInterval": 10000,
+    "maxIssuesPerRun": 50,
+    "cacheDuration": 1800000,
+    "labels": {
+      "processed": "poppo-processed",
+      "processing": "poppo-processing",
+      "failed": "poppo-failed"
+    },
+    "parallelRequests": true,
+    "connectionPool": {
+      "maxSockets": 50,
+      "keepAlive": true,
+      "keepAliveMsecs": 30000
+    }
+  },
+  "claude": {
+    "apiKey": "",
+    "model": "claude-3-5-sonnet-20241022",
+    "maxTokens": 8192,
+    "temperature": 0.3,
+    "maxRetries": 3,
+    "retryDelay": 2000,
+    "maxConcurrent": 20,
+    "timeout": {
+      "dynamic": true,
+      "base": 60000,
+      "perToken": 10,
+      "max": 300000
+    },
+    "streaming": true,
+    "connectionPool": {
+      "size": 20,
+      "timeout": 5000
+    }
+  },
+  "language": {
+    "primary": "en",
+    "supported": ["en"],
+    "autoDetect": false
+  },
+  "logging": {
+    "level": "warn",
+    "format": "simple",
+    "maxFiles": 7,
+    "maxSize": "50m",
+    "compress": false,
+    "datePattern": "YYYY-MM-DD",
+    "buffer": {
+      "enabled": true,
+      "size": 1000,
+      "flushInterval": 5000
+    }
+  },
+  "tasks": {
+    "maxRetries": 2,
+    "retryDelay": 5000,
+    "timeout": 180000,
+    "maxConcurrent": 50,
+    "queueSize": 5000,
+    "priorityLevels": ["critical", "high", "medium", "low"],
+    "batching": {
+      "enabled": true,
+      "size": 10,
+      "timeout": 1000
+    },
+    "worker": {
+      "threads": 4,
+      "poolSize": 20
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "healthCheckInterval": 120000,
+    "metricsRetention": 3600000,
+    "sampling": {
+      "rate": 0.1,
+      "adaptive": true
+    },
+    "alerting": {
+      "enabled": false
+    }
+  },
+  "agents": {
+    "enabled": true,
+    "ccla": {
+      "enabled": true,
+      "interval": 600000,
+      "batchSize": 100,
+      "parallel": true
+    },
+    "ccag": {
+      "enabled": false
+    },
+    "ccpm": {
+      "enabled": false
+    },
+    "ccqa": {
+      "enabled": true,
+      "lightweight": true,
+      "skipExpensive": true
+    }
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "host": "localhost",
+    "auth": {
+      "enabled": false
+    },
+    "cache": {
+      "enabled": true,
+      "ttl": 60000,
+      "maxSize": 100
+    },
+    "compression": true
+  },
+  "database": {
+    "path": ":memory:",
+    "wal": true,
+    "journalMode": "MEMORY",
+    "synchronous": "OFF",
+    "cache": {
+      "size": 100000,
+      "enabled": true
+    },
+    "vacuum": {
+      "interval": 86400000,
+      "incremental": true
+    }
+  },
+  "healthCheck": {
+    "enabled": true,
+    "interval": 300000,
+    "lightweight": true,
+    "scoring": {
+      "weights": {
+        "application": 0.5,
+        "system": 0.3,
+        "network": 0.1,
+        "data": 0.1
+      }
+    },
+    "thresholds": {
+      "healthy": 75,
+      "degraded": 50
+    },
+    "autoRecovery": {
+      "enabled": true,
+      "actions": {
+        "memoryCleanup": true,
+        "processRestart": false,
+        "diskCleanup": false,
+        "apiRetry": true
+      }
+    },
+    "alerts": {
+      "enabled": false
+    }
+  },
+  "twoStageProcessing": {
+    "enabled": true,
+    "confidenceThreshold": 0.6,
+    "analyzeTimeout": 15000,
+    "cache": {
+      "enabled": true,
+      "ttl": 3600000
+    }
+  },
+  "archiving": {
+    "enabled": false
+  },
+  "performance": {
+    "nodeOptions": {
+      "maxOldSpaceSize": 4096,
+      "maxSemiSpaceSize": 64
+    },
+    "clustering": {
+      "enabled": true,
+      "workers": "auto"
+    },
+    "cache": {
+      "redis": {
+        "enabled": false,
+        "host": "localhost",
+        "port": 6379
+      },
+      "memory": {
+        "enabled": true,
+        "maxSize": 1000,
+        "ttl": 3600000
+      }
+    },
+    "optimization": {
+      "lazyLoading": true,
+      "precompile": true,
+      "minify": true
+    }
+  }
+}

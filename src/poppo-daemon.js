@@ -9,6 +9,7 @@ const ProcessManager = require('./process-manager');
 const { createLogger } = require('./logger');
 const express = require('express');
 const http = require('http');
+const ConfigWatcher = require('./config-watcher');
 
 /**
  * PoppoBuilderデーモン
@@ -24,6 +25,7 @@ class PoppoDaemon {
     this.projectManager = null;
     this.workers = new Map(); // プロジェクトごとのワーカープロセス
     this.apiServer = null;
+    this.configWatcher = null;
     
     // 状態
     this.isRunning = false;
@@ -289,12 +291,87 @@ class PoppoDaemon {
         this.shutdown();
         break;
       case 'SIGHUP':
-        // 設定の再読み込み（将来の実装）
-        this.logger.info('設定の再読み込みはまだ実装されていません');
+        // 設定の再読み込み
+        this.reloadConfig();
         break;
     }
   }
   
+  /**
+   * 設定を再読み込み
+   */
+  async reloadConfig() {
+    this.logger.info('設定の再読み込みを開始します...');
+    
+    try {
+      // ConfigWatcherが有効な場合は手動再読み込みを実行
+      if (this.configWatcher) {
+        const result = await this.configWatcher.reload();
+        if (result.success) {
+          this.config = result.config;
+          this.logger.info('ConfigWatcherを使用して設定を再読み込みしました');
+          
+          // 再起動が必要な設定変更の通知
+          if (result.restartRequired) {
+            this.logger.warn('一部の設定変更にはデーモンの再起動が必要です');
+          }
+        } else {
+          throw new Error(result.error);
+        }
+      } else {
+        // ConfigWatcherが無効な場合は手動で設定を再読み込み
+        const newConfig = this.loadConfig();
+        
+        // 即座に反映可能な設定を更新
+        this.updateHotReloadableConfigs(this.config, newConfig);
+        
+        this.config = newConfig;
+        this.logger.info('設定ファイルから設定を再読み込みしました');
+      }
+      
+      // グローバルキューとプロジェクトマネージャーの設定を更新
+      if (this.globalQueue) {
+        this.globalQueue.updateConfig(this.config);
+      }
+      if (this.projectManager) {
+        this.projectManager.updateConfig(this.config);
+      }
+      
+      // ワーカーに設定変更を通知
+      for (const [projectId, worker] of this.workers) {
+        if (worker.process && !worker.process.killed) {
+          worker.process.send({ type: 'reload-config', config: this.config });
+        }
+      }
+      
+      this.logger.info('設定の再読み込みが完了しました');
+      
+    } catch (error) {
+      this.logger.error('設定の再読み込みに失敗しました:', error);
+    }
+  }
+  
+  /**
+   * ホットリロード可能な設定を更新
+   */
+  updateHotReloadableConfigs(oldConfig, newConfig) {
+    // ログレベルの更新
+    if (oldConfig.logLevel !== newConfig.logLevel) {
+      this.logger.setLevel(newConfig.logLevel);
+      this.logger.info(`ログレベルを変更: ${oldConfig.logLevel} → ${newConfig.logLevel}`);
+    }
+    
+    // ポーリング間隔の更新
+    if (oldConfig.pollInterval !== newConfig.pollInterval) {
+      this.logger.info(`ポーリング間隔を変更: ${oldConfig.pollInterval} → ${newConfig.pollInterval}`);
+    }
+    
+    // ワーカータイムアウトの更新
+    if (oldConfig.workerTimeout !== newConfig.workerTimeout) {
+      this.logger.info(`ワーカータイムアウトを変更: ${oldConfig.workerTimeout} → ${newConfig.workerTimeout}`);
+    }
+  }
+
   /**
    * ワーカープロセスを起動
    */

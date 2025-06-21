@@ -12,8 +12,26 @@ const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
+const ConfigWatcher = require('./config-watcher');
 const RestartScheduler = require('../scripts/restart-scheduler');
 const DashboardServer = require('../dashboard/server/index');
+const HealthCheckManager = require('./health-check-manager');
+const NotificationManager = require('./notification-manager');
+const TwoStageProcessor = require('./two-stage-processor');
+const ProcessStateManager = require('./process-state-manager');
+const StatusManager = require('./status-manager');
+const MirinOrphanManager = require('./mirin-orphan-manager');
+const IssueLockManager = require('./issue-lock-manager');
+const BackupScheduler = require('./backup-scheduler');
+const FileStateManager = require('./file-state-manager');
+const GitHubProjectsSync = require('./github-projects-sync');
+const MemoryMonitor = require('./memory-monitor');
+const MemoryOptimizer = require('./memory-optimizer');
+
+// エラーハンドリングとリカバリー戦略
+const { ErrorHandler } = require('./error-handler');
+const { CircuitBreakerFactory } = require('./circuit-breaker');
+const { ErrorRecoveryManager } = require('./error-recovery');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
@@ -64,25 +82,174 @@ const config = {
   }
 };
 
-// インスタンス作成
-const logger = new Logger();
-const github = new GitHubClient(config.github);
-const rateLimiter = new EnhancedRateLimiter(config.rateLimiting || {});
+// インスタンス作成（ログローテーション設定を含む）
+const logger = new Logger(
+  path.join(__dirname, '../logs'),
+  config.logRotation || {}
+);
+
+// エラーハンドリングシステムの初期化
+const errorHandler = new ErrorHandler(logger, config.errorHandling || {});
+const circuitBreakerFactory = new CircuitBreakerFactory();
+const recoveryManager = new ErrorRecoveryManager(logger, config.errorHandling?.autoRecovery || {});
+
+// ConfigWatcherの初期化（設定の動的再読み込み機能）
+let configWatcher = null;
+let dynamicConfig = config; // 動的に更新される設定
+
+if (config.configReload?.enabled !== false) {
+  configWatcher = new ConfigWatcher(logger);
+  
+  // 設定更新時のハンドラー
+  configWatcher.on('config-updated', ({ newConfig, changes }) => {
+    logger.info('設定が動的に更新されました:', changes.map(c => c.path).join(', '));
+    
+    // 即座に反映可能な設定を更新
+    updateHotReloadableConfigs(newConfig, changes);
+  });
+
+  configWatcher.on('restart-required', ({ changes }) => {
+    logger.warn('再起動が必要な設定変更を検知しました');
+    // 通知マネージャーがあれば通知
+    if (notificationManager) {
+      notificationManager.sendNotification({
+        type: 'restart-required',
+        title: 'PoppoBuilder再起動必要',
+        message: `設定変更により再起動が必要です: ${changes.map(c => c.path).join(', ')}`,
+        priority: 'high'
+      });
+    }
+  });
+
+  configWatcher.on('validation-error', ({ errors }) => {
+    logger.error('設定のバリデーションエラー:', errors);
+  });
+
+  // ConfigWatcherを開始
+  try {
+    configWatcher.start();
+    dynamicConfig = configWatcher.getConfig() || config;
+  } catch (error) {
+    logger.error('ConfigWatcherの起動に失敗しました:', error);
+    // フォールバックとして静的設定を使用
+  }
+}
+
+// GitHub設定を確実に取得（フォールバック付き）
+const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github || {
+  owner: 'medamap',
+  repo: 'PoppoBuilderSuite'
+};
+console.log('使用するGitHub設定:', githubConfig);
+const github = new GitHubClient(githubConfig);
+const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
+
+// FileStateManagerの初期化（IndependentProcessManagerで必要）
+const FileStateManager = require('./file-state-manager');
+const stateManager = new FileStateManager();
+
+// IssueLockManagerの初期化
+const lockManager = new IssueLockManager('.poppo/locks', logger);
+
 const taskQueue = new TaskQueue({ 
-  maxConcurrent: config.claude.maxConcurrent,
-  maxQueueSize: config.taskQueue?.maxQueueSize || 100 
-});
+  maxConcurrent: dynamicConfig.claude.maxConcurrent,
+  maxQueueSize: dynamicConfig.taskQueue?.maxQueueSize || 100 
+}, lockManager); // lockManagerを渡す
+
 // 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
-const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger);
+const processManager = new IndependentProcessManager(dynamicConfig.claude, rateLimiter, logger, stateManager, lockManager); // stateManagerとlockManagerを渡す
 
-// ダッシュボードサーバーの初期化（独立プロセス方式では簡易的に動作）
-const dashboardServer = new DashboardServer(config, null, logger);
+// 通知マネージャーの初期化（設定で有効な場合のみ）
+let notificationManager = null;
+if (config.notifications?.enabled) {
+  notificationManager = new NotificationManager(config.notifications);
+  notificationManager.initialize().catch(err => {
+    logger.error('通知マネージャーの初期化エラー:', err);
+  });
+}
 
-// 処理済みIssueを記録（メモリ内）
-const processedIssues = new Set();
+// ヘルスチェックマネージャーの初期化
+let healthCheckManager = null;
+if (config.healthCheck?.enabled !== false) {
+  healthCheckManager = new HealthCheckManager(config, processManager, notificationManager);
+}
 
-// 処理済みコメントを記録（メモリ内）
-const processedComments = new Map(); // issueNumber -> Set(commentIds)
+// ProcessStateManagerの初期化
+const processStateManager = new ProcessStateManager(logger);
+
+// StatusManagerの初期化
+const statusManager = new StatusManager('state/issue-status.json', logger);
+
+// MirinOrphanManagerの初期化
+const mirinManager = new MirinOrphanManager(github, statusManager, {
+  checkInterval: 30 * 60 * 1000, // 30分
+  heartbeatTimeout: 5 * 60 * 1000, // 5分
+  requestsDir: 'state/requests',
+  requestCheckInterval: 5000 // 5秒
+}, logger);
+
+// ダッシュボードサーバーの初期化（ProcessStateManagerを渡す）
+const dashboardServer = new DashboardServer(config, processStateManager, logger, healthCheckManager, processManager);
+
+// ProcessStateManagerのイベントをダッシュボードサーバーに接続
+processStateManager.on('process-added', (process) => {
+  dashboardServer.notifyProcessAdded(process);
+});
+
+processStateManager.on('process-updated', (process) => {
+  dashboardServer.notifyProcessUpdated(process);
+});
+
+processStateManager.on('process-removed', (processId) => {
+  dashboardServer.notifyProcessRemoved(processId);
+});
+
+// 2段階処理システムの初期化
+const twoStageProcessor = new TwoStageProcessor(config, null, logger); // claudeClientは後で設定
+
+// バックアップスケジューラーの初期化
+const backupScheduler = new BackupScheduler(config, logger);
+
+// ファイルベースの状態管理を初期化
+const fileStateManager = new FileStateManager();
+
+// GitHub Projects同期の初期化
+let githubProjectsSync = null;
+if (config.githubProjects?.enabled) {
+  githubProjectsSync = new GitHubProjectsSync(config, githubConfig, statusManager, logger);
+}
+
+// メモリ監視と最適化の初期化
+let memoryMonitor = null;
+let memoryOptimizer = null;
+if (config.memory?.monitoring?.enabled !== false) {
+  memoryMonitor = new MemoryMonitor(config.memory?.monitoring || {}, logger);
+  memoryOptimizer = new MemoryOptimizer(config.memory?.optimization || {}, logger);
+  
+  // メモリ監視イベントハンドラー
+  memoryMonitor.on('threshold-exceeded', ({ current, alerts }) => {
+    logger.error('メモリ閾値超過:', alerts);
+    // 自動最適化を実行
+    if (config.memory?.autoOptimize !== false) {
+      memoryOptimizer.performGlobalOptimization();
+    }
+  });
+  
+  memoryMonitor.on('memory-leak-detected', (leakInfo) => {
+    logger.error('メモリリーク検出:', leakInfo);
+    notificationManager.sendNotification('memory-leak', {
+      title: 'メモリリークの可能性',
+      message: `増加率: ${leakInfo.mbPerMinute} MB/分`,
+      severity: 'critical'
+    });
+  });
+}
+
+// 処理済みIssueを記録（FileStateManager使用）
+let processedIssues = new Set();
+
+// 処理済みコメントを記録（FileStateManager使用）
+let processedComments = new Map(); // issueNumber -> Set(commentIds)
 
 // タスクキューイベントハンドラー
 taskQueue.on('taskEnqueued', (task) => {
@@ -98,11 +265,68 @@ taskQueue.on('taskCompleted', ({ taskId, success, duration }) => {
 });
 
 /**
+ * ホットリロード可能な設定を更新
+ */
+function updateHotReloadableConfigs(newConfig, changes) {
+  // 動的設定を更新
+  dynamicConfig = newConfig;
+  
+  // 各コンポーネントの設定を更新
+  for (const change of changes) {
+    const rootKey = change.path.split('.')[0];
+    
+    switch (rootKey) {
+      case 'logLevel':
+        logger.setLevel(newConfig.logLevel);
+        logger.info(`ログレベルを変更: ${change.oldValue} → ${change.newValue}`);
+        break;
+        
+      case 'rateLimiter':
+      case 'rateLimiting':
+        // レート制限設定の更新
+        if (rateLimiter.updateConfig) {
+          rateLimiter.updateConfig(newConfig.rateLimiting || newConfig.rateLimiter);
+        }
+        break;
+        
+      case 'claude':
+        // Claude API設定の一部を更新
+        if (change.path === 'claude.timeout' || change.path === 'claude.maxRetries') {
+          processManager.updateConfig({ [change.path.split('.')[1]]: change.newValue });
+        }
+        break;
+        
+      case 'language':
+        // 言語設定の更新
+        logger.info(`言語設定を変更: ${change.path}`);
+        break;
+        
+      case 'notification':
+      case 'notifications':
+        // 通知設定の更新
+        if (notificationManager && notificationManager.updateConfig) {
+          notificationManager.updateConfig(newConfig.notifications || newConfig.notification);
+        }
+        break;
+        
+      case 'monitoring':
+      case 'agentMonitoring':
+        // モニタリング設定の更新
+        if (healthCheckManager && healthCheckManager.updateConfig) {
+          healthCheckManager.updateConfig(newConfig);
+        }
+        break;
+    }
+  }
+}
+
+/**
  * Issueが処理対象かチェック
  */
-function shouldProcessIssue(issue) {
+async function shouldProcessIssue(issue) {
   // すでに処理済み
-  if (processedIssues.has(issue.number)) {
+  const isProcessed = await fileStateManager.isIssueProcessed(issue.number);
+  if (isProcessed) {
     return false;
   }
 
@@ -114,8 +338,11 @@ function shouldProcessIssue(issue) {
   // ラベルチェック
   const labels = issue.labels.map(l => l.name);
   
-  // task:misc または task:dogfooding ラベルが必要
-  if (!labels.includes('task:misc') && !labels.includes('task:dogfooding')) {
+  // 処理対象のtask:*ラベルリスト
+  const taskLabels = ['task:misc', 'task:dogfooding', 'task:quality', 'task:docs', 'task:feature'];
+  
+  // いずれかのtask:*ラベルが必要
+  if (!labels.some(label => taskLabels.includes(label))) {
     return false;
   }
 
@@ -135,13 +362,25 @@ async function processIssue(issue) {
   logger.logIssue(issueNumber, 'START', { title: issue.title, labels: issue.labels });
   console.log(`\nIssue #${issueNumber} の処理開始: ${issue.title}`);
 
+  // 早期ロックチェック（IssueLockManager）
+  const existingLock = await lockManager.checkLock(issueNumber);
+  if (existingLock && lockManager.isLockValid(existingLock)) {
+    console.log(`⚠️  Issue #${issueNumber} は既に処理中です (PID: ${existingLock.lockedBy.pid})`);
+    logger.logIssue(issueNumber, 'SKIP_ALREADY_LOCKED', { 
+      lockedBy: existingLock.lockedBy,
+      lockedAt: existingLock.lockedAt 
+    });
+    return;
+  }
+
   // 処理開始前に処理済みとして記録（二重起動防止）
+  await fileStateManager.addProcessedIssue(issueNumber);
   processedIssues.add(issueNumber);
 
   try {
-    // processingラベルを追加
-    await github.addLabels(issueNumber, ['processing']);
-    logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'processing' });
+    // StatusManagerでチェックアウト（processingラベルの追加はMirinOrphanManager経由で行われる）
+    await statusManager.checkout(issueNumber, `issue-${issueNumber}`, 'claude-cli');
+    logger.logIssue(issueNumber, 'CHECKED_OUT', { status: 'processing' });
 
     // ラベル取得
     const labels = issue.labels.map(l => l.name);
@@ -149,7 +388,30 @@ async function processIssue(issue) {
     // 言語設定読み込み
     const poppoConfig = configLoader.loadConfig();
     
-    // Claude用の指示を作成
+    // 2段階処理を試みる
+    const instructionText = `${issue.title}\n\n${issue.body}`;
+    const twoStageResult = await twoStageProcessor.processInstruction(instructionText, {
+      issueNumber: issueNumber,
+      labels: labels
+    });
+
+    // 2段階処理が成功し、Issue作成アクションの場合
+    if (twoStageResult.executed && twoStageResult.action === 'create_issue') {
+      logger.logIssue(issueNumber, 'TWO_STAGE_ISSUE_CREATED', { 
+        newIssue: twoStageResult.executionResult.issue 
+      });
+      
+      // 処理完了としてステータスを更新
+      await statusManager.checkin(issueNumber, 'completed', {
+        action: 'create_issue',
+        newIssue: twoStageResult.executionResult.issue
+      });
+      
+      console.log(`Issue #${issueNumber} の処理完了（2段階処理でIssue作成）`);
+      return;
+    }
+
+    // 通常のClaude実行に進む
     const instruction = {
       task: 'execute',
       issue: {
@@ -184,33 +446,62 @@ async function processIssue(issue) {
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
-    logger.logIssue(issueNumber, 'ERROR', { 
-      message: error.message, 
-      stack: error.stack,
-      stdout: error.stdout,
-      stderr: error.stderr 
+    // 統合エラーハンドリング
+    const handledError = await errorHandler.handleError(error, {
+      issueNumber,
+      operation: 'processIssue',
+      title: issue.title
     });
-    console.error(`Issue #${issueNumber} の処理エラー:`, error.message);
     
-    // より詳細なエラー情報をコメントに含める
-    const errorDetails = [
-      `## エラーが発生しました`,
-      ``,
-      `### エラーメッセージ`,
-      `\`\`\``,
-      error.message || '(エラーメッセージなし)',
-      `\`\`\``,
-      error.stderr ? `\n### エラー出力\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
-      error.stdout ? `\n### 標準出力\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
-      ``,
-      `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
-    ].filter(Boolean).join('\n');
+    // 自動リカバリーを試行
+    const recovered = await recoveryManager.recover(handledError, {
+      issueNumber,
+      operation: async () => {
+        // リトライ用の操作（簡略版）
+        const poppoConfig = configLoader.loadConfig();
+        return await processManager.executeClaudeCode(issue.body, {
+          issueNumber,
+          title: issue.title,
+          language: poppoConfig.language?.primary || 'ja'
+        });
+      }
+    });
     
-    await github.addComment(issueNumber, errorDetails);
-    
-    // processingラベルを削除（エラー時は処理済みリストから削除して再試行可能に）
-    await github.removeLabels(issueNumber, ['processing']);
-    processedIssues.delete(issueNumber);
+    if (!recovered) {
+      // リカバリー失敗時の処理
+      console.error(`Issue #${issueNumber} の処理エラー:`, handledError.message);
+      
+      // より詳細なエラー情報をコメントに含める
+      const errorDetails = [
+        `## エラーが発生しました`,
+        ``,
+        `### エラーメッセージ`,
+        `\`\`\``,
+        handledError.message || '(エラーメッセージなし)',
+        `\`\`\``,
+        handledError.context?.stderr ? `\n### エラー出力\n\`\`\`\n${handledError.context.stderr}\n\`\`\`` : '',
+        handledError.context?.stdout ? `\n### 標準出力\n\`\`\`\n${handledError.context.stdout}\n\`\`\`` : '',
+        ``,
+        `エラーコード: \`${handledError.code}\``,
+        `重要度: \`${handledError.severity}\``,
+        `リトライ可能: \`${handledError.retryable ? 'Yes' : 'No'}\``,
+        ``,
+        `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
+      ].filter(Boolean).join('\n');
+      
+      await github.addComment(issueNumber, errorDetails);
+      
+      // エラー時はステータスをリセット（再試行可能にする）
+      await statusManager.resetIssueStatus(issueNumber);
+      processedIssues.delete(issueNumber);
+      
+      // 処理済みIssuesを再読み込みして削除
+      const currentProcessed = await fileStateManager.loadProcessedIssues();
+      currentProcessed.delete(issueNumber);
+      await fileStateManager.saveProcessedIssues(currentProcessed);
+    } else {
+      logger.info(`Issue #${issueNumber} の自動リカバリーが成功しました`);
+    }
   }
 }
 
@@ -301,12 +592,11 @@ async function processComment(issue, comment) {
   console.log(`\nIssue #${issueNumber} のコメント処理開始`);
 
   try {
-    // awaiting-responseを削除、processingラベルを追加
-    await github.removeLabels(issueNumber, ['awaiting-response']);
-    await github.addLabels(issueNumber, ['processing']);
-    logger.logIssue(issueNumber, 'LABEL_UPDATED', { 
-      removed: 'awaiting-response', 
-      added: 'processing' 
+    // StatusManagerでコメント処理を開始（awaiting-response→processingの変更もMirinOrphanManager経由）
+    await statusManager.checkout(issueNumber, `comment-${issueNumber}-${comment.id}`, 'comment-response');
+    logger.logIssue(issueNumber, 'COMMENT_CHECKED_OUT', { 
+      commentId: comment.id,
+      status: 'processing' 
     });
 
     // コンテキストを構築
@@ -364,8 +654,10 @@ async function processComment(issue, comment) {
     console.error(`Issue #${issueNumber} のコメント処理エラー:`, error.message);
     
     // エラー時はawaiting-responseに戻す
-    await github.removeLabels(issueNumber, ['processing']);
-    await github.addLabels(issueNumber, ['awaiting-response']);
+    await statusManager.checkin(issueNumber, 'awaiting-response', {
+      error: error.message,
+      commentId: comment.id
+    });
   }
 }
 
@@ -386,7 +678,7 @@ async function checkComments() {
     
     for (const issue of issues) {
       const comments = await github.listComments(issue.number);
-      const processed = processedComments.get(issue.number) || new Set();
+      const processed = await fileStateManager.getProcessedCommentsForIssue(issue.number);
       
       // 新規コメントをチェック
       for (const comment of comments) {
@@ -398,6 +690,7 @@ async function checkComments() {
           console.log(`新規コメントを検出: Issue #${issue.number}, Comment: ${commentId}`);
           
           // 処理済みとして記録
+          await fileStateManager.addProcessedComment(issue.number, commentId);
           if (!processedComments.has(issue.number)) {
             processedComments.set(issue.number, new Set());
           }
@@ -510,16 +803,18 @@ async function checkCompletedTasks() {
         const comment = `## 実行完了\n\n${result.output}`;
         await github.addComment(issueNumber, comment);
         
-        // ラベル更新
-        await github.removeLabels(issueNumber, ['processing']);
+        // ステータス更新
+        const finalStatus = (config.commentHandling && config.commentHandling.enabled) 
+          ? 'awaiting-response' 
+          : 'completed';
         
-        if (config.commentHandling && config.commentHandling.enabled) {
-          await github.addLabels(issueNumber, ['awaiting-response']);
-          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'awaiting-response' });
-        } else {
-          await github.addLabels(issueNumber, ['completed']);
-          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'completed' });
-        }
+        await statusManager.checkin(issueNumber, finalStatus, {
+          taskId: result.taskId,
+          success: true,
+          outputLength: result.output?.length || 0
+        });
+        
+        logger.logIssue(issueNumber, 'STATUS_UPDATED', { status: finalStatus });
         
         console.log(`✅ Issue #${issueNumber} の後処理完了`);
         
@@ -546,14 +841,16 @@ async function checkCompletedTasks() {
           
           if (isCompletion) {
             // 完了キーワードが含まれている場合
-            await github.addLabels(issueNumber, ['completed']);
+            await statusManager.updateStatus(issueNumber, 'completed', {
+              reason: 'completion_keyword',
+              taskId: result.taskId
+            });
             logger.logIssue(issueNumber, 'COMMENT_COMPLETED', { 
               reason: 'completion_keyword' 
             });
             console.log(`Issue #${issueNumber} のコメント処理完了（完了キーワード検出）`);
           } else {
-            // 続けて対話する場合
-            await github.addLabels(issueNumber, ['awaiting-response']);
+            // 続けて対話する場合（すでにawaiting-responseステータスで更新されているはず）
             logger.logIssue(issueNumber, 'COMMENT_AWAITING', { 
               commentCount: 1 
             });
@@ -564,7 +861,7 @@ async function checkCompletedTasks() {
         // エラー時の処理
         const errorComment = `## エラーが発生しました\n\n\`\`\`\n${result.error}\n\`\`\`\n\n詳細なログは確認してください。`;
         await github.addComment(issueNumber, errorComment);
-        await github.removeLabels(issueNumber, ['processing']);
+        await statusManager.resetIssueStatus(issueNumber);
         
         console.log(`❌ Issue #${issueNumber} でエラーが発生`);
       }
@@ -596,6 +893,21 @@ async function mainLoop() {
   
   // レート制限の初期チェック
   await rateLimiter.preflightCheck();
+  
+  // ハートビート更新用のインターバル
+  global.heartbeatInterval = setInterval(async () => {
+    try {
+      // 処理中のすべてのIssueのハートビートを更新
+      const allStatuses = await statusManager.getAllStatuses();
+      for (const [issueNumber, status] of Object.entries(allStatuses)) {
+        if (status.status === 'processing') {
+          await statusManager.updateHeartbeat(issueNumber);
+        }
+      }
+    } catch (error) {
+      logger.error('ハートビート更新エラー:', error);
+    }
+  }, 30000); // 30秒ごと
 
   while (true) {
     try {
@@ -613,7 +925,12 @@ async function mainLoop() {
       const issues = await github.listIssues({ state: 'open' });
       
       // 処理対象のIssueを抽出
-      const targetIssues = issues.filter(shouldProcessIssue);
+      const targetIssues = [];
+      for (const issue of issues) {
+        if (await shouldProcessIssue(issue)) {
+          targetIssues.push(issue);
+        }
+      }
       
       if (targetIssues.length === 0) {
         console.log('処理対象のIssueはありません');
@@ -625,9 +942,23 @@ async function mainLoop() {
           new Date(a.createdAt) - new Date(b.createdAt)
         );
 
-        // Issueをタスクキューに追加
+        // Issueをタスクキューに追加（重複チェック付き）
+        const currentlyProcessing = await statusManager.getCurrentlyProcessing();
+        const queuedIssues = taskQueue.getPendingIssues();
+        
         for (const issue of targetIssues) {
           try {
+            // 重複チェック
+            if (currentlyProcessing.includes(issue.number)) {
+              console.log(`⏭️  Issue #${issue.number} は既に処理中のためスキップ`);
+              continue;
+            }
+            
+            if (queuedIssues.includes(issue.number)) {
+              console.log(`⏭️  Issue #${issue.number} は既にキューに登録済みのためスキップ`);
+              continue;
+            }
+
             const taskId = taskQueue.enqueue({
               type: 'issue',
               issue: issue,
@@ -668,8 +999,106 @@ async function mainLoop() {
 }
 
 // プロセス終了時のクリーンアップ
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n\n終了します...');
+  
+  // 状態を保存
+  try {
+    await fileStateManager.saveProcessedIssues(processedIssues);
+    await fileStateManager.saveProcessedComments(processedComments);
+    logger.info('処理済み状態を保存しました');
+  } catch (error) {
+    logger.error('状態保存エラー:', error);
+  }
+  
+  // ヘルスチェックマネージャーを停止
+  if (healthCheckManager) {
+    await healthCheckManager.stop();
+  }
+  
+  // MirinOrphanManagerを停止
+  mirinManager.stop();
+  
+  // ハートビートインターバルをクリア
+  if (global.heartbeatInterval) {
+    clearInterval(global.heartbeatInterval);
+  }
+  
+  // バックアップスケジューラーを停止
+  if (backupScheduler) {
+    backupScheduler.stop();
+  }
+  
+  // GitHub Projects同期を停止
+  if (githubProjectsSync) {
+    await githubProjectsSync.cleanup();
+  }
+  
+  // メモリ監視を停止
+  if (memoryMonitor) {
+    memoryMonitor.stop();
+    memoryOptimizer.stop();
+  }
+  
+  // ログローテーターを停止
+  logger.close();
+  
+  // IssueLockManagerをシャットダウン
+  await lockManager.shutdown();
+  
+  processManager.killAll();
+  dashboardServer.stop();
+  process.exit(0);
+});
+
+// SIGTERMでも同じクリーンアップを実行
+process.on('SIGTERM', async () => {
+  console.log('\n\nSIGTERMを受信しました。終了します...');
+  
+  // 状態を保存
+  try {
+    await fileStateManager.saveProcessedIssues(processedIssues);
+    await fileStateManager.saveProcessedComments(processedComments);
+    logger.info('処理済み状態を保存しました');
+  } catch (error) {
+    logger.error('状態保存エラー:', error);
+  }
+  
+  // ヘルスチェックマネージャーを停止
+  if (healthCheckManager) {
+    await healthCheckManager.stop();
+  }
+  
+  // MirinOrphanManagerを停止
+  mirinManager.stop();
+  
+  // ハートビートインターバルをクリア
+  if (global.heartbeatInterval) {
+    clearInterval(global.heartbeatInterval);
+  }
+  
+  // バックアップスケジューラーを停止
+  if (backupScheduler) {
+    backupScheduler.stop();
+  }
+  
+  // GitHub Projects同期を停止
+  if (githubProjectsSync) {
+    await githubProjectsSync.cleanup();
+  }
+  
+  // メモリ監視を停止
+  if (memoryMonitor) {
+    memoryMonitor.stop();
+    memoryOptimizer.stop();
+  }
+  
+  // ログローテーターを停止
+  logger.close();
+  
+  // IssueLockManagerをシャットダウン
+  await lockManager.shutdown();
+  
   processManager.killAll();
   dashboardServer.stop();
   process.exit(0);
@@ -678,5 +1107,63 @@ process.on('SIGINT', () => {
 // ダッシュボードサーバーを起動
 dashboardServer.start();
 
-// 開始
-mainLoop().catch(console.error);
+// ヘルスチェックマネージャーを開始
+if (healthCheckManager) {
+  healthCheckManager.start().catch(err => {
+    logger.error('ヘルスチェックマネージャーの開始エラー:', err);
+  });
+  logger.info('ヘルスチェックマネージャーを開始しました');
+}
+
+// 2段階処理システムを初期化
+if (config.twoStageProcessing?.enabled) {
+  twoStageProcessor.init().catch(err => {
+    logger.error('2段階処理システムの初期化エラー:', err);
+  });
+  logger.info('2段階処理システムを初期化しました');
+}
+
+// StatusManager、MirinOrphanManager、IssueLockManagerを初期化
+Promise.all([
+  fileStateManager.init(),
+  statusManager.initialize(),
+  mirinManager.initialize(),
+  lockManager.initialize()
+]).then(async () => {
+  logger.info('FileStateManager、StatusManager、MirinOrphanManager、IssueLockManagerを初期化しました');
+  
+  // 保存された状態を読み込む
+  processedIssues = await fileStateManager.loadProcessedIssues();
+  processedComments = await fileStateManager.loadProcessedComments();
+  logger.info(`保存された状態を読み込みました: Issues=${processedIssues.size}, Comments=${processedComments.size}`);
+  
+  // MirinOrphanManagerを開始
+  mirinManager.start();
+  logger.info('MirinOrphanManagerの監視を開始しました');
+  
+  // バックアップスケジューラーを開始
+  if (config.backup?.enabled) {
+    backupScheduler.start();
+    logger.info('バックアップスケジューラーを開始しました');
+  }
+  
+  // GitHub Projects同期を開始
+  if (githubProjectsSync) {
+    await githubProjectsSync.initialize();
+    githubProjectsSync.startPeriodicSync(config.githubProjects.syncInterval);
+    logger.info('GitHub Projects同期を開始しました');
+  }
+  
+  // メモリ監視を開始
+  if (memoryMonitor) {
+    await memoryMonitor.start();
+    memoryOptimizer.start();
+    logger.info('メモリ監視と最適化を開始しました');
+  }
+  
+  // 開始
+  mainLoop().catch(console.error);
+}).catch(err => {
+  logger.error('初期化エラー:', err);
+  process.exit(1);
+});

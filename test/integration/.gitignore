@@ -1,0 +1,16 @@
+# テスト生成ファイル
+temp/
+test-report.json
+test-report.md
+*.log
+
+# 一時ファイル
+*.tmp
+*.backup
+
+# カバレッジレポート
+coverage/
+.nyc_output/
+
+# テスト用のnode_modules（必要な場合）
+node_modules/
