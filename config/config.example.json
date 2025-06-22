@@ -1,0 +1,37 @@
+{
+  "github": {
+    "owner": "YOUR_GITHUB_USERNAME",
+    "repo": "YOUR_REPO_NAME",
+    "checkInterval": 30000,
+    "pollingInterval": 60000,
+    "rateLimitBuffer": 100,
+    "maxIssuesPerPoll": 1
+  },
+  "claude": {
+    "command": "claude",
+    "timeout": 86400000,
+    "maxConcurrent": 2,
+    "defaultTimeout": 600000,
+    "maxRetries": 3,
+    "retryDelay": 5000
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "host": "localhost",
+    "updateInterval": 5000,
+    "authentication": {
+      "enabled": true,
+      "username": "admin",
+      "password": "CHANGE_THIS_PASSWORD"
+    }
+  },
+  "language": {
+    "primary": "en",
+    "fallback": "en"
+  },
+  "notification": {
+    "enabled": false,
+    "providers": []
+  }
+}

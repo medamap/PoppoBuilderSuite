@@ -10,6 +10,34 @@ if (process.argv.includes('--version') || process.argv.includes('-v')) {
   process.exit(0);
 }
 
+// ヘルプ表示
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  console.log(`
+PoppoBuilder Suite - AI-powered autonomous software development system
+
+使用方法:
+  poppo-builder [options]
+
+オプション:
+  -v, --version    バージョンを表示
+  -h, --help       このヘルプを表示
+
+設定:
+  PoppoBuilderは以下の順序で設定を読み込みます：
+  1. 環境変数 (POPPO_*)
+  2. プロジェクトの .poppo/config.json
+  3. グローバル設定 (~/.poppo/config.json)
+  4. システムデフォルト
+
+必要な環境変数:
+  GITHUB_TOKEN     GitHub APIアクセス用のトークン
+
+詳細情報:
+  https://github.com/medamap/PoppoBuilderSuite
+`);
+  process.exit(0);
+}
+
 const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
@@ -40,14 +68,71 @@ const { ErrorHandler } = require('./error-handler');
 const { CircuitBreakerFactory } = require('./circuit-breaker');
 const { ErrorRecoveryManager } = require('./error-recovery');
 
+// エラーハンドリングの設定
+process.on('uncaughtException', (error) => {
+  console.error('\n❌ エラーが発生しました\n');
+  
+  if (error.code === 'ENOENT') {
+    console.log('📁 設定ファイルが見つかりません');
+    console.log('\n解決方法:');
+    console.log('1. プロジェクトディレクトリに .poppo/config.json を作成してください:');
+    console.log('   mkdir -p .poppo');
+    console.log('   echo \'{"language": "ja"}\' > .poppo/config.json');
+    console.log('\n2. または環境変数で設定してください:');
+    console.log('   export POPPO_LANGUAGE_PRIMARY=ja');
+    console.log('\n詳細はドキュメントを参照してください:');
+    console.log('   https://github.com/medamap/PoppoBuilderSuite\n');
+  } else if (error.message && error.message.includes('language.primary')) {
+    console.log('🌐 言語設定が不足しています');
+    console.log('\n解決方法:');
+    console.log('1. .poppo/config.json に言語を設定してください:');
+    console.log('   {"language": {"primary": "ja"}}');
+    console.log('\n2. または環境変数で設定してください:');
+    console.log('   export POPPO_LANGUAGE_PRIMARY=ja\n');
+  } else {
+    console.log('詳細:', error.message);
+    console.log('\nヘルプが必要な場合は以下を実行してください:');
+    console.log('   poppo-builder --help\n');
+  }
+  
+  process.exit(1);
+});
+
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
-const poppoConfig = configLoader.loadConfig();
+let poppoConfig = {};
+try {
+  poppoConfig = configLoader.loadConfig();
+  
+  // 言語設定のフォールバック
+  if (!poppoConfig.language || !poppoConfig.language.primary) {
+    console.log('ℹ️  言語設定が見つかりません。英語をデフォルトとして使用します。');
+    poppoConfig.language = poppoConfig.language || {};
+    poppoConfig.language.primary = process.env.LANG?.split('_')[0] || 'en';
+    poppoConfig.language.fallback = 'en';
+  }
+} catch (error) {
+  if (error.message && error.message.includes('language.primary')) {
+    // 言語設定の警告を無視してデフォルトを使用
+    poppoConfig.language = {
+      primary: process.env.LANG?.split('_')[0] || 'en',
+      fallback: 'en'
+    };
+  } else {
+    throw error;
+  }
+}
 
 // メイン設定ファイルも読み込み（後方互換性のため）
-const mainConfig = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf-8')
-);
+let mainConfig = {};
+const mainConfigPath = path.join(__dirname, '../config/config.json');
+if (fs.existsSync(mainConfigPath)) {
+  try {
+    mainConfig = JSON.parse(fs.readFileSync(mainConfigPath, 'utf-8'));
+  } catch (error) {
+    console.warn('警告: メイン設定ファイルの読み込みに失敗しました:', error.message);
+  }
+}
 
 // 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
 const config = {

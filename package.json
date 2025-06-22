@@ -96,6 +96,18 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "files": [
+    "src/",
+    "lib/",
+    "scripts/",
+    "agents/",
+    "dashboard/",
+    "config/defaults.json",
+    "prompts/",
+    "examples/",
+    "LICENSE",
+    "README.md"
+  ],
   "dependencies": {
     "ajv": "^8.17.1",
     "axios": "^1.6.0",
