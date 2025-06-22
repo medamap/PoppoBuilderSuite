@@ -270,8 +270,19 @@ if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
         const success = await wizard.runSetup();
         
         if (success) {
-          console.log(chalk.green('\n✅ セットアップが完了しました！'));
-          console.log(chalk.yellow('もう一度 poppo-builder を実行してください\n'));
+          // 設定ファイルが作成されたか確認
+          const configPath = path.join(process.cwd(), '.poppo', 'config.json');
+          if (fs.existsSync(configPath)) {
+            console.log(chalk.green('\n✅ セットアップが完了しました！'));
+            console.log(chalk.yellow('もう一度 poppo-builder を実行してください\n'));
+          } else {
+            // 設定ファイルが作成されていない場合、inquirerウィザードにフォールバック
+            console.log(chalk.yellow('\n設定ファイルが作成されませんでした。'));
+            console.log(chalk.cyan('対話型設定ツールを起動します...\n'));
+            const InitWizard = require('./init-wizard');
+            const initWizard = new InitWizard();
+            await initWizard.run();
+          }
         } else {
           console.log(chalk.red('\nセットアップがキャンセルされました'));
         }
