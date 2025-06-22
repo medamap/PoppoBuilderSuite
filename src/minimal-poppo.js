@@ -248,50 +248,9 @@ if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
     claudeAvailable = true;
   } catch {}
   
-  if (claudeAvailable) {
-    console.log(chalk.green('✨ Claude CLIが検出されました！'));
-    console.log(chalk.yellow('\n対話型セットアップウィザードを起動しますか？'));
-    console.log(chalk.gray('Claude CLIがあなたの設定を手助けします\n'));
-    
-    const readline = require('readline');
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    });
-    
-    rl.question('セットアップウィザードを起動する？ (Y/n): ', async (answer) => {
-      rl.close();
-      
-      if (answer.toLowerCase() !== 'n') {
-        // SetupWizardを起動
-        console.log(chalk.cyan('\n🚀 セットアップウィザードを起動しています...\n'));
-        const SetupWizard = require('../lib/commands/setup-wizard');
-        const wizard = new SetupWizard();
-        const success = await wizard.runSetup();
-        
-        if (success) {
-          // 設定ファイルが作成されたか確認
-          const configPath = path.join(process.cwd(), '.poppo', 'config.json');
-          if (fs.existsSync(configPath)) {
-            console.log(chalk.green('\n✅ セットアップが完了しました！'));
-            console.log(chalk.yellow('もう一度 poppo-builder を実行してください\n'));
-          } else {
-            // 設定ファイルが作成されていない場合、inquirerウィザードにフォールバック
-            console.log(chalk.yellow('\n設定ファイルが作成されませんでした。'));
-            console.log(chalk.cyan('対話型設定ツールを起動します...\n'));
-            const InitWizard = require('./init-wizard');
-            const initWizard = new InitWizard();
-            await initWizard.run();
-          }
-        } else {
-          console.log(chalk.red('\nセットアップがキャンセルされました'));
-        }
-      } else {
-        // 手動設定の手順を表示
-        showManualSetupInstructions();
-      }
-      process.exit(0);
-    });
+  // Claude CLI検出を無効化し、直接inquirerウィザードを使用
+  if (false && claudeAvailable) {
+    // Claude CLIインタラクティブモードは現在非対応
   } else {
     // TUIウィザードを起動（inquirer使用）
     console.log(chalk.yellow('🔧 対話型設定ツールを起動しています...\n'));
