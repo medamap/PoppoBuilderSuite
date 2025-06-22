@@ -1,40 +1,33 @@
 /**
- * CCSP高度なキュー管理システム
- * 
- * Issue #142: CCSPの高度な制御機能とモニタリング実装
- * 優先度ベースのキュー管理とスケジューリング機能を提供
+ * Advanced Queue Manager for CCSP
+ * Provides priority-based queue management, scheduling, and advanced control features
  */
 
 const EventEmitter = require('events');
-const Logger = require('../../src/logger');
+const fs = require('fs').promises;
+const path = require('path');
 
 class AdvancedQueueManager extends EventEmitter {
   constructor(options = {}) {
     super();
     
-    this.logger = new Logger('AdvancedQueueManager');
-    this.config = {
-      maxQueueSize: options.maxQueueSize || 10000,
-      schedulerInterval: options.schedulerInterval || 5000, // 5秒間隔
-      priorityWeights: {
-        urgent: 1000,
-        high: 100,
-        normal: 10,
-        low: 1
-      },
+    this.options = {
+      maxQueueSize: options.maxQueueSize || 1000,
+      persistPath: options.persistPath || path.join(__dirname, '.poppobuilder/ccsp/queues'),
+      schedulerInterval: options.schedulerInterval || 10000, // 10秒ごとにスケジュールチェック
       ...options
     };
     
     // 優先度別キュー
     this.queues = {
-      urgent: [],      // 緊急タスク（即座実行）
-      high: [],        // 高優先度
+      urgent: [],      // 緊急タスク（即座に実行）
+      high: [],        // 高優先度（通常の2倍速）
       normal: [],      // 通常優先度
-      low: [],         // 低優先度
+      low: [],         // 低優先度（アイドル時のみ）
       scheduled: []    // スケジュール実行
     };
     
-    // 統計情報
+    // キューの統計情報
     this.stats = {
       totalProcessed: 0,
       byPriority: {
@@ -44,344 +37,390 @@ class AdvancedQueueManager extends EventEmitter {
         low: 0,
         scheduled: 0
       },
-      averageWaitTime: 0,
-      currentQueueSize: 0
+      avgProcessingTime: 0,
+      lastProcessedAt: null
     };
     
-    // 状態管理
-    this.isPaused = false;
-    this.isSchedulerRunning = false;
+    // キューの状態
+    this.state = {
+      paused: false,
+      pausedAt: null,
+      pausedBy: null,
+      throttleDelay: 0,
+      maxConcurrent: 1
+    };
     
-    // スケジューラー開始
-    this.startScheduler();
+    // スケジューラー
+    this.schedulerTimer = null;
     
-    this.logger.info('Advanced Queue Manager initialized', {
-      maxQueueSize: this.config.maxQueueSize,
-      schedulerInterval: this.config.schedulerInterval
-    });
+    // 初期化
+    this.initialize();
+  }
+  
+  async initialize() {
+    try {
+      // 永続化ディレクトリの作成
+      await fs.mkdir(this.options.persistPath, { recursive: true });
+      
+      // 既存のキューを読み込み
+      await this.loadQueues();
+      
+      // スケジューラーの開始
+      this.startScheduler();
+      
+      this.emit('initialized');
+    } catch (error) {
+      this.emit('error', error);
+    }
   }
   
   /**
    * タスクをキューに追加
    * @param {Object} task - タスクオブジェクト
-   * @param {string} priority - 優先度 (urgent, high, normal, low)
-   * @param {Date|number} executeAt - スケジュール実行時刻（オプション）
+   * @param {string} task.id - タスクID
+   * @param {string} task.type - タスクタイプ
+   * @param {Object} task.data - タスクデータ
+   * @param {string} priority - 優先度 (urgent/high/normal/low)
+   * @param {Date} scheduleAt - スケジュール実行時刻（オプション）
    */
-  async enqueue(task, priority = 'normal', executeAt = null) {
-    if (this.getTotalQueueSize() >= this.config.maxQueueSize) {
-      throw new Error('Queue is full');
+  async enqueue(task, priority = 'normal', scheduleAt = null) {
+    if (!task || !task.id) {
+      throw new Error('Invalid task: id is required');
     }
     
-    // タスクにメタデータを追加
+    // キューサイズチェック
+    const totalSize = this.getTotalQueueSize();
+    if (totalSize >= this.options.maxQueueSize) {
+      throw new Error(`Queue size limit exceeded: ${totalSize}/${this.options.maxQueueSize}`);
+    }
+    
+    // タスクに追加情報を付与
     const enrichedTask = {
       ...task,
       priority,
-      enqueuedAt: new Date(),
-      executeAt: executeAt ? new Date(executeAt) : null,
-      id: task.requestId || `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      enqueuedAt: new Date().toISOString(),
+      scheduleAt: scheduleAt ? new Date(scheduleAt).toISOString() : null,
+      attempts: 0,
+      status: 'queued'
     };
     
-    if (executeAt) {
-      // スケジュール実行
+    // 適切なキューに追加
+    if (scheduleAt && new Date(scheduleAt) > new Date()) {
       this.queues.scheduled.push(enrichedTask);
-      this.queues.scheduled.sort((a, b) => new Date(a.executeAt) - new Date(b.executeAt));
-      this.logger.info('Task scheduled', {
-        taskId: enrichedTask.id,
-        executeAt: enrichedTask.executeAt,
-        scheduledQueueSize: this.queues.scheduled.length
-      });
+      this.emit('task:scheduled', enrichedTask);
     } else {
-      // 即座キューに追加
+      if (!this.queues[priority]) {
+        throw new Error(`Invalid priority: ${priority}`);
+      }
       this.queues[priority].push(enrichedTask);
-      this.logger.info('Task enqueued', {
-        taskId: enrichedTask.id,
-        priority,
-        queueSize: this.queues[priority].length
-      });
+      this.emit('task:enqueued', enrichedTask);
     }
     
-    this.updateStats();
-    this.emit('taskEnqueued', enrichedTask);
+    // キューを永続化
+    await this.saveQueues();
     
-    return enrichedTask.id;
+    return enrichedTask;
   }
   
   /**
-   * 次のタスクを取得（優先度順）
+   * 次のタスクを取得（優先度を考慮）
+   * @returns {Object|null} タスクまたはnull
    */
-  async dequeue() {
-    if (this.isPaused) {
+  async getNextTask() {
+    if (this.state.paused) {
       return null;
     }
     
-    // 優先度順で確認
+    // スケジュールされたタスクをチェック
+    this.processScheduledTasks();
+    
+    // 優先度順にチェック
     const priorities = ['urgent', 'high', 'normal', 'low'];
     
     for (const priority of priorities) {
       if (this.queues[priority].length > 0) {
         const task = this.queues[priority].shift();
+        task.status = 'processing';
+        task.startedAt = new Date().toISOString();
         
-        // 待機時間を計算
-        const waitTime = Date.now() - new Date(task.enqueuedAt).getTime();
-        task.waitTime = waitTime;
-        
-        this.stats.totalProcessed++;
-        this.stats.byPriority[priority]++;
-        this.updateAverageWaitTime(waitTime);
-        
-        this.logger.info('Task dequeued', {
-          taskId: task.id,
-          priority,
-          waitTime: `${waitTime}ms`,
-          remainingInQueue: this.queues[priority].length
-        });
-        
-        this.updateStats();
-        this.emit('taskDequeued', task);
+        await this.saveQueues();
+        this.emit('task:dequeued', task);
         
         return task;
       }
     }
     
-    return null; // キューが空
+    return null;
   }
   
   /**
-   * 特定のタスクを削除
+   * タスクの完了を記録
    * @param {string} taskId - タスクID
+   * @param {Object} result - 実行結果
    */
-  async removeTask(taskId) {
-    let removed = false;
+  async completeTask(taskId, result = {}) {
+    const completedAt = new Date();
     
-    for (const [priority, queue] of Object.entries(this.queues)) {
-      const index = queue.findIndex(task => task.id === taskId);
-      if (index !== -1) {
-        const task = queue.splice(index, 1)[0];
-        this.logger.info('Task removed from queue', {
-          taskId,
-          priority,
-          remainingInQueue: queue.length
-        });
-        this.emit('taskRemoved', task);
-        removed = true;
-        break;
-      }
+    // 統計情報の更新
+    this.stats.totalProcessed++;
+    this.stats.lastProcessedAt = completedAt.toISOString();
+    
+    // 処理時間の計算（簡易版）
+    if (result.startedAt) {
+      const processingTime = completedAt - new Date(result.startedAt);
+      this.updateAverageProcessingTime(processingTime);
     }
     
-    this.updateStats();
-    return removed;
-  }
-  
-  /**
-   * キューの一時停止
-   */
-  pause() {
-    this.isPaused = true;
-    this.logger.warn('Queue paused');
-    this.emit('queuePaused');
-  }
-  
-  /**
-   * キューの再開
-   */
-  resume() {
-    this.isPaused = false;
-    this.logger.info('Queue resumed');
-    this.emit('queueResumed');
-  }
-  
-  /**
-   * 指定した優先度のキューをクリア
-   * @param {string} priority - 優先度（'all'で全キューをクリア）
-   */
-  clearQueue(priority = 'all') {
-    if (priority === 'all') {
-      const totalCleared = this.getTotalQueueSize();
-      for (const key of Object.keys(this.queues)) {
-        this.queues[key] = [];
-      }
-      this.logger.warn('All queues cleared', { totalCleared });
-      this.emit('allQueuesCleared', totalCleared);
-    } else if (this.queues[priority]) {
-      const cleared = this.queues[priority].length;
-      this.queues[priority] = [];
-      this.logger.warn('Queue cleared', { priority, cleared });
-      this.emit('queueCleared', { priority, cleared });
+    // 優先度別の統計
+    if (result.priority && this.stats.byPriority[result.priority] !== undefined) {
+      this.stats.byPriority[result.priority]++;
     }
     
-    this.updateStats();
+    await this.saveStats();
+    this.emit('task:completed', { taskId, result });
   }
   
   /**
-   * キューの状態取得
+   * タスクの失敗を記録
+   * @param {string} taskId - タスクID
+   * @param {Error} error - エラーオブジェクト
+   * @param {Object} task - タスクオブジェクト
    */
-  getStatus() {
-    return {
-      isPaused: this.isPaused,
-      queues: Object.fromEntries(
-        Object.entries(this.queues).map(([priority, queue]) => [
-          priority,
-          {
-            size: queue.length,
-            oldestTask: queue.length > 0 ? queue[0].enqueuedAt : null,
-            newestTask: queue.length > 0 ? queue[queue.length - 1].enqueuedAt : null
-          }
-        ])
-      ),
-      stats: { ...this.stats },
-      totalQueueSize: this.getTotalQueueSize()
-    };
-  }
-  
-  /**
-   * 統計情報の取得
-   */
-  getStats() {
-    return {
-      ...this.stats,
-      currentQueueSizes: Object.fromEntries(
-        Object.entries(this.queues).map(([priority, queue]) => [priority, queue.length])
-      ),
-      totalQueueSize: this.getTotalQueueSize(),
-      processingRate: this.calculateProcessingRate()
-    };
-  }
-  
-  /**
-   * タスクの予想待機時間を計算
-   * @param {string} priority - 優先度
-   */
-  getEstimatedWaitTime(priority) {
-    const queuePosition = this.queues[priority].length;
-    const avgProcessingTime = this.stats.averageProcessingTime || 30000; // デフォルト30秒
-    
-    // 高優先度キューのタスク数も考慮
-    let totalAheadTasks = 0;
-    const priorities = ['urgent', 'high', 'normal', 'low'];
-    const currentPriorityIndex = priorities.indexOf(priority);
-    
-    for (let i = 0; i <= currentPriorityIndex; i++) {
-      totalAheadTasks += this.queues[priorities[i]].length;
-    }
-    
-    return totalAheadTasks * avgProcessingTime;
-  }
-  
-  /**
-   * スケジューラーの開始
-   */
-  startScheduler() {
-    if (this.isSchedulerRunning) return;
-    
-    this.isSchedulerRunning = true;
-    this.schedulerInterval = setInterval(() => {
-      this.processScheduledTasks();
-    }, this.config.schedulerInterval);
-    
-    this.logger.info('Scheduler started', {
-      interval: this.config.schedulerInterval
-    });
-  }
-  
-  /**
-   * スケジューラーの停止
-   */
-  stopScheduler() {
-    if (this.schedulerInterval) {
-      clearInterval(this.schedulerInterval);
-      this.schedulerInterval = null;
-      this.isSchedulerRunning = false;
-      this.logger.info('Scheduler stopped');
+  async failTask(taskId, error, task) {
+    if (task && task.attempts < 3) {
+      // リトライ
+      task.attempts++;
+      task.status = 'retry';
+      task.lastError = error.message;
+      
+      // 優先度を下げてリキュー
+      const retryPriority = task.priority === 'urgent' ? 'high' : 
+                          task.priority === 'high' ? 'normal' : 'low';
+      
+      await this.enqueue(task, retryPriority);
+      this.emit('task:retry', { taskId, attempts: task.attempts });
+    } else {
+      // 最終的に失敗
+      this.emit('task:failed', { taskId, error: error.message });
     }
   }
   
   /**
-   * スケジュールされたタスクの処理
+   * スケジュールされたタスクを処理
    */
   processScheduledTasks() {
-    if (this.isPaused) return;
-    
     const now = new Date();
     const readyTasks = [];
     
-    // 実行時刻が来たタスクを抽出
+    // 実行時刻に達したタスクを取得
     this.queues.scheduled = this.queues.scheduled.filter(task => {
-      if (new Date(task.executeAt) <= now) {
+      if (new Date(task.scheduleAt) <= now) {
         readyTasks.push(task);
         return false;
       }
       return true;
     });
     
-    // 準備ができたタスクを適切なキューに移動
+    // 優先度キューに移動
     for (const task of readyTasks) {
-      this.queues[task.priority].push({
-        ...task,
-        executeAt: null, // スケジュール実行フラグを削除
-        movedFromScheduled: true
-      });
-      
-      this.logger.info('Scheduled task moved to execution queue', {
-        taskId: task.id,
-        priority: task.priority,
-        originalExecuteAt: task.executeAt
-      });
-      
-      this.emit('scheduledTaskReady', task);
-    }
-    
-    if (readyTasks.length > 0) {
-      this.updateStats();
+      const priority = task.priority || 'normal';
+      this.queues[priority].push(task);
+      this.emit('task:scheduled:ready', task);
     }
   }
   
   /**
-   * 総キューサイズの取得
+   * スケジューラーの開始
+   */
+  startScheduler() {
+    if (this.schedulerTimer) {
+      return;
+    }
+    
+    this.schedulerTimer = setInterval(() => {
+      this.processScheduledTasks();
+    }, this.options.schedulerInterval);
+  }
+  
+  /**
+   * スケジューラーの停止
+   */
+  stopScheduler() {
+    if (this.schedulerTimer) {
+      clearInterval(this.schedulerTimer);
+      this.schedulerTimer = null;
+    }
+  }
+  
+  /**
+   * キューの一時停止
+   * @param {string} reason - 一時停止の理由
+   */
+  async pause(reason = 'Manual pause') {
+    this.state.paused = true;
+    this.state.pausedAt = new Date().toISOString();
+    this.state.pausedBy = reason;
+    
+    await this.saveState();
+    this.emit('queue:paused', { reason });
+  }
+  
+  /**
+   * キューの再開
+   */
+  async resume() {
+    this.state.paused = false;
+    this.state.pausedAt = null;
+    this.state.pausedBy = null;
+    
+    await this.saveState();
+    this.emit('queue:resumed');
+  }
+  
+  /**
+   * スロットリング設定
+   * @param {number} delay - 遅延時間（ミリ秒）
+   */
+  async setThrottle(delay) {
+    this.state.throttleDelay = Math.max(0, delay);
+    await this.saveState();
+    this.emit('throttle:updated', { delay });
+  }
+  
+  /**
+   * 同時実行数の設定
+   * @param {number} count - 同時実行数
+   */
+  async setConcurrency(count) {
+    this.state.maxConcurrent = Math.max(1, count);
+    await this.saveState();
+    this.emit('concurrency:updated', { count });
+  }
+  
+  /**
+   * キューのクリア
+   * @param {string} priority - クリアする優先度（省略時は全て）
+   */
+  async clearQueue(priority = null) {
+    if (priority) {
+      if (!this.queues[priority]) {
+        throw new Error(`Invalid priority: ${priority}`);
+      }
+      const count = this.queues[priority].length;
+      this.queues[priority] = [];
+      this.emit('queue:cleared', { priority, count });
+    } else {
+      let totalCount = 0;
+      for (const p of Object.keys(this.queues)) {
+        totalCount += this.queues[p].length;
+        this.queues[p] = [];
+      }
+      this.emit('queue:cleared', { priority: 'all', count: totalCount });
+    }
+    
+    await this.saveQueues();
+  }
+  
+  /**
+   * キューの状態を取得
+   */
+  getQueueStatus() {
+    const status = {
+      state: this.state,
+      queues: {},
+      stats: this.stats,
+      totalSize: 0
+    };
+    
+    for (const [priority, queue] of Object.entries(this.queues)) {
+      status.queues[priority] = {
+        size: queue.length,
+        oldest: queue[0] ? queue[0].enqueuedAt : null,
+        newest: queue[queue.length - 1] ? queue[queue.length - 1].enqueuedAt : null
+      };
+      status.totalSize += queue.length;
+    }
+    
+    return status;
+  }
+  
+  /**
+   * 全キューサイズの取得
    */
   getTotalQueueSize() {
     return Object.values(this.queues).reduce((total, queue) => total + queue.length, 0);
   }
   
   /**
-   * 統計情報の更新
+   * 平均処理時間の更新
    */
-  updateStats() {
-    this.stats.currentQueueSize = this.getTotalQueueSize();
-    this.emit('statsUpdated', this.stats);
+  updateAverageProcessingTime(newTime) {
+    const count = this.stats.totalProcessed;
+    const currentAvg = this.stats.avgProcessingTime;
+    
+    // 移動平均の計算
+    this.stats.avgProcessingTime = ((currentAvg * (count - 1)) + newTime) / count;
   }
   
   /**
-   * 平均待機時間の更新
+   * キューの永続化
    */
-  updateAverageWaitTime(newWaitTime) {
-    if (this.stats.totalProcessed === 1) {
-      this.stats.averageWaitTime = newWaitTime;
-    } else {
-      // 移動平均の計算
-      const alpha = 0.1; // 平滑化係数
-      this.stats.averageWaitTime = 
-        alpha * newWaitTime + (1 - alpha) * this.stats.averageWaitTime;
+  async saveQueues() {
+    try {
+      const data = JSON.stringify(this.queues, null, 2);
+      await fs.writeFile(path.join(this.options.persistPath, 'queues.json'), data);
+    } catch (error) {
+      this.emit('error', { type: 'save:queues', error });
     }
   }
   
   /**
-   * 処理レートの計算
+   * キューの読み込み
    */
-  calculateProcessingRate() {
-    // 過去1分間の処理数（実装簡略化）
-    return this.stats.totalProcessed > 0 ? 
-      Math.round(this.stats.totalProcessed / ((Date.now() - this.startTime) / 60000)) : 0;
+  async loadQueues() {
+    try {
+      const filePath = path.join(this.options.persistPath, 'queues.json');
+      const data = await fs.readFile(filePath, 'utf8');
+      this.queues = JSON.parse(data);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        this.emit('error', { type: 'load:queues', error });
+      }
+    }
+  }
+  
+  /**
+   * 状態の永続化
+   */
+  async saveState() {
+    try {
+      const data = JSON.stringify(this.state, null, 2);
+      await fs.writeFile(path.join(this.options.persistPath, 'state.json'), data);
+    } catch (error) {
+      this.emit('error', { type: 'save:state', error });
+    }
+  }
+  
+  /**
+   * 統計情報の永続化
+   */
+  async saveStats() {
+    try {
+      const data = JSON.stringify(this.stats, null, 2);
+      await fs.writeFile(path.join(this.options.persistPath, 'stats.json'), data);
+    } catch (error) {
+      this.emit('error', { type: 'save:stats', error });
+    }
   }
   
   /**
    * クリーンアップ
    */
-  async shutdown() {
+  async cleanup() {
     this.stopScheduler();
-    this.logger.info('Advanced Queue Manager shutdown', {
-      totalProcessed: this.stats.totalProcessed,
-      remainingTasks: this.getTotalQueueSize()
-    });
+    await this.saveQueues();
+    await this.saveState();
+    await this.saveStats();
   }
 }
 

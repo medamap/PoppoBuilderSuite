@@ -7,11 +7,13 @@ const LogSearchAPI = require('../dashboard/server/api/logs');
 describe('Dashboard Log Search API', () => {
   let logSearchAPI;
   let mockLogger;
+  let sandbox;
   let mockApp;
   let mockReq;
   let mockRes;
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     mockLogger = {
       error: sinon.stub(),
       info: sinon.stub()
@@ -224,8 +226,13 @@ describe('Dashboard Log Search API', () => {
   
   describe('API endpoints', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       logSearchAPI.setupRoutes(mockApp);
-    });
+    })
+
+  afterEach(() => {
+    sandbox.restore();
+  });;
     
     it('should handle search request with filters', async () => {
       const handler = mockApp.get.getCall(0).args[1];

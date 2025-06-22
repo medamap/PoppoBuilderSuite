@@ -63,6 +63,7 @@ class MockLogger {
 describe('Error Handling Framework', () => {
   let logger;
   let tempDir;
+  let sandbox;
   
   beforeEach(async () => {
     logger = new MockLogger();
@@ -151,6 +152,7 @@ describe('Error Handling Framework', () => {
     let errorHandler;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       errorHandler = new ErrorHandler(logger, {
         errorFile: path.join(tempDir, 'errors.json')
       });
@@ -213,6 +215,7 @@ describe('Error Handling Framework', () => {
     let circuitBreaker;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       circuitBreaker = new CircuitBreaker('test-service', {
         failureThreshold: 3,
         successThreshold: 2,
@@ -307,6 +310,7 @@ describe('Error Handling Framework', () => {
     let factory;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       factory = new CircuitBreakerFactory();
     });
     
@@ -338,6 +342,7 @@ describe('Error Handling Framework', () => {
     let recoveryManager;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       recoveryManager = new ErrorRecoveryManager(logger);
     });
     
@@ -439,6 +444,7 @@ describe('Error Handling Framework', () => {
     let reporter;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       errorHandler = new ErrorHandler(logger, {
         errorFile: path.join(tempDir, 'errors.json')
       });
@@ -521,6 +527,7 @@ describe('Error Handling Framework', () => {
     let circuitBreakerFactory;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       errorHandler = new ErrorHandler(logger);
       recoveryManager = new ErrorRecoveryManager(logger);
       circuitBreakerFactory = new CircuitBreakerFactory();

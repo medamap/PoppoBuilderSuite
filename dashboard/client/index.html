@@ -6,6 +6,7 @@
     <title>PoppoBuilder Process Dashboard</title>
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/i18n.css">
+    <link rel="stylesheet" href="css/config.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -13,6 +14,7 @@
             <h1 data-i18n="header.title">🤖 PoppoBuilder Process Dashboard</h1>
             <div class="header-actions">
                 <button id="refreshBtn" class="btn btn-primary" data-i18n="header.refresh">更新</button>
+                <button id="configBtn" class="btn btn-secondary" data-i18n="header.config">設定</button>
                 <button id="stopAllBtn" class="btn btn-danger" data-i18n="header.stopAll">全プロセス停止</button>
             </div>
         </header>
@@ -75,6 +77,37 @@
             <div id="searchResults" class="search-results">
                 <div class="search-stats"></div>
                 <div class="search-result-list"></div>
+            </div>
+        </section>
+
+        <section class="token-usage">
+            <h2 data-i18n="tokenUsage.title">トークン使用量</h2>
+            <div class="token-usage-container">
+                <div class="token-stats-grid">
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.today">本日</span>
+                        <span id="tokenToday" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.week">今週</span>
+                        <span id="tokenWeek" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.month">今月</span>
+                        <span id="tokenMonth" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.total">累計</span>
+                        <span id="tokenTotal" class="stat-value">-</span>
+                    </div>
+                </div>
+                <div class="token-usage-chart">
+                    <canvas id="tokenUsageChart"></canvas>
+                </div>
+                <div class="token-usage-actions">
+                    <button id="refreshTokenUsageBtn" class="btn btn-primary" data-i18n="common.refresh">更新</button>
+                    <button id="viewCCSPDashboardBtn" class="btn btn-secondary" data-i18n="tokenUsage.viewCCSP">CCSP詳細</button>
+                </div>
             </div>
         </section>
 
@@ -147,6 +180,10 @@
             </div>
         </section>
 
+        <section class="config-management-section" style="display: none;">
+            <div id="configContainer"></div>
+        </section>
+
         <section class="realtime-logs">
             <h2 data-i18n="realtimeLogs.title">リアルタイムログ</h2>
             <div id="logContainer" class="log-container">
@@ -168,5 +205,6 @@
     <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>
     <script src="js/analytics.js"></script>
+    <script src="js/config-ui.js"></script>
 </body>
 </html>

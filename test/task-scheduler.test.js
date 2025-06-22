@@ -72,6 +72,7 @@ describe('TaskScheduler', () => {
   
   describe('タスクスケジューリング', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       scheduler.registerProject('project-1', { priority: 50, weight: 1.0 });
       scheduler.registerProject('project-2', { priority: 70, weight: 2.0 });
       scheduler.registerProject('project-3', { priority: 30, weight: 1.5 });
@@ -142,6 +143,7 @@ describe('TaskScheduler', () => {
   
   describe('統計とメトリクス', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       scheduler.registerProject('project-1');
       scheduler.registerProject('project-2');
     });

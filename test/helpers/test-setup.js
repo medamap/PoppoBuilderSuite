@@ -49,4 +49,79 @@ process.on('uncaughtException', (error) => {
     // テスト環境では process.exit(1) はしない
 });
 
+// テスト環境の自動分離機能
+const { TestEnvironment } = require('./test-environment');
+
+// テスト環境を自動的に分離する設定
+const AUTO_ISOLATE = process.env.POPPOBUILDER_TEST_ISOLATE !== 'false';
+
+if (AUTO_ISOLATE) {
+  // グローバルフック
+  let globalTestEnv;
+  
+  // 全テスト実行前
+  before(async function() {
+    console.log('🧪 テスト環境を準備しています...');
+    
+    // グローバルテスト環境の作成
+    globalTestEnv = new TestEnvironment('global');
+    await globalTestEnv.setup();
+    
+    // テスト用環境変数の設定
+    process.env.POPPOBUILDER_TEST_MODE = 'true';
+    process.env.POPPOBUILDER_BASE_DIR = globalTestEnv.basePath;
+  });
+  
+  // 全テスト実行後
+  after(async function() {
+    console.log('🧹 テスト環境をクリーンアップしています...');
+    
+    // グローバルテスト環境のクリーンアップ
+    if (globalTestEnv) {
+      await globalTestEnv.cleanup();
+    }
+  });
+}
+
+// グローバル変数として公開
+global.expect = chai.expect;
+global.sinon = require('sinon');
+
+// テストユーティリティ
+global.testUtils = {
+  /**
+   * 一時的な環境変数の設定
+   */
+  withEnv(env, fn) {
+    const original = { ...process.env };
+    Object.assign(process.env, env);
+    try {
+      return fn();
+    } finally {
+      process.env = original;
+    }
+  },
+  
+  /**
+   * タイムアウト付きの待機
+   */
+  async wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  },
+  
+  /**
+   * 条件が満たされるまで待機
+   */
+  async waitUntil(condition, timeout = 5000, interval = 100) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      if (await condition()) {
+        return true;
+      }
+      await this.wait(interval);
+    }
+    throw new Error('Timeout waiting for condition');
+  }
+};
+
 module.exports = chai;

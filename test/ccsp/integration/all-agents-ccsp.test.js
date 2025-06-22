@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('All Agents to CCSP Integration Tests', () => {
   let helpers;
   let mockRedis;
+  let sandbox;
   let ccspAgent;
   let config;
   let agents = {};

@@ -6,10 +6,12 @@ const { execSync } = require('child_process');
 describe('PR Command', () => {
   let prCommand;
   let execSyncStub;
+  let sandbox;
   let consoleLogStub;
   let consoleErrorStub;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     prCommand = new PRCommand();
     execSyncStub = sinon.stub(require('child_process'), 'execSync');
     consoleLogStub = sinon.stub(console, 'log');

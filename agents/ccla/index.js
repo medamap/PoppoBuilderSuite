@@ -916,6 +916,34 @@ ${this.advancedAnalyzer.generateAnalysisSummary(advancedAnalysis)}`;
     
     this.logger.info('CCLAエージェントのシャットダウン完了');
   }
+
+  /**
+   * Issue本文の生成（テスト用）
+   */
+  formatIssueBody(errorData) {
+    if (!errorData || !errorData.analysis) {
+      return 'エラーデータが不完全です。';
+    }
+
+    const { analysis } = errorData;
+    let body = `# エラー分析レポート
+
+## エラー情報
+- **カテゴリ**: ${analysis.category || 'Unknown'}
+- **重要度**: ${analysis.severity || 'medium'}
+- **ハッシュ**: ${errorData.hash || 'N/A'}
+
+## 推奨対処法
+${analysis.suggestedAction || '対処法が見つかりませんでした。'}
+
+## マッチ結果
+- **パターンマッチ**: ${analysis.matched ? '成功' : '失敗'}
+
+---
+*このレポートはCCLAエージェントによって自動生成されました*`;
+
+    return body;
+  }
 }
 
 // メイン実行（エージェントとして起動される場合）

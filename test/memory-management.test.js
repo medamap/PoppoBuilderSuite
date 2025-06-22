@@ -13,6 +13,7 @@ describe('メモリ管理機能', () => {
     let monitor;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       monitor = new MemoryMonitor({
         interval: 100, // テスト用に短い間隔
         snapshot: { enabled: false } // テストではスナップショット無効
@@ -94,6 +95,7 @@ describe('メモリ管理機能', () => {
     let optimizer;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       optimizer = new MemoryOptimizer();
     });
     
@@ -194,6 +196,7 @@ describe('メモリ管理機能', () => {
     let detector;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       detector = new MemoryLeakDetector({
         checkInterval: 100,
         analysis: {

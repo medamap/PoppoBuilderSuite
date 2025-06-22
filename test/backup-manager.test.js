@@ -55,6 +55,7 @@ describe('BackupManager', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // プロセスのカレントディレクトリを一時的に変更
     process.chdir(testDir);
     backupManager = new BackupManager(testConfig);

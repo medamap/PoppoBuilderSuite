@@ -10,6 +10,7 @@ describe('E2E: 設定管理とエラーリカバリー', function() {
 
   let testEnv;
   let apiMocks;
+  let sandbox;
   let processes = {};
 
   before(async function() {

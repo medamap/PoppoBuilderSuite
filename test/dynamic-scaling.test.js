@@ -31,14 +31,17 @@ describe('Dynamic Scaling System', () => {
   let logger;
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     logger = new MockLogger();
   });
   
   describe('AutoScaler', () => {
     let autoScaler;
     let metricsCollector;
+  let sandbox;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       metricsCollector = new MetricsCollector(logger);
       autoScaler = new AutoScaler(logger, {
         minAgents: 2,
@@ -123,6 +126,7 @@ describe('Dynamic Scaling System', () => {
     let metricsCollector;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       metricsCollector = new MetricsCollector(logger, {
         collectionInterval: 100,
         historySize: 10
@@ -178,6 +182,7 @@ describe('Dynamic Scaling System', () => {
     let loadBalancer;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       loadBalancer = new LoadBalancer(logger, {
         algorithm: 'round-robin'
       });
@@ -250,6 +255,7 @@ describe('Dynamic Scaling System', () => {
     let lifecycleManager;
     
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       lifecycleManager = new LifecycleManager(logger, {
         healthCheckInterval: 100,
         zombieCheckInterval: 200

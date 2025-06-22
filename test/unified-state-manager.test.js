@@ -8,7 +8,7 @@ const UnifiedStateManager = require('../src/unified-state-manager');
 const path = require('path');
 const fs = require('fs').promises;
 
-async function test() {
+async function it() {
   console.log('🧪 UnifiedStateManager テスト開始\n');
   
   // テスト用の状態ディレクトリ
@@ -125,4 +125,4 @@ async function test() {
   }
 }
 
-test();
+it();

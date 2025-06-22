@@ -46,6 +46,12 @@ class DashboardApp {
     this.elements.refreshBtn.addEventListener('click', () => this.refresh());
     this.elements.stopAllBtn.addEventListener('click', () => this.stopAllProcesses());
     
+    // 設定ボタンイベント
+    const configBtn = document.getElementById('configBtn');
+    if (configBtn) {
+      configBtn.addEventListener('click', () => this.showConfigUI());
+    }
+    
     // ログ検索関連イベント
     this.elements.searchBtn.addEventListener('click', () => this.searchLogs());
     this.elements.clearSearchBtn.addEventListener('click', () => this.clearSearch());
@@ -716,10 +722,142 @@ class DashboardApp {
       }));
     }
   }
+  
+  showConfigUI() {
+    // 他のセクションを非表示
+    document.querySelectorAll('.system-status, .process-list, .log-search, .token-usage, .performance-analytics, .realtime-logs').forEach(section => {
+      section.style.display = 'none';
+    });
+    
+    // 設定管理セクションを表示
+    const configSection = document.querySelector('.config-management-section');
+    if (configSection) {
+      configSection.style.display = 'block';
+      
+      // 設定UIを初期化（まだ初期化されていない場合）
+      if (!this.configUIInitialized) {
+        configUI.init('configContainer');
+        this.configUIInitialized = true;
+      }
+    }
+  }
+  
+  hideConfigUI() {
+    // 設定管理セクションを非表示
+    document.querySelector('.config-management-section').style.display = 'none';
+    
+    // 他のセクションを表示
+    document.querySelectorAll('.system-status, .process-list, .log-search, .token-usage, .performance-analytics, .realtime-logs').forEach(section => {
+      section.style.display = '';
+    });
+  }
 }
 
 // アプリケーションの初期化
 let app;
 document.addEventListener('DOMContentLoaded', () => {
   app = new DashboardApp();
+  
+  // トークン使用量セクションの初期化
+  updateTokenUsage();
+  
+  // トークン使用量ボタンのイベントハンドラ
+  document.getElementById('refreshTokenUsageBtn')?.addEventListener('click', updateTokenUsage);
+  document.getElementById('viewCCSPDashboardBtn')?.addEventListener('click', () => {
+    window.open('/dashboard/ccsp/', '_blank');
+  });
+  
+  // 定期的にトークン使用量を更新（5分ごと）
+  setInterval(updateTokenUsage, 5 * 60 * 1000);
 });
+
+// トークン使用量の更新
+async function updateTokenUsage() {
+  try {
+    const response = await fetch('/api/token-usage/usage');
+    const data = await response.json();
+    
+    // 統計情報を更新
+    document.getElementById('tokenToday').textContent = formatTokenCount(data.today);
+    document.getElementById('tokenWeek').textContent = formatTokenCount(data.week);
+    document.getElementById('tokenMonth').textContent = formatTokenCount(data.month);
+    document.getElementById('tokenTotal').textContent = formatTokenCount(data.total);
+    
+    // グラフを更新
+    updateTokenUsageChart(data.history);
+  } catch (error) {
+    console.error('Error updating token usage:', error);
+    // エラー時はダッシュを表示
+    document.getElementById('tokenToday').textContent = '-';
+    document.getElementById('tokenWeek').textContent = '-';
+    document.getElementById('tokenMonth').textContent = '-';
+    document.getElementById('tokenTotal').textContent = '-';
+  }
+}
+
+// トークン数をフォーマット
+function formatTokenCount(count) {
+  if (count === 0) return '0';
+  if (count < 1000) return count.toString();
+  if (count < 1000000) return (count / 1000).toFixed(1) + 'K';
+  return (count / 1000000).toFixed(1) + 'M';
+}
+
+// トークン使用量チャートの更新
+let tokenUsageChart = null;
+function updateTokenUsageChart(history) {
+  const ctx = document.getElementById('tokenUsageChart');
+  if (!ctx) return;
+  
+  const labels = history.map(h => {
+    const date = new Date(h.date);
+    return (date.getMonth() + 1) + '/' + date.getDate();
+  });
+  const data = history.map(h => h.tokens);
+  
+  if (tokenUsageChart) {
+    tokenUsageChart.data.labels = labels;
+    tokenUsageChart.data.datasets[0].data = data;
+    tokenUsageChart.update();
+  } else {
+    tokenUsageChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'トークン使用量',
+          data: data,
+          borderColor: '#3498db',
+          backgroundColor: 'rgba(52, 152, 219, 0.1)',
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return 'トークン: ' + context.parsed.y.toLocaleString();
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return formatTokenCount(value);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+}

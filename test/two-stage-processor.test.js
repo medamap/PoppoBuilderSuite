@@ -139,8 +139,10 @@ describe('InstructionAnalyzer', () => {
 describe('TwoStageProcessor', () => {
   let processor;
   let mockGitHub;
+  let sandbox;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     mockGitHub = new MockGitHubClient();
     const config = {
       twoStageProcessing: {

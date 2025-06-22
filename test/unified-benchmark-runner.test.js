@@ -13,6 +13,7 @@ describe('UnifiedBenchmarkRunner - Issue #134', function() {
 
   let runner;
   let testOutputDir;
+  let sandbox;
 
   beforeEach(async () => {
     // テスト用の出力ディレクトリを作成

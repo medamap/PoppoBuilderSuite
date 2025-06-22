@@ -12,10 +12,12 @@ const gunzip = promisify(zlib.gunzip);
 describe('CCLA LogArchiver', () => {
   let tempDir;
   let archiver;
+  let sandbox;
   let mockLogger;
   let config;
 
   beforeEach(async () => {
+    sandbox = sinon.createSandbox();
     // 一時ディレクトリの作成
     tempDir = path.join(os.tmpdir(), `ccla-test-${Date.now()}`);
     await fs.mkdir(tempDir, { recursive: true });
@@ -49,6 +51,7 @@ describe('CCLA LogArchiver', () => {
   });
 
   afterEach(async () => {
+    sandbox.restore();
     // 一時ディレクトリのクリーンアップ
     try {
       await fs.rm(tempDir, { recursive: true, force: true });

@@ -54,15 +54,15 @@ describe('CCQA Agent', () => {
     });
     
     it('should check required tools during initialization', async () => {
-      const checkToolsSpy = jest.spyOn(agent, 'checkRequiredTools');
+      const checkToolsSpy = sandbox.spy(agent, 'checkRequiredTools');
       await agent.initialize();
-      expect(checkToolsSpy).toHaveBeenCalled();
+      expect(checkToolsSpy).to.have.been.called;
     });
     
     it('should handle initialization errors gracefully', async () => {
-      agent.onInitialize = jest.fn().mockRejectedValue(new Error('Init error'));
-      await expect(agent.initialize()).rejects.toThrow('Init error');
-      expect(agent.status).toBe('error');
+      agent.onInitialize = sandbox.stub().rejects(new Error('Init error'));
+      await expect(agent.initialize()).to.be.rejectedWith('Init error');
+      expect(agent.status).to.equal('error');
     });
   });
   
@@ -81,7 +81,7 @@ describe('CCQA Agent', () => {
       };
       
       // Mock各モジュールの結果
-      agent.testRunner.runTests = jest.fn().mockResolvedValue({
+      agent.testRunner.runTests = sandbox.stub().resolves({
         success: true,
         total: 10,
         passed: 9,
@@ -89,20 +89,20 @@ describe('CCQA Agent', () => {
         coverage: 85
       });
       
-      agent.qualityChecker.checkQuality = jest.fn().mockResolvedValue({
+      agent.qualityChecker.checkQuality = sandbox.stub().resolves({
         issues: [],
         metrics: {},
         suggestions: []
       });
       
-      agent.securityScanner.scanSecurity = jest.fn().mockResolvedValue({
+      agent.securityScanner.scanSecurity = sandbox.stub().resolves({
         vulnerabilities: [],
         credentials: [],
         dependencies: [],
         summary: { critical: 0, high: 0, medium: 0, low: 0 }
       });
       
-      agent.performanceAnalyzer.analyzePerformance = jest.fn().mockResolvedValue({
+      agent.performanceAnalyzer.analyzePerformance = sandbox.stub().resolves({
         regressions: [],
         memoryLeaks: [],
         executionTime: {},
@@ -110,7 +110,7 @@ describe('CCQA Agent', () => {
         recommendations: []
       });
       
-      agent.reportGenerator.generateReport = jest.fn().mockResolvedValue({
+      agent.reportGenerator.generateReport = sandbox.stub().resolves({
         markdown: '# Test Report',
         json: {},
         summary: 'All checks passed'
@@ -118,9 +118,9 @@ describe('CCQA Agent', () => {
       
       const result = await agent.processTask(mockMessage);
       
-      expect(result.success).toBe(true);
-      expect(result.qualityScore).toBeGreaterThan(0);
-      expect(result.summary).toBeDefined();
+      expect(result.success).to.be.true;
+      expect(result.qualityScore).to.be.greaterThan(0);
+      expect(result.summary).to.exist;
     });
     
     it('should handle task processing errors', async () => {
@@ -131,9 +131,9 @@ describe('CCQA Agent', () => {
         issue: { number: 124 }
       };
       
-      agent.testRunner.runTests = jest.fn().mockRejectedValue(new Error('Test error'));
+      agent.testRunner.runTests = sandbox.stub().rejects(new Error('Test error'));
       
-      await expect(agent.processTask(mockMessage)).rejects.toThrow('Test error');
+      await expect(agent.processTask(mockMessage)).to.be.rejectedWith('Test error');
     });
   });
   
@@ -166,8 +166,8 @@ describe('CCQA Agent', () => {
       };
       
       const score = agent.calculateQualityScore(results);
-      expect(score).toBeGreaterThan(0);
-      expect(score).toBeLessThanOrEqual(100);
+      expect(score).to.be.greaterThan(0);
+      expect(score).to.be.at.most(100);
     });
     
     it('should return 100 for perfect results', () => {
@@ -192,7 +192,7 @@ describe('CCQA Agent', () => {
       };
       
       const score = agent.calculateQualityScore(results);
-      expect(score).toBe(100);
+      expect(score).to.equal(100);
     });
   });
   
@@ -218,9 +218,9 @@ describe('CCQA Agent', () => {
       };
       
       const summary = agent.generateSummary(results);
-      expect(summary).toContain('テスト: 10/12 成功');
-      expect(summary).toContain('品質: 3 件の問題');
-      expect(summary).toContain('セキュリティ: 1 件の脆弱性');
+      expect(summary).to.include('テスト: 10/12 成功');
+      expect(summary).to.include('品質: 3 件の問題');
+      expect(summary).to.include('セキュリティ: 1 件の脆弱性');
     });
   });
   
@@ -236,7 +236,7 @@ describe('CCQA Agent', () => {
       
       const recommendations = agent.generateRecommendations(results);
       expect(recommendations).toContainEqual(
-        expect.objectContaining({
+        sinon.match({
           type: 'test_coverage',
           priority: 'high'
         })
@@ -257,7 +257,7 @@ describe('CCQA Agent', () => {
       
       const recommendations = agent.generateRecommendations(results);
       expect(recommendations).toContainEqual(
-        expect.objectContaining({
+        sinon.match({
           type: 'quality_errors',
           priority: 'critical'
         })
@@ -277,7 +277,7 @@ describe('CCQA Agent', () => {
       
       const recommendations = agent.generateRecommendations(results);
       expect(recommendations).toContainEqual(
-        expect.objectContaining({
+        sinon.match({
           type: 'security_critical',
           priority: 'critical'
         })
@@ -292,8 +292,8 @@ describe('CCQA Agent', () => {
       };
       
       const duration = agent.estimateTaskDuration(message);
-      expect(duration).toBeGreaterThan(60000); // 1分以上
-      expect(duration).toBe(60000 + (3 * 30000)); // base + (3 files * 30s)
+      expect(duration).to.be.greaterThan(60000); // 1分以上
+      expect(duration).to.equal(60000 + (3 * 30000)); // base + (3 files * 30s)
     });
     
     it('should return base time for no files', () => {
@@ -302,7 +302,7 @@ describe('CCQA Agent', () => {
       };
       
       const duration = agent.estimateTaskDuration(message);
-      expect(duration).toBe(60000); // 1分
+      expect(duration).to.equal(60000); // 1分
     });
   });
   
@@ -320,15 +320,15 @@ describe('CCQA Agent', () => {
       };
       
       // Mock processTask
-      agent.processTask = jest.fn().mockResolvedValue({
+      agent.processTask = sandbox.stub().resolves({
         success: true,
         qualityScore: 95
       });
       
       await agent.handleMessage(message);
       
-      expect(agent.processTask).toHaveBeenCalledWith(message);
-      expect(agent.activeTasks.has('test-task-3')).toBe(false); // タスク完了後は削除される
+      expect(agent.processTask).to.have.been.calledWith(message);
+      expect(agent.activeTasks.has('test-task-3')).to.be.false; // タスク完了後は削除される
     });
   });
 });
@@ -347,7 +347,7 @@ describe('CCQA Modules', () => {
     
     it('should detect available test runners', async () => {
       await testRunner.initialize();
-      expect(testRunner.availableRunners).toBeInstanceOf(Array);
+      expect(testRunner.availableRunners).to.be.an('array');
     });
   });
   
@@ -364,7 +364,7 @@ describe('CCQA Modules', () => {
     
     it('should detect available tools', async () => {
       await qualityChecker.initialize();
-      expect(qualityChecker.availableTools).toBeInstanceOf(Object);
+      expect(qualityChecker.availableTools).to.be.an('object');
     });
     
     it('should calculate cyclomatic complexity', () => {
@@ -383,7 +383,7 @@ describe('CCQA Modules', () => {
       `;
       
       const complexity = qualityChecker.calculateCyclomaticComplexity(code);
-      expect(complexity).toBeGreaterThan(1);
+      expect(complexity).to.be.greaterThan(1);
     });
   });
   
@@ -401,10 +401,10 @@ describe('CCQA Modules', () => {
       const credential = 'super-secret-api-key-12345';
       const masked = securityScanner.maskCredential(credential);
       
-      expect(masked).toContain('supe');
-      expect(masked).toContain('2345');
-      expect(masked).toContain('*');
-      expect(masked).not.toContain('secret');
+      expect(masked).to.include('supe');
+      expect(masked).to.include('2345');
+      expect(masked).to.include('*');
+      expect(masked).not.to.include('secret');
     });
     
     it('should calculate security score', () => {
@@ -419,8 +419,8 @@ describe('CCQA Modules', () => {
       };
       
       const score = securityScanner.calculateSecurityScore(results);
-      expect(score).toBeLessThan(100);
-      expect(score).toBeGreaterThanOrEqual(0);
+      expect(score).to.be.lessThan(100);
+      expect(score).to.be.at.least(0);
     });
   });
   
@@ -442,8 +442,8 @@ describe('CCQA Modules', () => {
       `;
       
       const functions = performanceAnalyzer.extractFunctions(code);
-      expect(functions.length).toBeGreaterThan(0);
-      expect(functions.some(f => f.name === 'testFunc')).toBe(true);
+      expect(functions.length).to.be.greaterThan(0);
+      expect(functions.some(f => f.name === 'testFunc')).to.be.true;
     });
     
     it('should estimate execution time', () => {
@@ -453,7 +453,7 @@ describe('CCQA Modules', () => {
       };
       
       const time = performanceAnalyzer.estimateExecutionTime(func);
-      expect(time).toBeGreaterThan(0);
+      expect(time).to.be.greaterThan(0);
     });
   });
   
@@ -470,11 +470,11 @@ describe('CCQA Modules', () => {
     });
     
     it('should generate quality emoji based on score', () => {
-      expect(reportGenerator.getQualityEmoji(95)).toBe('🌟');
-      expect(reportGenerator.getQualityEmoji(85)).toBe('✅');
-      expect(reportGenerator.getQualityEmoji(75)).toBe('⚠️');
-      expect(reportGenerator.getQualityEmoji(65)).toBe('⚡');
-      expect(reportGenerator.getQualityEmoji(50)).toBe('❌');
+      expect(reportGenerator.getQualityEmoji(95)).to.equal('🌟');
+      expect(reportGenerator.getQualityEmoji(85)).to.equal('✅');
+      expect(reportGenerator.getQualityEmoji(75)).to.equal('⚠️');
+      expect(reportGenerator.getQualityEmoji(65)).to.equal('⚡');
+      expect(reportGenerator.getQualityEmoji(50)).to.equal('❌');
     });
     
     it('should generate markdown report', async () => {
@@ -494,9 +494,9 @@ describe('CCQA Modules', () => {
       };
       
       const report = await reportGenerator.generateMarkdownReport(results);
-      expect(report).toContain('# 🔍 Code Quality Assurance Report');
-      expect(report).toContain('品質スコア');
-      expect(report).toContain('90/100');
+      expect(report).to.include('# 🔍 Code Quality Assurance Report');
+      expect(report).to.include('品質スコア');
+      expect(report).to.include('90/100');
     });
     
     it('should generate JSON report', async () => {
@@ -515,9 +515,9 @@ describe('CCQA Modules', () => {
       };
       
       const report = await reportGenerator.generateJSONReport(results);
-      expect(report.metadata).toBeDefined();
-      expect(report.summary.qualityScore).toBe(90);
-      expect(report.details.tests).toBeDefined();
+      expect(report.metadata).to.exist;
+      expect(report.summary.qualityScore).to.equal(90);
+      expect(report.details.tests).to.exist;
     });
   });
 });

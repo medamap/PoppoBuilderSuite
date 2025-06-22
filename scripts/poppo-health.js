@@ -4,9 +4,20 @@ const axios = require('axios');
 const chalk = require('chalk');
 const Table = require('cli-table3');
 const { Command } = require('commander');
+const path = require('path');
+
+// Setup i18n
+const i18nPath = path.join(__dirname, '..', 'lib', 'i18n');
+const { initI18n, t } = require(i18nPath);
+// Initialize i18n synchronously
+initI18n().catch(console.error);
+
+// Import table formatter
+const tableFormatterPath = path.join(__dirname, '..', 'lib', 'utils', 'table-formatter');
+const tableFormatter = require(tableFormatterPath);
 
 /**
- * PoppoBuilder ヘルスチェックCLI
+ * PoppoBuilder Health Check CLI
  */
 class HealthCLI {
   constructor() {

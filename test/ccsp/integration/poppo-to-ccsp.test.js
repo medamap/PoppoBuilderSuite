@@ -6,6 +6,7 @@ const path = require('path');
 describe('PoppoBuilder to CCSP Integration Tests', () => {
   let helpers;
   let mockRedis;
+  let sandbox;
   let poppoBuilder;
   let ccspAgent;
   let config;

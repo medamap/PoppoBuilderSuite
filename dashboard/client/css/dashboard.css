@@ -581,6 +581,63 @@ body {
     border: 1px solid #f5c6cb;
 }
 
+/* Token Usage Section */
+.token-usage {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.token-usage-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.token-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.token-stat-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid #e9ecef;
+}
+
+.token-stat-item .stat-label {
+    display: block;
+    color: #6c757d;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.token-stat-item .stat-value {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #495057;
+}
+
+.token-usage-chart {
+    height: 250px;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    position: relative;
+}
+
+.token-usage-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {

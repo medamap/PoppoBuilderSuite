@@ -10,6 +10,7 @@ describe('E2E: 基本的なIssue処理フロー', function() {
 
   let testEnv;
   let apiMocks;
+  let sandbox;
   let poppoProcess;
 
   before(async function() {

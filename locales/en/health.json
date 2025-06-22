@@ -1,0 +1,71 @@
+{
+  "description": "PoppoBuilder System Health Check Management",
+  "title": "PoppoBuilder System Health",
+  "componentStatus": "Component Status",
+  "detectedIssues": "Detected Issues",
+  "fields": {
+    "status": "Status",
+    "totalScore": "Total Score",
+    "checkTime": "Check Time"
+  },
+  "columns": {
+    "component": "Component",
+    "status": "Status",
+    "score": "Score",
+    "notes": "Notes"
+  },
+  "status": {
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unhealthy": "Unhealthy",
+    "unknown": "Unknown",
+    "normal": "Normal"
+  },
+  "commands": {
+    "check": {
+      "description": "Check current system health",
+      "detailed": "Show detailed information"
+    },
+    "report": {
+      "description": "Generate diagnostic report",
+      "save": "Save report to file"
+    },
+    "history": {
+      "description": "Show health history",
+      "hours": "Number of hours to display"
+    },
+    "trends": {
+      "description": "Analyze health trends"
+    }
+  },
+  "trends": {
+    "title": "Health Trend Analysis",
+    "score": {
+      "current": "Current",
+      "average": "Average",
+      "trend": "Trend",
+      "change": "Change Rate",
+      "volatility": "Volatility"
+    },
+    "components": "By Component",
+    "alerts": "Alerts"
+  },
+  "readiness": {
+    "title": "System Readiness",
+    "ready": "Ready",
+    "notReady": "Not Ready",
+    "checks": "Check Items"
+  },
+  "report": {
+    "title": "System Diagnostic Report",
+    "generatedAt": "Generated at",
+    "platform": "Platform",
+    "uptime": "Uptime",
+    "summary": "Health Summary",
+    "currentStatus": "Current Status",
+    "totalScore": "Total Score",
+    "trends": "Trend Analysis",
+    "recommendations": "Recommendations",
+    "saved": "Report saved to {{path}}"
+  }
+}

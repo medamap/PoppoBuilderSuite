@@ -1,0 +1,71 @@
+{
+  "description": "PoppoBuilder システムヘルスチェック管理",
+  "title": "PoppoBuilder システムヘルス",
+  "componentStatus": "コンポーネント別状態",
+  "detectedIssues": "検出された問題",
+  "fields": {
+    "status": "ステータス",
+    "totalScore": "総合スコア",
+    "checkTime": "チェック時刻"
+  },
+  "columns": {
+    "component": "コンポーネント",
+    "status": "ステータス",
+    "score": "スコア",
+    "notes": "備考"
+  },
+  "status": {
+    "healthy": "正常",
+    "degraded": "劣化",
+    "unhealthy": "異常",
+    "unknown": "不明",
+    "normal": "正常"
+  },
+  "commands": {
+    "check": {
+      "description": "現在のシステム健全性をチェック",
+      "detailed": "詳細情報を表示"
+    },
+    "report": {
+      "description": "診断レポートを生成",
+      "save": "レポートをファイルに保存"
+    },
+    "history": {
+      "description": "健全性の履歴を表示",
+      "hours": "表示する時間数"
+    },
+    "trends": {
+      "description": "健全性トレンドを分析"
+    }
+  },
+  "trends": {
+    "title": "健全性トレンド分析",
+    "score": {
+      "current": "現在",
+      "average": "平均",
+      "trend": "傾向",
+      "change": "変化率",
+      "volatility": "変動性"
+    },
+    "components": "コンポーネント別",
+    "alerts": "アラート"
+  },
+  "readiness": {
+    "title": "システム準備状態",
+    "ready": "準備完了",
+    "notReady": "準備未完了",
+    "checks": "チェック項目"
+  },
+  "report": {
+    "title": "システム診断レポート",
+    "generatedAt": "生成時刻",
+    "platform": "プラットフォーム",
+    "uptime": "稼働時間",
+    "summary": "健全性サマリー",
+    "currentStatus": "現在のステータス",
+    "totalScore": "総合スコア",
+    "trends": "トレンド分析",
+    "recommendations": "推奨事項",
+    "saved": "レポートを {{path}} に保存しました"
+  }
+}

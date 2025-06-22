@@ -44,11 +44,28 @@ logs/
 temp/
 backups/
 
+# PoppoBuilder runtime data
+.poppo/health-metrics.json
+.poppo/locks/
+.poppo/*.db
+.poppo/*.db-*
+.poppobuilder/
+data/ccla/
+data/*.db
+data/*.db-*
+reports/
+test-results/
+
 # Temporary files
 *.tmp
+*.tmp.*
 *.temp
 *.bak
 .cache/
+*.pid
+*.lock
+temp/**/*
+!temp/.gitkeep
 
 # OS generated files
 Thumbs.db
@@ -57,6 +74,9 @@ Thumbs.db
 state/requests/label-update-*.json
 state/*.json.backup-*
 state/*.json.tmp.*
+state/poppo-cron.lock/
+state/*.lock
+state/poppo-node.lock
 
 # Redis dump
 dump.rdb
@@ -75,6 +95,7 @@ traceability-matrix.md
 # Backup files
 *.backup
 CLAUDE.md.backup
+.cleanup-backup-*
 
 # Log archives
 logs/cleanup-*/
@@ -125,14 +146,27 @@ nohup.out
 # Temp cleanup directories
 temp/cleanup/
 test/cleanup/
+test/test-backup/
 
 # Coverage reports
 coverage/
+
+# Jest
+jest.config.js.backup
+test-results/junit.xml
 
 # Test files
 test-*.txt
 test-result.txt
 test-rate-limit*.js
+test/**/*.tmp
+test/**/*.tmp.*
+test/test-state/
+test/integration/test-report.json
+test/**/*.log
+test/**/*.pid
+test/**/*.lock
+test/**/*.cache
 
 # Report files
 *-report.md
@@ -143,3 +177,4 @@ traceability-matrix.md
 # Backup files
 *.backup
 CLAUDE.md.backup
+.cleanup-backup-*

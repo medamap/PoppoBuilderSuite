@@ -8,6 +8,8 @@ const Redis = require('ioredis');
 const ClaudeExecutor = require('./claude-executor');
 const QueueManager = require('./queue-manager');
 const AdvancedQueueManager = require('./advanced-queue-manager');
+const RateLimitPredictor = require('./rate-limit-predictor');
+const UsageAnalytics = require('./usage-analytics');
 const UsageMonitor = require('./usage-monitor');
 const RateLimiter = require('./rate-limiter');
 const MetricsCollector = require('./metrics-collector');
@@ -60,6 +62,14 @@ class CCSPAgent {
     this.advancedQueueManager = new AdvancedQueueManager({
       maxQueueSize: this.config.maxQueueSize || 10000,
       schedulerInterval: this.config.schedulerInterval || 5000
+    });
+    this.rateLimitPredictor = new RateLimitPredictor({
+      tokensPerMinute: this.config.tokensPerMinute || 100000,
+      requestsPerMinute: this.config.requestsPerMinute || 50
+    });
+    this.usageAnalytics = new UsageAnalytics({
+      persistPath: path.join(__dirname, '.poppobuilder/ccsp/analytics'),
+      aggregationInterval: this.config.aggregationInterval || 60000
     });
     this.usageMonitor = new UsageMonitor({
       windowSize: this.config.windowSize || 3600000,
@@ -153,6 +163,10 @@ class CCSPAgent {
     this.logger.info('緊急停止状態をリセットしました');
     
     this.isRunning = true;
+    
+    // Phase 4: UsageAnalyticsとRateLimitPredictorを初期化
+    await this.usageAnalytics.initialize();
+    this.logger.info('Usage Analytics initialized');
     
     // セッション監視を初期化
     await this.sessionMonitor.initialize();
@@ -274,8 +288,41 @@ class CCSPAgent {
       // 実行時間を計算
       const executionTime = Date.now() - startTime;
       
+      // 使用量を記録（Phase 4）
+      if (result.usage) {
+        const { tokens = 0, requests = 1 } = result.usage;
+        
+        // RateLimitPredictorに記録
+        this.rateLimitPredictor.recordUsage(tokens, requests);
+        
+        // UsageAnalyticsに記録
+        await this.usageAnalytics.recordUsage({
+          agentId: fromAgent,
+          taskId: requestId,
+          tokens,
+          latency: executionTime,
+          model: request.model || 'claude-3',
+          metadata: {
+            priority: request.priority,
+            complexity: request.complexity
+          }
+        });
+      }
+      
       // エラーメッセージをEmergencyStopでチェック
       if (!result.success && result.error) {
+        // Phase 4: エラーを記録
+        await this.usageAnalytics.recordError({
+          agentId: fromAgent,
+          taskId: requestId,
+          type: 'execution_error',
+          message: result.error,
+          context: {
+            priority: request.priority,
+            executionTime
+          }
+        });
+        
         const shouldStop = this.emergencyStop.checkError(result.error);
         if (shouldStop) {
           // 緊急停止が発動されているので、ここで処理を終了
@@ -430,6 +477,10 @@ class CCSPAgent {
     this.metricsCollector.cleanup();
     await this.healthMonitor.cleanup();
     
+    // Phase 4: UsageAnalyticsとRateLimitPredictorのクリーンアップ
+    await this.usageAnalytics.cleanup();
+    this.rateLimitPredictor.cleanup();
+    
     // Prometheusエクスポーターを停止
     this.prometheusExporter.stop();
     
@@ -452,7 +503,7 @@ class CCSPAgent {
    * キュー状態の取得
    */
   async getQueueStatus() {
-    return this.advancedQueueManager.getStatus();
+    return this.advancedQueueManager.getQueueStatus();
   }
   
   /**
@@ -493,34 +544,22 @@ class CCSPAgent {
   /**
    * 使用量統計の取得
    */
-  async getUsageStats(minutes = 60) {
-    const currentStats = this.usageMonitor.getCurrentWindowStats();
-    const timeSeriesStats = this.usageMonitor.getTimeSeriesStats(minutes);
-    const prediction = this.usageMonitor.predictUsage();
-    const rateLimitPrediction = this.usageMonitor.predictRateLimit();
-    
-    return {
-      currentWindow: currentStats,
-      timeSeries: timeSeriesStats,
-      prediction,
-      rateLimitPrediction,
-      rateLimitInfo: this.usageMonitor.rateLimitInfo
-    };
+  async getUsageStats(period = 'realtime', count = 10) {
+    return this.usageAnalytics.getStatistics(period, count);
   }
   
   /**
    * エージェント別統計の取得
    */
   async getAgentStats(agentName = null) {
-    return this.usageMonitor.getAgentStats(agentName);
+    return this.usageAnalytics.getAgentStatistics(agentName);
   }
   
   /**
    * エラー統計の取得
    */
-  async getErrorStats(hours = 24) {
-    // メトリクスコレクターからエラー情報を取得
-    return this.metricsCollector.getErrorStats(hours);
+  async getErrorStats() {
+    return this.usageAnalytics.getErrorAnalysis();
   }
   
   /**
@@ -590,22 +629,43 @@ class CCSPAgent {
   }
   
   /**
+   * レート制限状態の取得
+   */
+  async getRateLimitStatus() {
+    return this.rateLimitPredictor.getStatus();
+  }
+  
+  /**
+   * レート制限パターンの取得
+   */
+  async getRateLimitPattern() {
+    return this.rateLimitPredictor.analyzeUsagePattern();
+  }
+  
+  /**
+   * 使用パターンの取得
+   */
+  async getUsagePatterns() {
+    return await this.usageAnalytics.analyzePatterns();
+  }
+  
+  /**
    * 詳細ヘルスチェック
    */
   async getDetailedHealth() {
     const baseHealth = await this.getHealthStatus();
-    const queueStatus = this.advancedQueueManager.getStatus();
-    const usageStats = this.usageMonitor.getCurrentWindowStats();
+    const queueStatus = this.advancedQueueManager.getQueueStatus();
+    const rateLimitStatus = this.rateLimitPredictor.getStatus();
     
     return {
       ...baseHealth,
       queue: queueStatus,
-      usage: usageStats,
+      rateLimit: rateLimitStatus,
       components: {
         redis: this.redis.status === 'ready',
         advancedQueue: !queueStatus.isPaused,
-        usageMonitor: true,
-        rateLimiter: true,
+        rateLimitPredictor: true,
+        usageAnalytics: true,
         sessionMonitor: true
       },
       timestamp: new Date().toISOString()

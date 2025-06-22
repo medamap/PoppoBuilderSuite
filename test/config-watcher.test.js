@@ -30,10 +30,12 @@ class MockLogger {
 describe('ConfigWatcher', () => {
   let configWatcher;
   let mockLogger;
+  let sandbox;
   let testConfigPath;
   let originalConfig;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     mockLogger = new MockLogger();
     configWatcher = new ConfigWatcher(mockLogger);
     

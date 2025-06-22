@@ -2,21 +2,20 @@
  * 通知機能の統合テスト
  */
 
+const { expect } = require('chai');
+const sinon = require('sinon');
 const NotificationManager = require('../src/notification-manager')
 const DiscordProvider = require('../src/providers/discord-provider')
 const PushoverProvider = require('../src/providers/pushover-provider')
 const TelegramProvider = require('../src/providers/telegram-provider')
 const axios = require('axios')
 
-// axiosのモック
-jest.mock('axios')
-
 // モックロガー
-const createMockLogger = () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
+const createMockLogger = (sandbox) => ({
+  info: sandbox.stub(),
+  warn: sandbox.stub(),
+  error: sandbox.stub(),
+  debug: sandbox.stub()
 })
 
 // タイムアウトのモック
@@ -41,10 +40,12 @@ describe('通知機能統合テスト', () => {
   let manager
   let mockLogger
   let mockConfig
+  let sandbox
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockLogger = createMockLogger()
+    sandbox = sinon.createSandbox()
+    sinon.stub(axios, 'post').resolves({ status: 200, data: { success: true } })
+    mockLogger = createMockLogger(sandbox)
     mockConfig = {
       notifications: {
         enabled: true,
@@ -78,10 +79,14 @@ describe('通知機能統合テスト', () => {
     }
   })
 
+  afterEach(() => {
+    sandbox.restore()
+  })
+
   describe('複数プロバイダーへの同時送信', () => {
     it('全プロバイダーに並列で通知送信', async () => {
       // API呼び出しのモック設定
-      axios.post.mockImplementation((url) => {
+      axios.post.callsFake((url) => {
         if (url.includes('discord.com')) {
           return Promise.resolve({ status: 204 })
         } else if (url.includes('pushover.net')) {
@@ -91,7 +96,7 @@ describe('通知機能統合テスト', () => {
         }
       })
 
-      axios.get.mockResolvedValue({
+      sinon.stub(axios, 'get').resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -108,35 +113,35 @@ describe('通知機能統合テスト', () => {
       const duration = Date.now() - startTime
 
       // 結果の検証
-      expect(result.sent).toBe(3)
-      expect(result.failed).toBe(0)
+      expect(result.sent).to.equal(3)
+      expect(result.failed).to.equal(0)
       expect(result.errors).toHaveLength(0)
       
       // 並列実行の確認（1秒以内に完了）
-      expect(duration).toBeLessThan(1500)
+      expect(duration).to.be.lessThan(1500)
       
       // 各プロバイダーが呼ばれたことを確認
-      expect(axios.post).toHaveBeenCalledTimes(3)
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.stringContaining('discord.com'),
-        expect.any(Object),
-        expect.any(Object)
+      expect(axios.post).to.have.callCount(3)
+      expect(axios.post).to.have.been.calledWith(
+        sinon.match('discord.com'),
+        sinon.match.object,
+        sinon.match.object
       )
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.stringContaining('pushover.net'),
-        expect.any(Object),
-        expect.any(Object)
+      expect(axios.post).to.have.been.calledWith(
+        sinon.match('pushover.net'),
+        sinon.match.object,
+        sinon.match.object
       )
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.stringContaining('telegram.org'),
-        expect.any(Object),
-        expect.any(Object)
+      expect(axios.post).to.have.been.calledWith(
+        sinon.match('telegram.org'),
+        sinon.match.object,
+        sinon.match.object
       )
     })
 
     it('一部のプロバイダーが失敗しても他は送信', async () => {
       // Discordは成功、Pushoverは失敗、Telegramは成功
-      axios.post.mockImplementation((url) => {
+      axios.post.callsFake((url) => {
         if (url.includes('discord.com')) {
           return Promise.resolve({ status: 204 })
         } else if (url.includes('pushover.net')) {
@@ -146,7 +151,7 @@ describe('通知機能統合テスト', () => {
         }
       })
 
-      axios.get.mockResolvedValue({
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -159,11 +164,11 @@ describe('通知機能統合テスト', () => {
         error: 'テストエラー'
       })
 
-      expect(result.sent).toBe(2)
-      expect(result.failed).toBe(1)
+      expect(result.sent).to.equal(2)
+      expect(result.failed).to.equal(1)
       expect(result.errors).toHaveLength(1)
-      expect(result.errors[0]).toContain('Pushover')
-      expect(result.providers).toEqual({
+      expect(result.errors[0]).to.include('Pushover')
+      expect(result.providers).to.deep.equal({
         Discord: { success: true },
         Pushover: { success: false, error: 'Pushover API Error' },
         Telegram: { success: true }
@@ -174,7 +179,7 @@ describe('通知機能統合テスト', () => {
   describe('フォールバック機能', () => {
     it('プライマリプロバイダー失敗時に他のプロバイダーで通知', async () => {
       // Discord失敗、他は成功
-      axios.post.mockImplementation((url) => {
+      axios.post.callsFake((url) => {
         if (url.includes('discord.com')) {
           return Promise.reject(new Error('Discord Webhook Error'))
         } else if (url.includes('pushover.net')) {
@@ -184,7 +189,7 @@ describe('通知機能統合テスト', () => {
         }
       })
 
-      axios.get.mockResolvedValue({
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -197,19 +202,19 @@ describe('通知機能統合テスト', () => {
       })
 
       // 少なくとも1つは成功
-      expect(result.sent).toBeGreaterThan(0)
-      expect(result.sent + result.failed).toBe(3)
+      expect(result.sent).to.be.greaterThan(0)
+      expect(result.sent + result.failed).to.equal(3)
       
       // エラーログの確認
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('[Discord] 通知送信失敗')
+      expect(mockLogger.error).to.have.been.calledWith(
+        sinon.match('[Discord] 通知送信失敗')
       )
     })
 
     it('全プロバイダー失敗でも処理継続', async () => {
       // 全て失敗
-      axios.post.mockRejectedValue(new Error('API Error'))
-      axios.get.mockResolvedValue({
+      axios.post.rejects(new Error('API Error'))
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -222,12 +227,12 @@ describe('通知機能統合テスト', () => {
         error: 'Critical error'
       })
 
-      expect(result.sent).toBe(0)
-      expect(result.failed).toBe(3)
+      expect(result.sent).to.equal(0)
+      expect(result.failed).to.equal(3)
       expect(result.errors).toHaveLength(3)
       
       // エラーがあってもクラッシュしない
-      expect(mockLogger.error).toHaveBeenCalledTimes(3)
+      expect(mockLogger.error).to.have.callCount(3)
     })
   })
 
@@ -254,10 +259,10 @@ describe('通知機能統合テスト', () => {
       const duration = Date.now() - startTime
 
       // タイムアウトは1秒なので、2秒待たずに完了
-      expect(duration).toBeLessThan(1500)
-      expect(result.sent).toBe(1) // FastProviderのみ成功
-      expect(result.failed).toBe(1) // SlowProviderはタイムアウト
-      expect(result.errors[0]).toContain('Timeout')
+      expect(duration).to.be.lessThan(1500)
+      expect(result.sent).to.equal(1) // FastProviderのみ成功
+      expect(result.failed).to.equal(1) // SlowProviderはタイムアウト
+      expect(result.errors[0]).to.include('Timeout')
     })
 
     it('複数プロバイダーでタイムアウトが混在', async () => {
@@ -301,16 +306,16 @@ describe('通知機能統合テスト', () => {
         issueNumber: 456
       })
 
-      expect(result.sent).toBe(2) // Fast1とFast2
-      expect(result.failed).toBe(1) // Slow1
-      expect(result.providers.Slow1.error).toContain('Timeout')
+      expect(result.sent).to.equal(2) // Fast1とFast2
+      expect(result.failed).to.equal(1) // Slow1
+      expect(result.providers.Slow1.error).to.include('Timeout')
     })
   })
 
   describe('レート制限対応', () => {
     it('レート制限エラーでリトライ', async () => {
       let callCount = 0
-      axios.post.mockImplementation(() => {
+      axios.post.callsFake(() => {
         callCount++
         if (callCount <= 2) {
           const error = new Error('Rate limit exceeded')
@@ -344,10 +349,10 @@ describe('通知機能統合テスト', () => {
         issueNumber: 789
       })
 
-      expect(result.sent).toBe(1)
-      expect(callCount).toBe(3) // 初回 + 2回リトライ後に成功
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('リトライ')
+      expect(result.sent).to.equal(1)
+      expect(callCount).to.equal(3) // 初回 + 2回リトライ後に成功
+      expect(mockLogger.warn).to.have.been.calledWith(
+        sinon.match('リトライ')
       )
     })
 
@@ -355,7 +360,7 @@ describe('通知機能統合テスト', () => {
       const retryTimes = []
       let lastCallTime = Date.now()
       
-      axios.post.mockImplementation(() => {
+      axios.post.callsFake(() => {
         const currentTime = Date.now()
         retryTimes.push(currentTime - lastCallTime)
         lastCallTime = currentTime
@@ -390,15 +395,15 @@ describe('通知機能統合テスト', () => {
       })
 
       // 指数バックオフの確認
-      expect(retryTimes[1]).toBeGreaterThanOrEqual(100) // 1回目: 100ms
-      expect(retryTimes[2]).toBeGreaterThanOrEqual(200) // 2回目: 200ms
+      expect(retryTimes[1]).to.be.at.least(100) // 1回目: 100ms
+      expect(retryTimes[2]).to.be.at.least(200) // 2回目: 200ms
     })
   })
 
   describe('エラーハンドリング', () => {
     it('プロバイダー初期化エラーを処理', async () => {
       // 無効なTelegram Bot Token
-      axios.get.mockResolvedValue({
+      axios.get.resolves({
         status: 401,
         data: { ok: false }
       })
@@ -407,17 +412,17 @@ describe('通知機能統合テスト', () => {
       await manager.initialize()
 
       // Telegramは初期化失敗でも他のプロバイダーは有効
-      expect(manager.providers.size).toBeGreaterThan(0)
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('プロバイダー検証エラー')
+      expect(manager.providers.size).to.be.greaterThan(0)
+      expect(mockLogger.error).to.have.been.calledWith(
+        sinon.match('プロバイダー検証エラー')
       )
     })
 
     it('不正なテンプレートでもクラッシュしない', async () => {
       mockConfig.notifications.templates = null
       
-      axios.post.mockResolvedValue({ status: 204 })
-      axios.get.mockResolvedValue({
+      axios.post.resolves({ status: 204 })
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -430,7 +435,7 @@ describe('通知機能統合テスト', () => {
       })
 
       // テンプレートがなくても送信は成功
-      expect(result.sent).toBeGreaterThan(0)
+      expect(result.sent).to.be.greaterThan(0)
     })
 
     it('プロバイダーが例外をスローしても他のプロバイダーは継続', async () => {
@@ -453,9 +458,9 @@ describe('通知機能統合テスト', () => {
         issueNumber: 456
       })
 
-      expect(result.sent).toBe(1) // NormalProviderは成功
-      expect(result.failed).toBe(1) // ErrorProviderは失敗
-      expect(result.errors[0]).toContain('プロバイダーエラー')
+      expect(result.sent).to.equal(1) // NormalProviderは成功
+      expect(result.failed).to.equal(1) // ErrorProviderは失敗
+      expect(result.errors[0]).to.include('プロバイダーエラー')
     })
   })
 
@@ -484,16 +489,16 @@ describe('通知機能統合テスト', () => {
       })
       const duration = Date.now() - startTime
 
-      expect(result.sent).toBe(10)
+      expect(result.sent).to.equal(10)
       // 並列処理なので、200ms * 10 = 2000msより大幅に短い
-      expect(duration).toBeLessThan(500)
+      expect(duration).to.be.lessThan(500)
     })
   })
 
   describe('実際の使用シナリオ', () => {
     it('Issue処理完了の通知フロー', async () => {
-      axios.post.mockResolvedValue({ status: 204 })
-      axios.get.mockResolvedValue({
+      axios.post.resolves({ status: 204 })
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -512,26 +517,26 @@ describe('通知機能統合テスト', () => {
 
       const result = await manager.notify('issue.completed', issueData)
 
-      expect(result.sent).toBeGreaterThan(0)
+      expect(result.sent).to.be.greaterThan(0)
       
       // 送信されたメッセージの確認
       const discordCall = axios.post.mock.calls.find(call => 
         call[0].includes('discord.com')
       )
-      expect(discordCall).toBeDefined()
+      expect(discordCall).to.exist
       
       const discordPayload = discordCall[1]
       expect(discordPayload.embeds[0].fields).toContainEqual(
-        expect.objectContaining({
+        sinon.match({
           name: '実行時間',
-          value: expect.any(String)
+          value: sinon.match.string
         })
       )
     })
 
     it('エラー発生時の緊急通知フロー', async () => {
-      axios.post.mockResolvedValue({ status: 204 })
-      axios.get.mockResolvedValue({
+      axios.post.resolves({ status: 204 })
+      axios.get.resolves({
         status: 200,
         data: { ok: true, result: { username: 'test_bot' } }
       })
@@ -549,14 +554,14 @@ describe('通知機能統合テスト', () => {
 
       const result = await manager.notify('issue.error', errorData)
 
-      expect(result.sent).toBeGreaterThan(0)
+      expect(result.sent).to.be.greaterThan(0)
       
       // Discordでメンション付き
       const discordCall = axios.post.mock.calls.find(call => 
         call[0].includes('discord.com')
       )
       const discordPayload = discordCall[1]
-      expect(discordPayload.content).toContain('@everyone')
+      expect(discordPayload.content).to.include('@everyone')
     })
   })
 })

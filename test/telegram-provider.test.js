@@ -1,3 +1,5 @@
+const { expect } = require('chai');
+const sinon = require('sinon');
 /**
  * TelegramProviderの単体テスト
  */
@@ -6,14 +8,14 @@ const TelegramProvider = require('../src/providers/telegram-provider')
 const axios = require('axios')
 
 // axiosのモック
-jest.mock('axios')
+// Mock: axios (manually stub in beforeEach)
 
 // モックロガー
 const createMockLogger = () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
+  info: sandbox.stub(),
+  warn: sandbox.stub(),
+  error: sandbox.stub(),
+  debug: sandbox.stub()
 })
 
 describe('TelegramProvider', () => {
@@ -22,7 +24,7 @@ describe('TelegramProvider', () => {
   let mockConfig
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    // Mocks cleared by sandbox.restore()
     mockLogger = createMockLogger()
     mockConfig = {
       enabled: true,
@@ -36,12 +38,12 @@ describe('TelegramProvider', () => {
 
   describe('初期化と検証', () => {
     it('正しい設定で初期化', () => {
-      expect(provider.getName()).toBe('Telegram')
-      expect(provider.botToken).toBe('test-bot-token')
-      expect(provider.chatId).toBe('-1001234567890')
-      expect(provider.parseMode).toBe('Markdown')
-      expect(provider.disableNotification).toBe(false)
-      expect(provider.apiBaseUrl).toBe('https://api.telegram.org/bottest-bot-token')
+      expect(provider.getName()).to.equal('Telegram')
+      expect(provider.botToken).to.equal('test-bot-token')
+      expect(provider.chatId).to.equal('-1001234567890')
+      expect(provider.parseMode).to.equal('Markdown')
+      expect(provider.disableNotification).to.equal(false)
+      expect(provider.apiBaseUrl).to.equal('https://api.telegram.org/bottest-bot-token')
     })
 
     it('環境変数から認証情報を解決', () => {
@@ -54,9 +56,9 @@ describe('TelegramProvider', () => {
       }
       const provider = new TelegramProvider(config, mockLogger)
       
-      expect(provider.botToken).toBe('env-bot-token')
-      expect(provider.chatId).toBe('env-chat-id')
-      expect(provider.apiBaseUrl).toBe('https://api.telegram.org/botenv-bot-token')
+      expect(provider.botToken).to.equal('env-bot-token')
+      expect(provider.chatId).to.equal('env-chat-id')
+      expect(provider.apiBaseUrl).to.equal('https://api.telegram.org/botenv-bot-token')
       delete process.env.TELEGRAM_TOKEN
       delete process.env.TELEGRAM_CHAT
     })
@@ -74,7 +76,7 @@ describe('TelegramProvider', () => {
     })
 
     it('有効なBot Tokenの検証成功', async () => {
-      axios.get.mockResolvedValue({
+      axios.get.resolves({
         status: 200,
         data: {
           ok: true,
@@ -89,12 +91,12 @@ describe('TelegramProvider', () => {
       
       await provider.validate()
       
-      expect(axios.get).toHaveBeenCalledWith('https://api.telegram.org/bottest-bot-token/getMe')
-      expect(mockLogger.info).toHaveBeenCalledWith('[Telegram] Bot名: test_bot')
+      expect(axios.get).to.have.been.calledWith('https://api.telegram.org/bottest-bot-token/getMe')
+      expect(mockLogger.info).to.have.been.calledWith('[Telegram] Bot名: test_bot')
     })
 
     it('無効なBot Tokenの場合エラー', async () => {
-      axios.get.mockResolvedValue({
+      axios.get.resolves({
         status: 401,
         data: {
           ok: false,
@@ -107,7 +109,7 @@ describe('TelegramProvider', () => {
     })
 
     it('ネットワークエラーの場合適切なエラー', async () => {
-      axios.get.mockRejectedValue(new Error('Network Error'))
+      axios.get.rejects(new Error('Network Error'))
       
       await expect(provider.validate()).rejects.toThrow('Telegram Bot Token検証エラー: Network Error')
     })
@@ -115,7 +117,7 @@ describe('TelegramProvider', () => {
 
   describe('メッセージ送信', () => {
     it('基本的な通知を送信', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -138,21 +140,21 @@ describe('TelegramProvider', () => {
       
       await provider.send(notification)
       
-      expect(axios.post).toHaveBeenCalledWith(
+      expect(axios.post).to.have.been.calledWith(
         'https://api.telegram.org/bottest-bot-token/sendMessage',
-        expect.objectContaining({
+        sinon.match({
           chat_id: '-1001234567890',
-          text: expect.stringContaining('✅ *Issue #123 処理完了*'),
+          text: sinon.match('✅ *Issue #123 処理完了*'),
           parse_mode: 'Markdown',
           disable_notification: false,
-          reply_markup: expect.objectContaining({
+          reply_markup: sinon.match({
             inline_keyboard: [[{
               text: '📋 Issue #123を開く',
               url: 'https://github.com/test/repo/issues/123'
             }]]
           })
         }),
-        expect.objectContaining({
+        sinon.match({
           headers: { 'Content-Type': 'application/json' },
           timeout: 5000
         })
@@ -160,7 +162,7 @@ describe('TelegramProvider', () => {
     })
 
     it('エラー通知の送信', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -180,12 +182,12 @@ describe('TelegramProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.text).toContain('❌ *Issue #456 エラー発生*')
-      expect(payload.text).toContain('エラーが発生しました')
+      expect(payload.text).to.include('❌ *Issue #456 エラー発生*')
+      expect(payload.text).to.include('エラーが発生しました')
     })
 
     it('実行時間とラベルの表示', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -206,12 +208,12 @@ describe('TelegramProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.text).toContain('⏱ 実行時間: 1時間1分')
-      expect(payload.text).toContain('🏷 ラベル: `enhancement`, `documentation`')
+      expect(payload.text).to.include('⏱ 実行時間: 1時間1分')
+      expect(payload.text).to.include('🏷 ラベル: `enhancement`, `documentation`')
     })
 
     it('長いメッセージは切り詰め', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -229,12 +231,12 @@ describe('TelegramProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.text.length).toBeLessThanOrEqual(4096)
-      expect(payload.text).toContain('...')
+      expect(payload.text.length).to.be.at.most(4096)
+      expect(payload.text).to.include('...')
     })
 
     it('Issue URLがない場合はキーボードなし', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -251,12 +253,12 @@ describe('TelegramProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.reply_markup).toBeUndefined()
+      expect(payload.reply_markup).to.be.undefined
     })
 
     it('サイレント通知の設定', async () => {
       provider.disableNotification = true
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -273,11 +275,11 @@ describe('TelegramProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.disable_notification).toBe(true)
+      expect(payload.disable_notification).to.equal(true)
     })
 
     it('APIエラーの場合例外をスロー', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: false,
@@ -299,7 +301,7 @@ describe('TelegramProvider', () => {
       axios.post
         .mockRejectedValueOnce(new Error('一時的なエラー'))
         .mockRejectedValueOnce(new Error('一時的なエラー'))
-        .mockResolvedValue({
+        .resolves({
           status: 200,
           data: {
             ok: true,
@@ -315,8 +317,8 @@ describe('TelegramProvider', () => {
       
       await provider.send(notification)
       
-      expect(axios.post).toHaveBeenCalledTimes(3)
-      expect(mockLogger.warn).toHaveBeenCalledTimes(2)
+      expect(axios.post).to.have.callCount(3)
+      expect(mockLogger.warn).to.have.callCount(2)
     })
   })
 
@@ -332,10 +334,10 @@ describe('TelegramProvider', () => {
         }
       )
       
-      expect(message).toContain('✅ *Issue #123 処理完了*')
-      expect(message).toContain('処理が完了しました')
-      expect(message).toContain('⏱ 実行時間: 2分5秒')
-      expect(message).toContain('🏷 ラベル: `bug`, `fixed`')
+      expect(message).to.include('✅ *Issue #123 処理完了*')
+      expect(message).to.include('処理が完了しました')
+      expect(message).to.include('⏱ 実行時間: 2分5秒')
+      expect(message).to.include('🏷 ラベル: `bug`, `fixed`')
     })
 
     it('再起動メッセージのフォーマット', () => {
@@ -345,32 +347,32 @@ describe('TelegramProvider', () => {
         {}
       )
       
-      expect(message).toContain('🔄 *PoppoBuilder 再起動*')
-      expect(message).toContain('システムを再起動します')
+      expect(message).to.include('🔄 *PoppoBuilder 再起動*')
+      expect(message).to.include('システムを再起動します')
     })
   })
 
   describe('時間フォーマット', () => {
     it('秒のみ', () => {
-      expect(provider.formatTime(45000)).toBe('45秒')
+      expect(provider.formatTime(45000)).to.equal('45秒')
     })
 
     it('分と秒', () => {
-      expect(provider.formatTime(125000)).toBe('2分5秒')
+      expect(provider.formatTime(125000)).to.equal('2分5秒')
     })
 
     it('時間と分', () => {
-      expect(provider.formatTime(3665000)).toBe('1時間1分')
+      expect(provider.formatTime(3665000)).to.equal('1時間1分')
     })
 
     it('複数時間', () => {
-      expect(provider.formatTime(7325000)).toBe('2時間2分')
+      expect(provider.formatTime(7325000)).to.equal('2時間2分')
     })
   })
 
   describe('エラーハンドリング', () => {
     it('不正なデータでもクラッシュしない', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: true,
@@ -385,7 +387,7 @@ describe('TelegramProvider', () => {
         data: null
       })
       
-      expect(axios.post).toHaveBeenCalled()
+      expect(axios.post).to.have.been.called
       
       // データが空
       await provider.send({
@@ -394,7 +396,7 @@ describe('TelegramProvider', () => {
         data: {}
       })
       
-      expect(axios.post).toHaveBeenCalledTimes(2)
+      expect(axios.post).to.have.callCount(2)
     })
 
     it('環境変数が設定されていない場合のエラー', () => {
@@ -408,7 +410,7 @@ describe('TelegramProvider', () => {
     })
 
     it('parseMode違反のエラー処理', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: {
           ok: false,
@@ -429,20 +431,20 @@ describe('TelegramProvider', () => {
 
   describe('アイコンとタイトル', () => {
     it('各イベントタイプのアイコン', () => {
-      expect(provider.getIcon('issue.completed')).toBe('✅')
-      expect(provider.getIcon('issue.error')).toBe('❌')
-      expect(provider.getIcon('issue.timeout')).toBe('⏱️')
-      expect(provider.getIcon('dogfooding.restart')).toBe('🔄')
-      expect(provider.getIcon('unknown')).toBe('📌')
+      expect(provider.getIcon('issue.completed')).to.equal('✅')
+      expect(provider.getIcon('issue.error')).to.equal('❌')
+      expect(provider.getIcon('issue.timeout')).to.equal('⏱️')
+      expect(provider.getIcon('dogfooding.restart')).to.equal('🔄')
+      expect(provider.getIcon('unknown')).to.equal('📌')
     })
 
     it('各イベントタイプのタイトル', () => {
       const data = { issueNumber: 123 }
-      expect(provider.getTitle('issue.completed', data)).toBe('Issue #123 処理完了')
-      expect(provider.getTitle('issue.error', data)).toBe('Issue #123 エラー発生')
-      expect(provider.getTitle('issue.timeout', data)).toBe('Issue #123 タイムアウト')
-      expect(provider.getTitle('dogfooding.restart', {})).toBe('PoppoBuilder 再起動')
-      expect(provider.getTitle('unknown', data)).toBe('Issue #123')
+      expect(provider.getTitle('issue.completed', data)).to.equal('Issue #123 処理完了')
+      expect(provider.getTitle('issue.error', data)).to.equal('Issue #123 エラー発生')
+      expect(provider.getTitle('issue.timeout', data)).to.equal('Issue #123 タイムアウト')
+      expect(provider.getTitle('dogfooding.restart', {})).to.equal('PoppoBuilder 再起動')
+      expect(provider.getTitle('unknown', data)).to.equal('Issue #123')
     })
   })
 })

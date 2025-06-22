@@ -2,15 +2,17 @@
  * NotificationManagerの単体テスト
  */
 
+const { expect } = require('chai');
+const sinon = require('sinon');
 const NotificationManager = require('../src/notification-manager')
 const { Logger } = require('../src/logger')
 
 // モックロガー
-const createMockLogger = () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
+const createMockLogger = (sandbox) => ({
+  info: sandbox.stub(),
+  warn: sandbox.stub(),
+  error: sandbox.stub(),
+  debug: sandbox.stub()
 })
 
 // モックプロバイダー
@@ -46,9 +48,11 @@ describe('NotificationManager', () => {
   let manager
   let mockLogger
   let mockConfig
+  let sandbox
 
   beforeEach(() => {
-    mockLogger = createMockLogger()
+    sandbox = sinon.createSandbox()
+    mockLogger = createMockLogger(sandbox)
     mockConfig = {
       notifications: {
         enabled: true,
@@ -67,20 +71,24 @@ describe('NotificationManager', () => {
     manager = new NotificationManager(mockConfig, mockLogger)
   })
 
+  afterEach(() => {
+    sandbox.restore()
+  })
+
   describe('初期化', () => {
     it('通知が無効の場合は初期化をスキップ', async () => {
       mockConfig.notifications.enabled = false
       await manager.initialize()
       
-      expect(manager.initialized).toBe(false)
-      expect(mockLogger.info).toHaveBeenCalledWith('[NotificationManager] 通知機能は無効です')
+      expect(manager.initialized).to.be.false
+      expect(mockLogger.info).to.have.been.calledWith('[NotificationManager] 通知機能は無効です')
     })
 
     it('プロバイダーなしで初期化', async () => {
       await manager.initialize()
       
-      expect(manager.initialized).toBe(true)
-      expect(manager.providers.size).toBe(0)
+      expect(manager.initialized).to.equal(true)
+      expect(manager.providers.size).to.equal(0)
     })
 
     it('プロバイダーを登録して初期化', async () => {
@@ -89,9 +97,9 @@ describe('NotificationManager', () => {
       
       await manager.initialize()
       
-      expect(manager.initialized).toBe(true)
-      expect(manager.providers.has('TestProvider')).toBe(true)
-      expect(provider.validateCalled).toBe(1)
+      expect(manager.initialized).to.equal(true)
+      expect(manager.providers.has('TestProvider')).to.equal(true)
+      expect(provider.validateCalled).to.equal(1)
     })
 
     it('検証失敗のプロバイダーはエラーログを出力', async () => {
@@ -100,8 +108,8 @@ describe('NotificationManager', () => {
       
       await manager.initialize()
       
-      expect(mockLogger.error).toHaveBeenCalled()
-      expect(manager.providers.has('FailProvider')).toBe(false)
+      expect(mockLogger.error).to.have.been.called
+      expect(manager.providers.has('FailProvider')).to.equal(false)
     })
   })
 
@@ -112,7 +120,7 @@ describe('NotificationManager', () => {
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('Issue #123 - テストタイトル')
+      expect(result).to.equal('Issue #123 - テストタイトル')
     })
 
     it('実行時間をフォーマット', () => {
@@ -121,7 +129,7 @@ describe('NotificationManager', () => {
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('実行時間: 2分5秒')
+      expect(result).to.equal('実行時間: 2分5秒')
     })
 
     it('1時間以上の実行時間をフォーマット', () => {
@@ -130,7 +138,7 @@ describe('NotificationManager', () => {
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('実行時間: 1時間1分5秒')
+      expect(result).to.equal('実行時間: 1時間1分5秒')
     })
 
     it('ラベルをフォーマット', () => {
@@ -139,7 +147,7 @@ describe('NotificationManager', () => {
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('ラベル: bug, high-priority')
+      expect(result).to.equal('ラベル: bug, high-priority')
     })
 
     it('存在しないプレースホルダーは空文字に置換', () => {
@@ -148,7 +156,7 @@ describe('NotificationManager', () => {
       
       const result = manager.formatMessage(template, data)
       
-      expect(result).toBe('Issue #123 - ')  // titleは空文字に置換される
+      expect(result).to.equal('Issue #123 - ')  // titleは空文字に置換される
     })
   })
 
@@ -156,7 +164,7 @@ describe('NotificationManager', () => {
     it('初期化されていない場合は送信をスキップ', async () => {
       const result = await manager.notify('issue.completed', { issueNumber: 123 })
       
-      expect(result).toEqual({ sent: 0, failed: 0, errors: [] })
+      expect(result).to.deep.equal({ sent: 0, failed: 0, errors: [] })
     })
 
     it('プロバイダーなしの場合は送信をスキップ', async () => {
@@ -164,7 +172,7 @@ describe('NotificationManager', () => {
       
       const result = await manager.notify('issue.completed', { issueNumber: 123 })
       
-      expect(result).toEqual({ sent: 0, failed: 0, errors: [] })
+      expect(result).to.deep.equal({ sent: 0, failed: 0, errors: [] })
     })
 
     it('単一プロバイダーに送信成功', async () => {
@@ -177,9 +185,9 @@ describe('NotificationManager', () => {
         title: 'テスト'
       })
       
-      expect(provider.sendCalled).toBe(1)
-      expect(result.sent).toBe(1)
-      expect(result.failed).toBe(0)
+      expect(provider.sendCalled).to.equal(1)
+      expect(result.sent).to.equal(1)
+      expect(result.failed).to.equal(0)
     })
 
     it('複数プロバイダーに並列送信', async () => {
@@ -199,12 +207,12 @@ describe('NotificationManager', () => {
       })
       const duration = Date.now() - startTime
       
-      expect(provider1.sendCalled).toBe(1)
-      expect(provider2.sendCalled).toBe(1)
-      expect(provider3.sendCalled).toBe(1)
-      expect(result.sent).toBe(3)
-      expect(result.failed).toBe(0)
-      expect(duration).toBeLessThan(1500) // 並列実行の確認
+      expect(provider1.sendCalled).to.equal(1)
+      expect(provider2.sendCalled).to.equal(1)
+      expect(provider3.sendCalled).to.equal(1)
+      expect(result.sent).to.equal(3)
+      expect(result.failed).to.equal(0)
+      expect(duration).to.be.lessThan(1500) // 並列実行の確認
     })
 
     it('一部のプロバイダーが失敗しても他は送信', async () => {
@@ -231,13 +239,13 @@ describe('NotificationManager', () => {
         title: 'テスト'
       })
       
-      expect(provider1.sendCalled).toBe(1)
-      expect(provider3.sendCalled).toBe(1)
-      expect(result.sent).toBe(2)
-      expect(result.failed).toBe(1)
+      expect(provider1.sendCalled).to.equal(1)
+      expect(provider3.sendCalled).to.equal(1)
+      expect(result.sent).to.equal(2)
+      expect(result.failed).to.equal(1)
       expect(result.errors).toHaveLength(1)
-      expect(result.errors[0]).toContain('Provider2')
-      expect(result.errors[0]).toContain('send failed')
+      expect(result.errors[0]).to.include('Provider2')
+      expect(result.errors[0]).to.include('send failed')
     })
 
     it('テンプレートが存在しない場合はデフォルトメッセージ', async () => {
@@ -249,8 +257,8 @@ describe('NotificationManager', () => {
         issueNumber: 123
       })
       
-      expect(provider.sendCalled).toBe(1)
-      expect(result.sent).toBe(1)
+      expect(provider.sendCalled).to.equal(1)
+      expect(result.sent).to.equal(1)
     })
   })
 
@@ -272,9 +280,9 @@ describe('NotificationManager', () => {
         issueNumber: 123
       })
       
-      expect(result.sent).toBe(0)
-      expect(result.failed).toBe(1)
-      expect(result.errors[0]).toBe('SlowProvider: Timeout')
+      expect(result.sent).to.equal(0)
+      expect(result.failed).to.equal(1)
+      expect(result.errors[0]).to.equal('SlowProvider: Timeout')
     })
 
     it('複数プロバイダーでタイムアウトが混在', async () => {
@@ -295,10 +303,10 @@ describe('NotificationManager', () => {
         issueNumber: 123
       })
       
-      expect(result.sent).toBe(1)
-      expect(result.failed).toBe(1)
-      expect(fastProvider.sendCalled).toBe(1)
-      expect(result.providers.SlowProvider.error).toContain('Timeout')
+      expect(result.sent).to.equal(1)
+      expect(result.failed).to.equal(1)
+      expect(fastProvider.sendCalled).to.equal(1)
+      expect(result.providers.SlowProvider.error).to.include('Timeout')
     })
   })
 
@@ -317,8 +325,8 @@ describe('NotificationManager', () => {
         issueNumber: 123
       })
       
-      expect(result.failed).toBe(1)
-      expect(result.errors[0]).toBe('InvalidProvider: send is not a function')
+      expect(result.failed).to.equal(1)
+      expect(result.errors[0]).to.equal('InvalidProvider: send is not a function')
     })
 
     it('通知データが不正でもクラッシュしない', async () => {
@@ -328,15 +336,15 @@ describe('NotificationManager', () => {
       
       // nullデータ
       const result1 = await manager.notify('issue.completed', null)
-      expect(result1.sent).toBe(1)
+      expect(result1.sent).to.equal(1)
       
       // undefinedデータ
       const result2 = await manager.notify('issue.completed', undefined)
-      expect(result2.sent).toBe(1)
+      expect(result2.sent).to.equal(1)
       
       // 空オブジェクト
       const result3 = await manager.notify('issue.completed', {})
-      expect(result3.sent).toBe(1)
+      expect(result3.sent).to.equal(1)
     })
   })
 
@@ -349,7 +357,7 @@ describe('NotificationManager', () => {
       
       const summary = manager.summarizeResults(results)
       
-      expect(summary).toEqual({
+      expect(summary).to.deep.equal({
         sent: 2,
         failed: 0,
         errors: [],
@@ -368,7 +376,7 @@ describe('NotificationManager', () => {
       
       const summary = manager.summarizeResults(results)
       
-      expect(summary).toEqual({
+      expect(summary).to.deep.equal({
         sent: 1,
         failed: 1,
         errors: ['Provider2: Failed'],

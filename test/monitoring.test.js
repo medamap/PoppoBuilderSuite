@@ -83,7 +83,6 @@ describe('Monitoring Components', function() {
   
   describe('ProcessMonitor', () => {
     let processMonitor;
-    let sandbox;
     
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -169,7 +168,6 @@ describe('Monitoring Components', function() {
   
   describe('AutoRecovery', () => {
     let autoRecovery;
-    let sandbox;
     
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -259,7 +257,6 @@ describe('Monitoring Components', function() {
   
   describe('MonitoringManager', () => {
     let monitoringManager;
-    let sandbox;
     
     beforeEach(async () => {
       sandbox = sinon.createSandbox();

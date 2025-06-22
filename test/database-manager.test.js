@@ -9,6 +9,7 @@ describe('DatabaseManager', () => {
   const testDbPath = path.join(__dirname, 'test-db.db');
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // テスト用データベースを作成
     db = new DatabaseManager(testDbPath);
   });
@@ -139,6 +140,7 @@ describe('DatabaseManager', () => {
   
   describe('統計取得', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       // テストデータを挿入
       const processes = [
         { processId: 'p1', taskType: 'claude-cli', status: 'success', duration: 5000 },
@@ -189,6 +191,7 @@ describe('DatabaseManager', () => {
   
   describe('履歴取得', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       // テストデータを挿入
       for (let i = 1; i <= 5; i++) {
         db.recordProcessStart({

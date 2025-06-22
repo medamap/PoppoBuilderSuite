@@ -12,6 +12,7 @@ describe('E2E: ダッシュボード操作', function() {
 
   let testEnv;
   let apiMocks;
+  let sandbox;
   let dashboardProcess;
   let browser;
   let page;

@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('CCSP Session Monitor Unit Tests', () => {
   let helpers;
   let SessionMonitor;
+  let sandbox;
   let sessionMonitor;
   let mockRedis;
   let clock;
@@ -14,6 +15,7 @@ describe('CCSP Session Monitor Unit Tests', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Use fake timers
     clock = sinon.useFakeTimers();
     
@@ -127,7 +129,7 @@ describe('CCSP Session Monitor Unit Tests', () => {
         number: 100,
         state: 'open',
         labels: ['session-timeout']
-      }]);
+      }];
 
       await sessionMonitor.createSessionTimeoutIssue();
 
@@ -199,7 +201,7 @@ describe('CCSP Session Monitor Unit Tests', () => {
       githubMock.findIssues.returnValue = [{
         number: 100,
         state: 'open'
-      }]);
+      }];
       githubMock.getIssue.returnValue = {
         number: 100,
         state: 'open'
@@ -225,7 +227,7 @@ describe('CCSP Session Monitor Unit Tests', () => {
       githubMock.findIssues.returnValue = [{
         number: 100,
         state: 'open'
-      }]);
+      }];
 
       await sessionMonitor.startMonitoring();
 

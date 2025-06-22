@@ -3,7 +3,8 @@
   "header": {
     "title": "🤖 PoppoBuilder Process Dashboard",
     "refresh": "更新",
-    "stopAll": "全プロセス停止"
+    "stopAll": "全プロセス停止",
+    "config": "設定"
   },
   "systemStatus": {
     "title": "システム状態",
@@ -72,6 +73,14 @@
     "close": "×",
     "refresh": "更新",
     "allTypes": "全タスクタイプ"
+  },
+  "tokenUsage": {
+    "title": "トークン使用量",
+    "today": "本日",
+    "week": "今週",
+    "month": "今月",
+    "total": "累計",
+    "viewCCSP": "CCSP詳細"
   },
   "multiProject": {
     "title": "PoppoBuilder マルチプロジェクトダッシュボード",

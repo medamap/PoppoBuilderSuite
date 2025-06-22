@@ -7,9 +7,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const glob = require('glob');
-const { promisify } = require('util');
-const globAsync = promisify(glob);
+const { glob } = require('glob');
 const chalk = require('chalk');
 
 class TranslationValidator {
@@ -55,7 +53,7 @@ class TranslationValidator {
     const localeDir = path.join(this.localesDir, locale);
     
     try {
-      const files = await globAsync('**/*.json', { cwd: localeDir });
+      const files = await glob('**/*.json', { cwd: localeDir });
       
       for (const file of files) {
         const filePath = path.join(localeDir, file);

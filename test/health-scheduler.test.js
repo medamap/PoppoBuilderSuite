@@ -1,3 +1,5 @@
+const { expect } = require('chai');
+const sinon = require('sinon');
 /**
  * Health Scheduler Tests - Issue #128
  * システムヘルスチェックの自動化のテスト
@@ -12,6 +14,7 @@ const path = require('path');
 describe('Health Scheduler', () => {
   let healthScheduler;
   let testReportsDir;
+  let sandbox;
 
   beforeEach(async () => {
     // テスト用のレポートディレクトリを作成
@@ -48,142 +51,142 @@ describe('Health Scheduler', () => {
   });
 
   describe('初期化', () => {
-    test('HealthSchedulerが正常に初期化される', () => {
-      expect(healthScheduler).toBeDefined();
-      expect(healthScheduler.diagnosticLevels).toBeDefined();
-      expect(healthScheduler.diagnosticLevels.daily).toBeDefined();
-      expect(healthScheduler.diagnosticLevels.weekly).toBeDefined();
-      expect(healthScheduler.diagnosticLevels.monthly).toBeDefined();
+    it('HealthSchedulerが正常に初期化される', () => {
+      expect(healthScheduler).to.exist;
+      expect(healthScheduler.diagnosticLevels).to.exist;
+      expect(healthScheduler.diagnosticLevels.daily).to.exist;
+      expect(healthScheduler.diagnosticLevels.weekly).to.exist;
+      expect(healthScheduler.diagnosticLevels.monthly).to.exist;
     });
 
-    test('診断レベルが正しく設定される', () => {
+    it('診断レベルが正しく設定される', () => {
       const { daily, weekly, monthly } = healthScheduler.diagnosticLevels;
       
-      expect(daily.checks).toContain('memory');
-      expect(daily.checks).toContain('cpu');
-      expect(weekly.checks).toContain('logs');
-      expect(monthly.checks).toContain('security');
-      expect(monthly.checks).toContain('backup');
+      expect(daily.checks).to.include('memory');
+      expect(daily.checks).to.include('cpu');
+      expect(weekly.checks).to.include('logs');
+      expect(monthly.checks).to.include('security');
+      expect(monthly.checks).to.include('backup');
     });
   });
 
   describe('診断実行', () => {
-    test('日次診断が正常に実行される', async () => {
+    it('日次診断が正常に実行される', async () => {
       const results = await healthScheduler.runDiagnostic('daily');
       
-      expect(results).toBeDefined();
-      expect(results.level).toBe('daily');
-      expect(results.name).toBe('日次診断');
-      expect(results.summary).toBeDefined();
-      expect(results.summary.total).toBeGreaterThan(0);
-      expect(results.checks).toBeDefined();
-      expect(results.overallStatus).toMatch(/passed|warning|failed/);
+      expect(results).to.exist;
+      expect(results.level).to.equal('daily');
+      expect(results.name).to.equal('日次診断');
+      expect(results.summary).to.exist;
+      expect(results.summary.total).to.be.greaterThan(0);
+      expect(results.checks).to.exist;
+      expect(results.overallStatus).to.match(/passed|warning|failed/);
     });
 
-    test('週次診断が正常に実行される', async () => {
+    it('週次診断が正常に実行される', async () => {
       const results = await healthScheduler.runDiagnostic('weekly');
       
-      expect(results.level).toBe('weekly');
-      expect(results.name).toBe('週次診断');
-      expect(results.checks.logs).toBeDefined();
-      expect(results.checks.cleanup).toBeDefined();
+      expect(results.level).to.equal('weekly');
+      expect(results.name).to.equal('週次診断');
+      expect(results.checks.logs).to.exist;
+      expect(results.checks.cleanup).to.exist;
     });
 
-    test('月次診断が正常に実行される', async () => {
+    it('月次診断が正常に実行される', async () => {
       const results = await healthScheduler.runDiagnostic('monthly');
       
-      expect(results.level).toBe('monthly');
-      expect(results.name).toBe('月次診断');
-      expect(results.checks.security).toBeDefined();
-      expect(results.checks.backup).toBeDefined();
-      expect(results.checks.performance).toBeDefined();
+      expect(results.level).to.equal('monthly');
+      expect(results.name).to.equal('月次診断');
+      expect(results.checks.security).to.exist;
+      expect(results.checks.backup).to.exist;
+      expect(results.checks.performance).to.exist;
     });
 
-    test('無効な診断レベルでエラーが発生する', async () => {
+    it('無効な診断レベルでエラーが発生する', async () => {
       await expect(healthScheduler.runDiagnostic('invalid')).rejects.toThrow('Unknown diagnostic level: invalid');
     });
   });
 
   describe('個別チェック', () => {
-    test('メモリチェックが実行される', async () => {
+    it('メモリチェックが実行される', async () => {
       const result = await healthScheduler.checkMemory();
       
-      expect(result).toBeDefined();
-      expect(result.status).toMatch(/passed|warning|failed/);
-      expect(result.metric).toBeDefined();
-      expect(typeof result.metric).toBe('number');
-      expect(result.message).toContain('メモリ使用率');
+      expect(result).to.exist;
+      expect(result.status).to.match(/passed|warning|failed/);
+      expect(result.metric).to.exist;
+      expect(typeof result.metric).to.equal('number');
+      expect(result.message).to.include('メモリ使用率');
     });
 
-    test('CPUチェックが実行される', async () => {
+    it('CPUチェックが実行される', async () => {
       const result = await healthScheduler.checkCPU();
       
-      expect(result.status).toMatch(/passed|warning|failed/);
-      expect(result.metric).toBeDefined();
-      expect(result.message).toContain('CPU使用率');
+      expect(result.status).to.match(/passed|warning|failed/);
+      expect(result.metric).to.exist;
+      expect(result.message).to.include('CPU使用率');
     });
 
-    test('ディスクチェックが実行される', async () => {
+    it('ディスクチェックが実行される', async () => {
       const result = await healthScheduler.checkDisk();
       
-      expect(result.status).toMatch(/passed|warning|failed/);
-      expect(result.message).toContain('ディスク使用率');
+      expect(result.status).to.match(/passed|warning|failed/);
+      expect(result.message).to.include('ディスク使用率');
     });
   });
 
   describe('レポート生成', () => {
-    test('Markdownレポートが生成される', async () => {
+    it('Markdownレポートが生成される', async () => {
       const results = await healthScheduler.runDiagnostic('daily');
       
       // レポートファイルが作成されているか確認
       const files = await fs.readdir(testReportsDir);
       const reportFiles = files.filter(f => f.startsWith('health-report-daily-') && f.endsWith('.md'));
       
-      expect(reportFiles.length).toBe(1);
+      expect(reportFiles.length).to.equal(1);
       
       // レポート内容を確認
       const reportContent = await fs.readFile(path.join(testReportsDir, reportFiles[0]), 'utf8');
-      expect(reportContent).toContain('# 日次診断レポート');
-      expect(reportContent).toContain('## 概要');
-      expect(reportContent).toContain('## 詳細結果');
-      expect(reportContent).toContain('**全体ステータス**');
+      expect(reportContent).to.include('# 日次診断レポート');
+      expect(reportContent).to.include('## 概要');
+      expect(reportContent).to.include('## 詳細結果');
+      expect(reportContent).to.include('**全体ステータス**');
     });
 
-    test('レポートに必要な情報が含まれる', async () => {
+    it('レポートに必要な情報が含まれる', async () => {
       const results = await healthScheduler.runDiagnostic('daily');
       const report = healthScheduler.generateMarkdownReport(results);
       
-      expect(report).toContain('日次診断レポート');
-      expect(report).toContain('実行日時');
-      expect(report).toContain('実行時間');
-      expect(report).toContain('全体ステータス');
-      expect(report).toContain('総チェック数');
-      expect(report).toContain('成功');
-      expect(report).toContain('警告');
-      expect(report).toContain('失敗');
+      expect(report).to.include('日次診断レポート');
+      expect(report).to.include('実行日時');
+      expect(report).to.include('実行時間');
+      expect(report).to.include('全体ステータス');
+      expect(report).to.include('総チェック数');
+      expect(report).to.include('成功');
+      expect(report).to.include('警告');
+      expect(report).to.include('失敗');
     });
   });
 
   describe('スケジュール管理', () => {
-    test('スケジュール情報が取得できる', () => {
+    it('スケジュール情報が取得できる', () => {
       const info = healthScheduler.getScheduleInfo();
       
-      expect(info).toBeDefined();
-      expect(info.isRunning).toBe(false);
-      expect(info.diagnosticLevels).toBeDefined();
-      expect(Array.isArray(info.lastDiagnostics)).toBe(true);
+      expect(info).to.exist;
+      expect(info.isRunning).to.equal(false);
+      expect(info.diagnosticLevels).to.exist;
+      expect(Array.isArray(info.lastDiagnostics)).to.equal(true);
     });
 
-    test('手動診断が実行できる', async () => {
+    it('手動診断が実行できる', async () => {
       const results = await healthScheduler.runManualDiagnostic('daily');
       
-      expect(results.level).toBe('daily');
-      expect(results.overallStatus).toBeDefined();
+      expect(results.level).to.equal('daily');
+      expect(results.overallStatus).to.exist;
     });
   });
 
   describe('古いレポートのクリーンアップ', () => {
-    test('古いレポートが削除される', async () => {
+    it('古いレポートが削除される', async () => {
       // 古い日付のテストファイルを作成
       const oldFile = path.join(testReportsDir, 'old-report.md');
       await fs.writeFile(oldFile, 'test content');
@@ -200,7 +203,7 @@ describe('Health Scheduler', () => {
         await fs.access(oldFile);
         fail('Old file should have been deleted');
       } catch (error) {
-        expect(error.code).toBe('ENOENT');
+        expect(error.code).to.equal('ENOENT');
       }
     });
   });
@@ -245,60 +248,60 @@ describe('Health Scheduler Integration', () => {
   });
 
   describe('統合システム', () => {
-    test('統合システムが初期化される', async () => {
+    it('統合システムが初期化される', async () => {
       await integration.initialize();
       
-      expect(integration.isInitialized).toBe(true);
-      expect(integration.healthScheduler).toBeDefined();
+      expect(integration.isInitialized).to.equal(true);
+      expect(integration.healthScheduler).to.exist;
     });
 
-    test('手動診断が実行できる', async () => {
+    it('手動診断が実行できる', async () => {
       await integration.initialize();
       
       const results = await integration.runManualDiagnostic('daily');
       
-      expect(results.level).toBe('daily');
-      expect(results.overallStatus).toBeDefined();
+      expect(results.level).to.equal('daily');
+      expect(results.overallStatus).to.exist;
     });
 
-    test('統合ステータスが取得できる', async () => {
+    it('統合ステータスが取得できる', async () => {
       await integration.initialize();
       
       const status = integration.getIntegratedStatus();
       
-      expect(status.integration).toBeDefined();
-      expect(status.integration.initialized).toBe(true);
-      expect(status.healthScheduler).toBeDefined();
+      expect(status.integration).to.exist;
+      expect(status.integration.initialized).to.equal(true);
+      expect(status.healthScheduler).to.exist;
     });
 
-    test('統合レポートが生成される', async () => {
+    it('統合レポートが生成される', async () => {
       await integration.initialize();
       
       // 診断を実行してからレポートを生成
       await integration.runManualDiagnostic('daily');
       const report = await integration.generateIntegratedReport();
       
-      expect(report).toBeDefined();
-      expect(report.timestamp).toBeDefined();
-      expect(report.integration).toBeDefined();
-      expect(report.diagnosticHistory).toBeDefined();
+      expect(report).to.exist;
+      expect(report.timestamp).to.exist;
+      expect(report.integration).to.exist;
+      expect(report.diagnosticHistory).to.exist;
     });
   });
 
   describe('PoppoBuilder固有のヘルスチェック', () => {
-    test('PoppoBuilder固有のヘルスチェックが設定される', async () => {
+    it('PoppoBuilder固有のヘルスチェックが設定される', async () => {
       await integration.initialize();
       integration.setupPoppoBuilderHealthChecks();
       
       // 統合ステータスにPoppoBuilder固有の情報が含まれることを確認
       const status = integration.getIntegratedStatus();
-      expect(status).toBeDefined();
+      expect(status).to.exist;
     });
   });
 });
 
 describe('エラーハンドリング', () => {
-  test('存在しないディレクトリでも正常に動作する', async () => {
+  it('存在しないディレクトリでも正常に動作する', async () => {
     const nonExistentDir = './non-existent-dir-' + Date.now();
     
     const scheduler = new HealthScheduler({
@@ -312,13 +315,13 @@ describe('エラーハンドリング', () => {
     
     // レポートディレクトリが作成されることを確認
     const stat = await fs.stat(nonExistentDir);
-    expect(stat.isDirectory()).toBe(true);
+    expect(stat.isDirectory()).to.equal(true);
     
     // クリーンアップ
     await fs.rmdir(nonExistentDir);
   });
 
-  test('チェック実行中のエラーが適切に処理される', async () => {
+  it('チェック実行中のエラーが適切に処理される', async () => {
     const scheduler = new HealthScheduler({
       reportsDir: './test-error-reports-' + Date.now(),
       dailyCheck: null,

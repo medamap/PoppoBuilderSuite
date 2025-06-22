@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('CCSP Queue Manager Unit Tests', () => {
   let helpers;
   let QueueManager;
+  let sandbox;
   let queueManager;
   let mockRedis;
 
@@ -13,6 +14,7 @@ describe('CCSP Queue Manager Unit Tests', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Create mock Redis
     mockRedis = helpers.createMockRedis();
     
