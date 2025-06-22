@@ -6,18 +6,21 @@ const AutoRepairEngine = require('./repairer');
 const AdvancedAnalyzer = require('./advanced-analyzer');
 const ErrorGrouper = require('./error-grouper');
 const ErrorStatistics = require('./statistics');
+const ErrorPatternLearner = require('./learner');
+const RepairHistoryManager = require('./repair-history');
+const AdvancedRepairPatterns = require('./patterns-advanced');
 
 /**
- * CCLA (Code Change Log Analyzer) エージェント
- * エラーログを収集・分析し、GitHub Issueとして登録する
+ * CCLA (Code Change Log Analyzer) Agent
+ * Collects and analyzes error logs, registers them as GitHub Issues
  */
 class CCLAAgent extends AgentBase {
   constructor(config = {}) {
     super('CCLA', config);
     
-    // エラーログ収集の設定
+    // Error log collection configuration
     this.errorLogConfig = {
-      pollingInterval: config.errorLogCollection?.pollingInterval || 300000, // 5分
+      pollingInterval: config.errorLogCollection?.pollingInterval || 300000, // 5 minutes
       logSources: config.errorLogCollection?.logSources || ['poppo-*.log'],
       errorLevels: config.errorLogCollection?.errorLevels || ['ERROR', 'FATAL'],
       labels: config.errorLogCollection?.labels || {
@@ -154,6 +157,20 @@ class CCLAAgent extends AgentBase {
     if (config.errorLogCollection?.advanced?.statisticsEnabled) {
       this.errorStatistics = new ErrorStatistics(this.logger);
     }
+    
+    // Phase 3拡張: 学習機能と履歴管理
+    this.errorPatternLearner = null;
+    this.repairHistoryManager = null;
+    this.advancedRepairPatterns = null;
+    
+    if (config.errorLogCollection?.autoRepair?.learningEnabled) {
+      this.errorPatternLearner = new ErrorPatternLearner({
+        minSampleSize: config.errorLogCollection.thresholds?.minOccurrencesForLearning || 3,
+        successRateThreshold: config.errorLogCollection.thresholds?.autoRepairConfidence || 0.9
+      });
+      this.repairHistoryManager = new RepairHistoryManager();
+      this.advancedRepairPatterns = new AdvancedRepairPatterns();
+    }
   }
   
   /**
@@ -171,6 +188,17 @@ class CCLAAgent extends AgentBase {
       // ロールバックマネージャーの初期化
       await this.autoRepairEngine.rollbackManager.initialize();
       this.logger.info('自動修復エンジンを有効化しました');
+    }
+    
+    // Phase 3拡張の初期化
+    if (this.errorPatternLearner) {
+      await this.errorPatternLearner.initialize();
+      this.logger.info('エラーパターン学習機能を有効化しました');
+    }
+    
+    if (this.repairHistoryManager) {
+      await this.repairHistoryManager.initialize();
+      this.logger.info('修復履歴管理機能を有効化しました');
     }
     
     // Phase 2: 高度な分析機能の初期化
@@ -414,10 +442,54 @@ class CCLAAgent extends AgentBase {
           stackTrace: error.stackTrace
         };
         
-        const repairResult = await this.autoRepairEngine.attemptAutoRepair(repairContext, {
-          skipTest: false,
-          enableRollback: true
-        });
+        // 高度なパターンも確認
+        let repairResult;
+        if (this.advancedRepairPatterns && this.advancedRepairPatterns.patterns.has(analysis.pattern)) {
+          // 高度な修復パターンを使用
+          const advancedPattern = this.advancedRepairPatterns.patterns.get(analysis.pattern);
+          repairResult = await advancedPattern.repair(repairContext);
+        } else {
+          // 通常の修復パターンを使用
+          repairResult = await this.autoRepairEngine.attemptAutoRepair(repairContext, {
+            skipTest: false,
+            enableRollback: true
+          });
+        }
+        
+        // 修復履歴の記録
+        if (this.repairHistoryManager) {
+          const repairId = await this.repairHistoryManager.recordRepair({
+            pattern: repairResult.pattern || analysis.pattern,
+            errorHash,
+            file: errorInfo.file,
+            success: repairResult.success,
+            repairTime: repairResult.duration,
+            changes: repairResult.changes,
+            testResults: repairResult.testResults,
+            rollbackInfo: repairResult.rollbackInfo,
+            errorMessage: error.message,
+            errorStack: error.stackTrace,
+            errorCategory: analysis.category,
+            repairMethod: repairResult.method,
+            confidence: repairResult.confidence,
+            backupFile: repairResult.backupFile
+          });
+          
+          this.logger.debug(`修復履歴を記録しました: ${repairId}`);
+        }
+        
+        // 学習機能での結果記録
+        if (this.errorPatternLearner) {
+          await this.errorPatternLearner.recordRepairResult(
+            repairResult.pattern || analysis.pattern,
+            repairResult.success,
+            {
+              repairTime: repairResult.duration,
+              errorHash,
+              file: errorInfo.file
+            }
+          );
+        }
         
         if (repairResult.success) {
           this.logger.info(`自動修復に成功しました: ${repairResult.pattern}`);
@@ -652,6 +724,81 @@ class CCLAAgent extends AgentBase {
           return {
             success: false,
             message: '高度な分析機能が無効またはエラーハッシュが指定されていません'
+          };
+        }
+        
+      // Phase 3拡張: 学習機能と修復履歴のAPI
+      case 'get-learning-statistics':
+        // 学習統計の取得
+        if (this.errorPatternLearner) {
+          return {
+            success: true,
+            statistics: this.errorPatternLearner.getStatistics()
+          };
+        } else {
+          return {
+            success: false,
+            message: '学習機能が無効です'
+          };
+        }
+        
+      case 'get-repair-history':
+        // 修復履歴の検索
+        if (this.repairHistoryManager) {
+          const history = await this.repairHistoryManager.searchHistory(data.criteria || {});
+          return {
+            success: true,
+            history
+          };
+        } else {
+          return {
+            success: false,
+            message: '修復履歴管理が無効です'
+          };
+        }
+        
+      case 'get-pattern-statistics':
+        // パターン別統計の取得
+        if (this.repairHistoryManager) {
+          const stats = await this.repairHistoryManager.getPatternStatistics();
+          return {
+            success: true,
+            statistics: stats
+          };
+        } else {
+          return {
+            success: false,
+            message: '修復履歴管理が無効です'
+          };
+        }
+        
+      case 'suggest-new-patterns':
+        // 新しいパターンの提案
+        if (this.errorPatternLearner) {
+          const suggestions = await this.errorPatternLearner.suggestNewPatterns();
+          return {
+            success: true,
+            suggestions
+          };
+        } else {
+          return {
+            success: false,
+            message: '学習機能が無効です'
+          };
+        }
+        
+      case 'export-learning-data':
+        // 学習データのエクスポート
+        if (this.errorPatternLearner) {
+          const exportData = await this.errorPatternLearner.exportLearningData(data.format || 'json');
+          return {
+            success: true,
+            data: exportData
+          };
+        } else {
+          return {
+            success: false,
+            message: '学習機能が無効です'
           };
         }
         

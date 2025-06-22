@@ -116,7 +116,7 @@ CONFIG_PATH=./config/custom.json npm start
 ```bash
 # 環境変数で管理（.envファイルは.gitignoreに追加）
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-CLAUDE_API_KEY=sk-ant-xxxxxxxxxxxx
+CLAUDE_API_KEY=your-claude-api-key
 
 # 本番環境では環境変数を暗号化
 # AWS Systems Manager Parameter Store
@@ -128,7 +128,7 @@ aws ssm put-parameter \
 # Kubernetes Secrets
 kubectl create secret generic poppo-secrets \
   --from-literal=github-token=ghp_xxxxxxxxxxxx \
-  --from-literal=claude-api-key=sk-ant-xxxxxxxxxxxx
+  --from-literal=claude-api-key=your-claude-api-key
 ```
 
 #### ダッシュボードのセキュリティ

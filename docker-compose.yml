@@ -1,0 +1,206 @@
+version: '3.8'
+
+services:
+  # Redis for message queue and state management
+  redis:
+    image: redis:7-alpine
+    container_name: poppobuilder-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main PoppoBuilder Core
+  poppobuilder-core:
+    build:
+      context: .
+      dockerfile: docker/base/Dockerfile
+    container_name: poppobuilder-core
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - AGENT_MODE=core
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./state:/app/state
+      - ./data:/app/data
+    depends_on:
+      - redis
+    command: ["node", "src/minimal-poppo.js"]
+
+  # CCPM Agent
+  ccpm-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/ccpm/Dockerfile
+    container_name: ccpm-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs/ccpm:/app/logs
+      - ./data/ccpm:/app/data
+    depends_on:
+      - redis
+      - poppobuilder-core
+    deploy:
+      replicas: ${CCPM_REPLICAS:-1}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # CCAG Agent
+  ccag-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/ccag/Dockerfile
+    container_name: ccag-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs/ccag:/app/logs
+      - ./data/ccag:/app/data
+    depends_on:
+      - redis
+      - poppobuilder-core
+    deploy:
+      replicas: ${CCAG_REPLICAS:-1}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # CCLA Agent
+  ccla-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/ccla/Dockerfile
+    container_name: ccla-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs/ccla:/app/logs
+      - ./data/ccla:/app/data
+    depends_on:
+      - redis
+      - poppobuilder-core
+    deploy:
+      replicas: ${CCLA_REPLICAS:-1}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # CCSP Agent
+  ccsp-agent:
+    build:
+      context: .
+      dockerfile: docker/agents/ccsp/Dockerfile
+    container_name: ccsp-agent
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    ports:
+      - "3003:3003"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs/ccsp:/app/logs
+      - ./data/ccsp:/app/data
+      - claude-session:/home/node/.config/claude
+    depends_on:
+      - redis
+      - poppobuilder-core
+    deploy:
+      replicas: 1  # CCSPは常に1インスタンス
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/base/Dockerfile
+    container_name: poppobuilder-dashboard
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs:ro
+    depends_on:
+      - redis
+    command: ["node", "dashboard/server/index.js"]
+
+  # Monitoring Dashboard
+  monitoring:
+    build:
+      context: .
+      dockerfile: docker/base/Dockerfile
+    container_name: poppobuilder-monitoring
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+    ports:
+      - "3004:3004"
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs:ro
+    depends_on:
+      - redis
+    command: ["node", "scripts/start-monitoring.js"]
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: poppobuilder-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+volumes:
+  redis-data:
+  prometheus-data:
+  claude-session:
+
+networks:
+  default:
+    name: poppobuilder-network

@@ -7,25 +7,25 @@ const path = require('path');
 const { spawn } = require('child_process');
 const chalk = require('chalk');
 
-// デーモンのデフォルトURL
+// Default daemon URL
 const DAEMON_URL = process.env.POPPO_DAEMON_URL || 'http://localhost:3003';
 
-// CLIプログラム
+// CLI program
 const program = new Command();
 
 program
   .name('poppo')
-  .description('PoppoBuilder マルチプロジェクト管理CLI')
+  .description('PoppoBuilder Multi-Project Management CLI')
   .version('1.0.0');
 
-// デーモンコマンド
+// Daemon command
 program
   .command('daemon')
-  .description('デーモンプロセスを管理')
-  .option('--start', 'デーモンを起動')
-  .option('--stop', 'デーモンを停止')
-  .option('--status', 'デーモンの状態を確認')
-  .option('--restart', 'デーモンを再起動')
+  .description('Manage daemon process')
+  .option('--start', 'Start daemon')
+  .option('--stop', 'Stop daemon')
+  .option('--status', 'Check daemon status')
+  .option('--restart', 'Restart daemon')
   .action(async (options) => {
     try {
       if (options.start) {
@@ -39,23 +39,23 @@ program
         await new Promise(resolve => setTimeout(resolve, 2000));
         await startDaemon();
       } else {
-        console.log('オプションを指定してください: --start, --stop, --status, --restart');
+        console.log('Please specify an option: --start, --stop, --status, --restart');
       }
     } catch (error) {
-      console.error(chalk.red('エラー:'), error.message);
+      console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
   });
 
-// プロジェクトコマンド
+// Project command
 program
   .command('project')
-  .description('プロジェクトを管理')
-  .option('-r, --register <path>', 'プロジェクトを登録')
-  .option('-u, --unregister <id>', 'プロジェクトを削除')
-  .option('-l, --list', 'プロジェクト一覧を表示')
-  .option('-s, --scan <id>', 'プロジェクトのタスクをスキャン')
-  .option('-p, --priority <id> <priority>', 'プロジェクトの優先度を設定')
+  .description('Manage projects')
+  .option('-r, --register <path>', 'Register project')
+  .option('-u, --unregister <id>', 'Unregister project')
+  .option('-l, --list', 'List projects')
+  .option('-s, --scan <id>', 'Scan project tasks')
+  .option('-p, --priority <id> <priority>', 'Set project priority')
   .action(async (options) => {
     try {
       if (options.register) {
@@ -71,23 +71,23 @@ program
         if (args.length >= 2) {
           await updateProjectPriority(args[0], parseInt(args[1]));
         } else {
-          console.error('使用法: poppo project -p <id> <priority>');
+          console.error('Usage: poppo project -p <id> <priority>');
         }
       } else {
         program.help();
       }
     } catch (error) {
-      console.error(chalk.red('エラー:'), error.message);
+      console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
   });
 
-// キューコマンド
+// Queue command
 program
   .command('queue')
-  .description('グローバルキューを管理')
-  .option('-s, --status', 'キューの状態を表示')
-  .option('-c, --clear', 'キューをクリア')
+  .description('Manage global queue')
+  .option('-s, --status', 'Show queue status')
+  .option('-c, --clear', 'Clear queue')
   .action(async (options) => {
     try {
       if (options.status) {
@@ -98,18 +98,18 @@ program
         program.help();
       }
     } catch (error) {
-      console.error(chalk.red('エラー:'), error.message);
+      console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
   });
 
-// ワーカーコマンド
+// Worker command
 program
   .command('worker')
-  .description('ワーカープロセスを管理')
-  .option('-l, --list', 'ワーカー一覧を表示')
-  .option('-s, --start <projectId>', '特定プロジェクトのワーカーを起動')
-  .option('-k, --stop <projectId>', '特定プロジェクトのワーカーを停止')
+  .description('Manage worker processes')
+  .option('-l, --list', 'List workers')
+  .option('-s, --start <projectId>', 'Start worker for specific project')
+  .option('-k, --stop <projectId>', 'Stop worker for specific project')
   .action(async (options) => {
     try {
       if (options.list) {
@@ -122,20 +122,20 @@ program
         program.help();
       }
     } catch (error) {
-      console.error(chalk.red('エラー:'), error.message);
+      console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
   });
 
-// ダッシュボードコマンド
+// Dashboard command
 program
   .command('dashboard')
-  .description('ダッシュボードを開く')
+  .description('Open dashboard')
   .action(() => {
     const dashboardUrl = 'http://localhost:3001/multi-project.html';
-    console.log(chalk.green(`ダッシュボードを開いています: ${dashboardUrl}`));
+    console.log(chalk.green(`Opening dashboard: ${dashboardUrl}`));
     
-    // ブラウザを開く
+    // Open browser
     const platform = process.platform;
     const command = platform === 'darwin' ? 'open' :
                    platform === 'win32' ? 'start' :
@@ -144,9 +144,9 @@ program
     spawn(command, [dashboardUrl], { shell: true });
   });
 
-// デーモンを起動
+// Start daemon
 async function startDaemon() {
-  console.log(chalk.blue('デーモンを起動しています...'));
+  console.log(chalk.blue('Starting daemon...'));
   
   const daemonScript = path.join(__dirname, '..', 'src', 'poppo-daemon.js');
   const daemon = spawn('node', [daemonScript], {
@@ -156,54 +156,54 @@ async function startDaemon() {
   
   daemon.unref();
   
-  // 起動を待つ
+  // Wait for startup
   await new Promise(resolve => setTimeout(resolve, 3000));
   
-  // 状態を確認
+  // Check status
   try {
     const response = await axios.get(`${DAEMON_URL}/api/health`);
-    console.log(chalk.green('✓ デーモンが起動しました'));
+    console.log(chalk.green('✓ Daemon started successfully'));
     console.log(chalk.gray(`  PID: ${response.data.daemon.pid}`));
     console.log(chalk.gray(`  API: ${DAEMON_URL}`));
   } catch (error) {
-    console.error(chalk.red('✗ デーモンの起動に失敗しました'));
+    console.error(chalk.red('✗ Failed to start daemon'));
   }
 }
 
-// デーモンを停止
+// Stop daemon
 async function stopDaemon() {
-  console.log(chalk.blue('デーモンを停止しています...'));
+  console.log(chalk.blue('Stopping daemon...'));
   
   try {
     await axios.post(`${DAEMON_URL}/api/shutdown`);
-    console.log(chalk.green('✓ デーモンの停止を要求しました'));
+    console.log(chalk.green('✓ Daemon shutdown requested'));
   } catch (error) {
-    console.error(chalk.red('✗ デーモンとの通信に失敗しました'));
+    console.error(chalk.red('✗ Failed to communicate with daemon'));
   }
 }
 
-// デーモンの状態を確認
+// Check daemon status
 async function checkDaemonStatus() {
   try {
     const response = await axios.get(`${DAEMON_URL}/api/health`);
     const health = response.data;
     
-    console.log(chalk.green('✓ デーモンは稼働中です'));
+    console.log(chalk.green('✓ Daemon is running'));
     console.log(chalk.gray(`  PID: ${health.daemon.pid}`));
-    console.log(chalk.gray(`  稼働時間: ${Math.floor(health.daemon.uptime)}秒`));
-    console.log(chalk.gray(`  メモリ使用量: ${Math.round(health.daemon.memory.heapUsed / 1024 / 1024)}MB`));
-    console.log(chalk.gray(`  キューサイズ: ${health.queue.queueSize}`));
-    console.log(chalk.gray(`  ワーカー数: ${health.workers}`));
+    console.log(chalk.gray(`  Uptime: ${Math.floor(health.daemon.uptime)} seconds`));
+    console.log(chalk.gray(`  Memory usage: ${Math.round(health.daemon.memory.heapUsed / 1024 / 1024)}MB`));
+    console.log(chalk.gray(`  Queue size: ${health.queue.queueSize}`));
+    console.log(chalk.gray(`  Workers: ${health.workers}`));
   } catch (error) {
-    console.error(chalk.red('✗ デーモンが応答しません'));
-    console.error(chalk.gray('  デーモンが起動していない可能性があります'));
+    console.error(chalk.red('✗ Daemon is not responding'));
+    console.error(chalk.gray('  Daemon may not be running'));
   }
 }
 
-// プロジェクトを登録
+// Register project
 async function registerProject(projectPath) {
   const absolutePath = path.resolve(projectPath);
-  console.log(chalk.blue(`プロジェクトを登録しています: ${absolutePath}`));
+  console.log(chalk.blue(`Registering project: ${absolutePath}`));
   
   try {
     const response = await axios.post(`${DAEMON_URL}/api/projects/register`, {

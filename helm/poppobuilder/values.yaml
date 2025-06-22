@@ -1,0 +1,167 @@
+# Default values for poppobuilder.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount:
+  core: 1
+  dashboard: 2
+  ccpm: 2
+  ccag: 2
+  ccla: 3
+  ccsp: 1  # Always 1 for Claude CLI session
+
+image:
+  registry: docker.io
+  repository: poppobuilder
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+
+service:
+  type: ClusterIP
+  ports:
+    core: 3000
+    dashboard: 3001
+    ccsp: 3003
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+  hosts:
+    - host: poppobuilder.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: dashboard
+        - path: /api
+          pathType: Prefix
+          service: core
+        - path: /ccsp
+          pathType: Prefix
+          service: ccsp
+  tls:
+    - secretName: poppobuilder-tls
+      hosts:
+        - poppobuilder.example.com
+
+resources:
+  core:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  agents:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  ccsp:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# PoppoBuilder specific configuration
+config:
+  language:
+    primary: "ja"
+  
+  claude:
+    timeout: 60000
+    maxRetries: 3
+    model: "claude-3-opus-20240229"
+    maxConcurrent: 3
+  
+  github:
+    owner: "medamap"
+    repo: "PoppoBuilderSuite"
+  
+  agents:
+    ccpm:
+      enabled: true
+      schedule: "*/10 * * * *"
+    ccag:
+      enabled: true
+      schedule: "*/15 * * * *"
+    ccla:
+      enabled: true
+      schedule: "*/5 * * * *"
+    ccsp:
+      enabled: true
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Storage configuration
+persistence:
+  enabled: true
+  storageClass: "standard"
+  accessMode: ReadWriteOnce
+  size:
+    state: 5Gi
+    cclaData: 10Gi
+    claudeSession: 1Gi
+
+# Monitoring
+monitoring:
+  prometheus:
+    enabled: true
+    port: 9090
+  healthCheck:
+    enabled: true
+    interval: 60000
+
+# Secrets (to be provided separately)
+secrets:
+  githubToken: ""
+  dashboardPassword: ""

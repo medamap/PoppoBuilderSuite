@@ -1,0 +1,88 @@
+{
+  "common": {
+    "initializing": "Initializing agent {agentName}...",
+    "initialized": "Agent {agentName} initialized successfully",
+    "starting": "Starting agent {agentName}...",
+    "started": "Agent {agentName} started successfully",
+    "stopping": "Stopping agent {agentName}...",
+    "stopped": "Agent {agentName} stopped",
+    "error": "Error in agent {agentName}: {error}",
+    "taskReceived": "Task received: {taskId}",
+    "taskCompleted": "Task completed: {taskId}",
+    "taskFailed": "Task failed: {taskId} - {error}",
+    "heartbeat": "Heartbeat from {agentName}",
+    "shutdown": "Shutting down {agentName}...",
+    "cleanupComplete": "Cleanup completed for {agentName}"
+  },
+  "status": {
+    "initializing": "Initializing",
+    "ready": "Ready", 
+    "running": "Running",
+    "stopping": "Stopping",
+    "stopped": "Stopped",
+    "error": "Error"
+  },
+  "messages": {
+    "messageProcessed": "Message processed: {messageId}",
+    "messageError": "Error processing message {messageId}: {error}",
+    "inboxChecked": "Inbox checked - {count} messages found",
+    "outboxProcessed": "Outbox processed - {count} messages sent",
+    "directoryCreated": "Created message directory: {dir}",
+    "directoryCreateError": "Failed to create directory {dir}: {error}"
+  },
+  "ccsp": {
+    "sessionTimeout": "Claude session timeout detected",
+    "rateLimitHit": "Rate limit reached, waiting {delay}ms",
+    "executionStarted": "Starting Claude execution: {taskId}",
+    "executionCompleted": "Claude execution completed: {taskId} in {duration}ms",
+    "executionFailed": "Claude execution failed: {taskId} - {error}",
+    "queueProcessing": "Processing queue - {count} tasks pending",
+    "emergencyStop": "Emergency stop activated",
+    "apiKeyInvalid": "Invalid API key detected, manual login required"
+  },
+  "ccla": {
+    "errorDetected": "Error detected: {error}",
+    "repairAttempt": "Attempting repair for error: {errorType}",
+    "repairSuccess": "Successfully repaired: {file}",
+    "repairFailed": "Repair failed for: {file} - {error}",
+    "learningPattern": "Learning new error pattern: {pattern}",
+    "patternRecognized": "Error pattern recognized: {pattern}",
+    "backupCreated": "Backup created: {backupFile}",
+    "rollbackPerformed": "Rollback performed: {file}"
+  },
+  "ccag": {
+    "documentGenerating": "Generating documentation for: {target}",
+    "documentGenerated": "Documentation generated: {file}",
+    "translationStarted": "Starting translation: {source} -> {target}",
+    "translationCompleted": "Translation completed: {file}",
+    "multilingualSupport": "Multi-language support enabled: {languages}"
+  },
+  "ccpm": {
+    "refactoringStarted": "Starting refactoring analysis: {file}",
+    "refactoringCompleted": "Refactoring analysis completed: {suggestions} suggestions",
+    "codeReviewStarted": "Starting code review: {pr}",
+    "codeReviewCompleted": "Code review completed: {pr} - {score}/100",
+    "qualityImproved": "Code quality improved: {oldScore} -> {newScore}"
+  },
+  "ccqa": {
+    "testSuiteStarted": "Starting test suite: {suite}",
+    "testSuiteCompleted": "Test suite completed: {passed}/{total} tests passed",
+    "coverageReport": "Test coverage: {percentage}% ({lines}/{totalLines} lines)",
+    "qualityGate": "Quality gate: {status} (score: {score}/100)",
+    "securityScan": "Security scan completed: {issues} issues found"
+  },
+  "ccra": {
+    "reviewStarted": "Starting automated review: {pr}",
+    "reviewCompleted": "Review completed: {pr} - {findings} findings",
+    "approvalRecommended": "Approval recommended for: {pr}",
+    "changesRequested": "Changes requested for: {pr} - {reasons}",
+    "reviewPosted": "Review posted to GitHub: {pr}"
+  },
+  "ccta": {
+    "testEnvironmentSetup": "Setting up test environment: {environment}",
+    "testEnvironmentReady": "Test environment ready: {environment}",
+    "testExecutionStarted": "Starting test execution: {testSuite}",
+    "testExecutionCompleted": "Test execution completed: {results}",
+    "environmentCleanup": "Cleaning up test environment: {environment}"
+  }
+}

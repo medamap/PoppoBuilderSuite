@@ -1,0 +1,101 @@
+{
+  "defaultValue": "[{{value}}]",
+  "yesNo": {
+    "Y/n": "(Y/n)",
+    "y/N": "(y/N)", 
+    "y/n": "(y/n)"
+  },
+  "yesResponses": ["y", "yes", "はい", "h", "hai"],
+  "noResponses": ["n", "no", "いいえ", "i", "iie"],
+  "select": "オプションを選択してください",
+  "selectWithDefault": "オプションを選択してください [{{default}}]",
+  "selectPrompt": "選択肢を入力",
+  "invalidSelection": "無効な選択です。もう一度お試しください。",
+  "init": {
+    "projectName": "プロジェクト名",
+    "useDetectedRepo": "検出されたGitHubリポジトリ {{owner}}/{{repo}} を使用しますか？",
+    "githubOwner": "GitHubオーナー/組織",
+    "githubRepo": "GitHubリポジトリ名",
+    "hasGithubToken": "GitHubトークンをお持ちですか？",
+    "githubToken": "GitHubトークン（安全に保存されます）",
+    "githubTokenLater": "後でGITHUB_TOKEN環境変数を設定する必要があります。",
+    "primaryLanguage": "主要言語 (en/ja)",
+    "enableClaude": "Claude API統合を有効にしますか？",
+    "maxConcurrentClaude": "最大同時Claudeリクエスト数",
+    "hasClaudeKey": "Claude APIキーをお持ちですか？",
+    "claudeApiKey": "Claude APIキー（安全に保存されます）",
+    "claudeKeyLater": "後でCLAUDE_API_KEY環境変数を設定する必要があります。",
+    "enableAgents": "高度な機能のためのAIエージェントを有効にしますか？",
+    "enableMonitoring": "モニタリングとダッシュボードを有効にしますか？",
+    "dashboardPort": "ダッシュボードポート",
+    "confirmOverwrite": "設定は既に存在します。上書きしますか？",
+    "initSuccess": "PoppoBuilderの初期化が完了しました！",
+    "nextSteps": "次のステップ：",
+    "nextStep1": "必要に応じて環境変数を設定",
+    "nextStep2": "'poppobuilder start'を実行してイシュー処理を開始",
+    "nextStep3": "ダッシュボードにアクセス: http://localhost:{{port}}（有効な場合）"
+  },
+  "remove": {
+    "confirmRemove": "プロジェクト '{{name}}' を削除してもよろしいですか？",
+    "confirmRemoveWithFiles": "すべてのプロジェクトファイルとデータも削除しますか？",
+    "removing": "プロジェクトを削除しています...",
+    "removeSuccess": "プロジェクトが正常に削除されました",
+    "removeCancelled": "削除操作がキャンセルされました"
+  },
+  "pr": {
+    "branchName": "PRのブランチ名",
+    "prTitle": "プルリクエストのタイトル",
+    "prDescription": "プルリクエストの説明（オプション）",
+    "isDraft": "ドラフトPRとして作成しますか？",
+    "addReviewers": "レビュアーを追加しますか？（カンマ区切りのユーザー名）",
+    "addLabels": "ラベルを追加しますか？（カンマ区切り）",
+    "creating": "プルリクエストを作成しています...",
+    "prCreated": "プルリクエストが正常に作成されました！",
+    "prUrl": "PR URL: {{url}}"
+  },
+  "config": {
+    "confirmEdit": "エディタで設定を開きますか？",
+    "selectEditor": "エディタを選択",
+    "editorNotFound": "エディタが見つかりません。デフォルトを使用します。",
+    "saveChanges": "変更を保存しますか？",
+    "configUpdated": "設定が正常に更新されました"
+  },
+  "template": {
+    "selectTemplate": "テンプレートを選択",
+    "templateDescription": "テンプレート: {{name}} - {{description}}",
+    "confirmUseTemplate": "テンプレート '{{name}}' を使用しますか？",
+    "customizingTemplate": "テンプレートをカスタマイズしています...",
+    "templateApplied": "テンプレートが正常に適用されました"
+  },
+  "restore": {
+    "selectBackup": "復元するバックアップを選択",
+    "confirmRestore": "バックアップ '{{name}}' から復元してもよろしいですか？現在のデータは上書きされます。",
+    "restoring": "バックアップから復元しています...",
+    "restoreSuccess": "復元が正常に完了しました",
+    "restoreCancelled": "復元操作がキャンセルされました"
+  },
+  "common": {
+    "continue": "続行しますか？",
+    "retry": "再試行しますか？",
+    "skip": "スキップしますか？",
+    "abort": "操作を中止しますか？",
+    "processing": "処理中...",
+    "loading": "読み込み中...",
+    "saving": "保存中...",
+    "done": "完了！",
+    "failed": "失敗！",
+    "success": "成功！",
+    "cancelled": "キャンセルされました",
+    "pressEnterToContinue": "Enterキーを押して続行..."
+  },
+  "move": {
+    "confirmMove": "このプロジェクトを移動してもよろしいですか？",
+    "moveCancelled": "移動操作がキャンセルされました",
+    "uncommittedChanges": "未コミットのGit変更がある状態で続行しますか？",
+    "moving": "プロジェクトを移動しています...",
+    "moveSuccess": "プロジェクトを正常に移動しました",
+    "creatingDirectories": "親ディレクトリを作成しています...",
+    "updatingRegistry": "プロジェクトレジストリを更新しています...",
+    "creatingSymlink": "古い場所にシンボリックリンクを作成しています..."
+  }
+}

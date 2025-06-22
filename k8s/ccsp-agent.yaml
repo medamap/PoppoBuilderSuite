@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ccsp-agent
+  namespace: poppobuilder
+spec:
+  selector:
+    app: ccsp-agent
+  ports:
+    - name: http
+      port: 3003
+      targetPort: 3003
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ccsp-agent
+  namespace: poppobuilder
+spec:
+  replicas: 1  # CCSPは常に1インスタンス（Claude CLIセッション管理のため）
+  selector:
+    matchLabels:
+      app: ccsp-agent
+  template:
+    metadata:
+      labels:
+        app: ccsp-agent
+        agent-type: ccsp
+    spec:
+      containers:
+      - name: ccsp-agent
+        image: poppobuilder/ccsp:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3003
+        envFrom:
+        - configMapRef:
+            name: poppobuilder-config
+        - secretRef:
+            name: poppobuilder-secrets
+        env:
+        - name: AGENT_TYPE
+          value: "ccsp"
+        - name: AGENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        - name: data
+          mountPath: /app/data/ccsp
+        - name: claude-session
+          mountPath: /home/node/.config/claude
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3003
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: poppobuilder-app-config
+      - name: logs
+        emptyDir: {}
+      - name: data
+        emptyDir: {}
+      - name: claude-session
+        persistentVolumeClaim:
+          claimName: claude-session-pvc

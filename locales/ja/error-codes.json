@@ -1,0 +1,157 @@
+{
+  "E001": {
+    "message": "GitHub認証に失敗しました",
+    "description": "GitHubのAPIトークンが無効であるか、期限切れです。",
+    "solution": "環境変数 GITHUB_TOKEN を確認し、有効なトークンが設定されていることを確認してください。",
+    "link": "https://docs.github.com/ja/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token",
+    "category": "auth"
+  },
+  "E002": {
+    "message": "プロジェクトが見つかりません: {{name}}",
+    "description": "指定されたプロジェクト '{{name}}' が存在しないか、アクセス権限がありません。",
+    "solution": "プロジェクト名を確認し、正しい権限が付与されていることを確認してください。",
+    "category": "api"
+  },
+  "E003": {
+    "message": "レート制限に達しました",
+    "description": "GitHub APIのレート制限に達しました。リセット時刻: {{reset}}",
+    "solution": "レート制限がリセットされるまで待つか、別のトークンを使用してください。",
+    "link": "https://docs.github.com/ja/rest/overview/resources-in-the-rest-api#rate-limiting",
+    "category": "api"
+  },
+  "E101": {
+    "message": "Claude API認証に失敗しました",
+    "description": "Claude APIキーが無効であるか、設定されていません。",
+    "solution": "環境変数 CLAUDE_API_KEY を確認し、有効なAPIキーが設定されていることを確認してください。",
+    "category": "auth"
+  },
+  "E102": {
+    "message": "Claude APIリクエストが失敗しました: {{error}}",
+    "description": "Claude APIへのリクエスト中にエラーが発生しました。",
+    "solution": "エラーメッセージを確認し、APIの状態やパラメータを確認してください。",
+    "category": "api"
+  },
+  "E103": {
+    "message": "トークン制限を超過しました",
+    "description": "Claude APIのトークン制限（{{limit}}トークン）を超過しました。使用量: {{used}}トークン",
+    "solution": "入力を短くするか、より大きなコンテキストウィンドウを持つモデルを使用してください。",
+    "category": "api"
+  },
+  "E201": {
+    "message": "設定ファイルが見つかりません: {{path}}",
+    "description": "必要な設定ファイルが存在しません。",
+    "solution": "'poppo init' コマンドを実行して初期設定を行ってください。",
+    "category": "config"
+  },
+  "E202": {
+    "message": "設定ファイルの解析に失敗しました: {{error}}",
+    "description": "設定ファイルのJSON形式が不正です。",
+    "solution": "設定ファイルの構文エラーを修正してください。",
+    "category": "config"
+  },
+  "E203": {
+    "message": "必須設定項目が不足しています: {{field}}",
+    "description": "設定ファイルに必須項目 '{{field}}' が含まれていません。",
+    "solution": "設定ファイルに必須項目を追加してください。",
+    "category": "config"
+  },
+  "E301": {
+    "message": "ファイルの読み取りに失敗しました: {{path}}",
+    "description": "ファイルが存在しないか、読み取り権限がありません。",
+    "solution": "ファイルパスと権限を確認してください。",
+    "category": "file"
+  },
+  "E302": {
+    "message": "ファイルの書き込みに失敗しました: {{path}}",
+    "description": "ファイルへの書き込み権限がないか、ディスク容量が不足しています。",
+    "solution": "書き込み権限とディスク容量を確認してください。",
+    "category": "file"
+  },
+  "E303": {
+    "message": "ディレクトリの作成に失敗しました: {{path}}",
+    "description": "ディレクトリを作成できませんでした。",
+    "solution": "親ディレクトリの権限を確認してください。",
+    "category": "file"
+  },
+  "E401": {
+    "message": "プロセスの起動に失敗しました: {{command}}",
+    "description": "外部プロセスを起動できませんでした。",
+    "solution": "コマンドが存在し、実行権限があることを確認してください。",
+    "category": "system"
+  },
+  "E402": {
+    "message": "プロセスがタイムアウトしました: {{taskId}}",
+    "description": "プロセスが {{timeout}} ミリ秒以内に完了しませんでした。",
+    "solution": "タイムアウト値を増やすか、処理を最適化してください。",
+    "category": "system"
+  },
+  "E403": {
+    "message": "メモリ不足エラー",
+    "description": "使用可能なメモリが不足しています。",
+    "solution": "不要なプロセスを終了するか、メモリを増設してください。",
+    "category": "system"
+  },
+  "E501": {
+    "message": "ネットワーク接続エラー: {{host}}",
+    "description": "ホスト '{{host}}' に接続できませんでした。",
+    "solution": "ネットワーク接続とファイアウォール設定を確認してください。",
+    "category": "network"
+  },
+  "E502": {
+    "message": "タイムアウトエラー: {{url}}",
+    "description": "リクエストがタイムアウトしました。",
+    "solution": "ネットワーク速度を確認するか、タイムアウト値を増やしてください。",
+    "category": "network"
+  },
+  "E601": {
+    "message": "バリデーションエラー: {{field}}",
+    "description": "入力値 '{{value}}' は無効です。",
+    "solution": "正しい形式の値を入力してください。期待される形式: {{format}}",
+    "category": "validation"
+  },
+  "E602": {
+    "message": "必須パラメータが不足しています: {{param}}",
+    "description": "必須パラメータ '{{param}}' が指定されていません。",
+    "solution": "必須パラメータを指定してください。",
+    "category": "validation"
+  },
+  "E701": {
+    "message": "エージェント '{{name}}' の起動に失敗しました",
+    "description": "エージェントプロセスを起動できませんでした。",
+    "solution": "エージェントの設定とログを確認してください。",
+    "category": "agent"
+  },
+  "E702": {
+    "message": "エージェント '{{name}}' が応答しません",
+    "description": "エージェントからの応答がタイムアウトしました。",
+    "solution": "エージェントの状態を確認し、必要に応じて再起動してください。",
+    "category": "agent"
+  },
+  "E703": {
+    "message": "エージェント間通信エラー",
+    "description": "エージェント '{{from}}' から '{{to}}' への通信に失敗しました。",
+    "solution": "メッセージキューの状態を確認してください。",
+    "category": "agent"
+  },
+  "E901": {
+    "message": "予期しないエラーが発生しました",
+    "description": "システムで予期しないエラーが発生しました。",
+    "solution": "エラーログを確認し、問題が続く場合はサポートに連絡してください。",
+    "category": "general"
+  },
+  "E902": {
+    "message": "機能は実装されていません: {{feature}}",
+    "description": "要求された機能はまだ実装されていません。",
+    "solution": "代替機能を使用するか、今後のアップデートをお待ちください。",
+    "category": "general"
+  },
+  "errorCode": "エラーコード",
+  "description": "説明",
+  "solution": "解決方法",
+  "moreInfo": "詳細情報",
+  "clickHere": "こちらをクリック",
+  "errorOccurred": "エラーが発生しました",
+  "message": "メッセージ",
+  "stackTrace": "スタックトレース",
+  "unknown": "不明なエラー: {{code}}"
+}

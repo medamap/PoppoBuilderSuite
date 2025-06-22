@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: poppobuilder-dashboard
+  namespace: poppobuilder
+spec:
+  selector:
+    app: poppobuilder-dashboard
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: poppobuilder-dashboard
+  namespace: poppobuilder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: poppobuilder-dashboard
+  template:
+    metadata:
+      labels:
+        app: poppobuilder-dashboard
+    spec:
+      containers:
+      - name: dashboard
+        image: poppobuilder/base:latest
+        imagePullPolicy: Always
+        command: ["node", "dashboard/server/index.js"]
+        ports:
+        - containerPort: 3001
+        envFrom:
+        - configMapRef:
+            name: poppobuilder-config
+        - secretRef:
+            name: poppobuilder-secrets
+        env:
+        - name: COMPONENT_TYPE
+          value: "dashboard"
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: poppobuilder-app-config
+      - name: logs
+        emptyDir: {}

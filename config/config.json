@@ -145,6 +145,28 @@
       "comment": "カスタムSLO定義をここに追加できます"
     }
   },
+  "memoryManagement": {
+    "enabled": true,
+    "checkInterval": 60000,
+    "memoryThreshold": 500,
+    "heapThreshold": 0.85,
+    "gcInterval": 300000,
+    "leakDetectionSamples": 5,
+    "autoRecoveryEnabled": true,
+    "heapSnapshotEnabled": false,
+    "heapSnapshotPath": "./heap-snapshots",
+    "heapSnapshotInterval": 3600000,
+    "autoRecovery": {
+      "enabled": true,
+      "actions": {
+        "clearCache": true,
+        "reduceWorkers": false,
+        "pauseNewTasks": false,
+        "forceGC": true
+      },
+      "recoveryThreshold": 0.8
+    }
+  },
   "ccsp": {
     "enabled": true,
     "port": 3003,
@@ -202,6 +224,263 @@
       "patterns": {
         "sessionTimeout": ["Invalid API key", "Please run /login", "API Login Failure"],
         "rateLimit": ["usage limit reached", "rate limit", "too many requests"]
+      }
+    }
+  },
+  "productionLogging": {
+    "enabled": true,
+    "structuredLogging": true,
+    "performanceTracking": true,
+    "securityAudit": true,
+    "errorCorrelation": true,
+    "sensitiveDataMasking": true,
+    "logRetentionDays": 30,
+    "maxLogFileSize": 104857600,
+    "compressionEnabled": true,
+    "aggregation": {
+      "enabled": true,
+      "interval": 300000,
+      "centralLogDir": "logs/aggregated",
+      "sourceDirectories": [
+        "logs",
+        "dashboard/logs",
+        "agents/*/logs"
+      ]
+    }
+  },
+  "performanceMonitoring": {
+    "enabled": true,
+    "metricsInterval": 1000,
+    "profileInterval": 60000,
+    "historyRetention": 86400000,
+    "alertThresholds": {
+      "cpu": 80,
+      "memory": 85,
+      "eventLoopLag": 100,
+      "gcPauseDuration": 50
+    },
+    "optimization": {
+      "enabled": true,
+      "aggressiveness": "moderate",
+      "interval": 300000,
+      "learningEnabled": true
+    },
+    "profiling": {
+      "enabled": true,
+      "gcTracking": true,
+      "operationTracking": true
+    }
+  },
+  "security": {
+    "audit": {
+      "enabled": true,
+      "interval": 3600000,
+      "strictMode": true,
+      "autoRemediation": false,
+      "alertThresholds": {
+        "criticalFindings": 1,
+        "highFindings": 3,
+        "mediumFindings": 10
+      }
+    },
+    "accessControl": {
+      "enabled": true,
+      "sessionTimeout": 3600000,
+      "maxFailedAttempts": 5,
+      "lockoutDuration": 900000,
+      "tokenExpiration": 86400000,
+      "enableRateLimit": true,
+      "enableAuditLog": true
+    },
+    "encryption": {
+      "algorithm": "aes-256-gcm",
+      "keyDerivation": "pbkdf2",
+      "iterations": 100000
+    },
+    "headers": {
+      "enableSecurityHeaders": true,
+      "strictTransportSecurity": true,
+      "contentSecurityPolicy": true,
+      "xFrameOptions": "DENY",
+      "xContentTypeOptions": "nosniff"
+    }
+  },
+  "scalability": {
+    "enabled": true,
+    "loadTesting": {
+      "enabled": true,
+      "maxConcurrentUsers": 100,
+      "maxDuration": 300000,
+      "rampUpTime": 30000,
+      "rampDownTime": 15000,
+      "testTypes": ["load", "stress", "spike", "endurance"],
+      "reportingInterval": 5000
+    },
+    "capacityPlanning": {
+      "enabled": true,
+      "forecastHorizon": 30,
+      "confidenceLevel": 0.95,
+      "scalingBuffer": 0.2,
+      "costPerCore": 0.05,
+      "costPerGB": 0.01,
+      "targetUtilization": 0.75
+    },
+    "autoScaling": {
+      "enabled": true,
+      "evaluationInterval": 60000,
+      "scaleUpCooldown": 300000,
+      "scaleDownCooldown": 600000,
+      "maxScaleUpEvents": 3,
+      "maxScaleDownEvents": 2,
+      "emergencyScalingEnabled": true,
+      "predictiveScalingEnabled": true,
+      "costOptimizationEnabled": true
+    },
+    "reportingInterval": 300000
+  },
+  "deployment": {
+    "enabled": true,
+    "strategy": "rolling",
+    "healthCheckTimeout": 300000,
+    "rollbackTimeout": 180000,
+    "maxRetries": 3,
+    "environments": ["development", "staging", "production"],
+    "defaultEnvironment": "development",
+    "services": {
+      "poppo-builder": {
+        "port": 3000,
+        "healthCheck": "/health",
+        "dependencies": ["redis"]
+      },
+      "dashboard": {
+        "port": 3001,
+        "healthCheck": "/api/health",
+        "dependencies": []
+      },
+      "redis": {
+        "port": 6379,
+        "healthCheck": "ping",
+        "dependencies": []
+      }
+    },
+    "staging": {
+      "url": "https://staging.poppobuilder.com",
+      "database": {
+        "type": "postgresql",
+        "host": "staging-db.internal"
+      }
+    },
+    "production": {
+      "url": "https://poppobuilder.com",
+      "database": {
+        "type": "postgresql",
+        "host": "prod-db.internal"
+      },
+      "monitoring": {
+        "enabled": true
+      }
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "dashboardPort": 3004,
+    "dashboardHost": "localhost",
+    "dashboardAuth": false,
+    "dashboardUsername": "admin",
+    "dashboardPassword": "changeme",
+    "metricsCollection": {
+      "interval": 10000,
+      "retentionPeriod": 86400000,
+      "enableSystemMetrics": true,
+      "enableApplicationMetrics": true,
+      "enableBusinessMetrics": true,
+      "prometheusEnabled": true
+    },
+    "alerting": {
+      "evaluationInterval": 30000,
+      "aggregationWindow": 300000,
+      "cooldownPeriod": 3600000,
+      "maxAlertsPerRule": 10,
+      "enableNotifications": true,
+      "notificationChannels": ["console", "log"],
+      "defaultAlertRules": {
+        "cpu": { "warning": 80, "critical": 95 },
+        "memory": { "warning": 85, "critical": 95 },
+        "disk": { "warning": 80, "critical": 90 },
+        "errorRate": { "warning": 5, "critical": 10 },
+        "responseTime": { "warning": 5, "critical": 10 },
+        "successRate": { "warning": 90, "critical": 80 },
+        "queueSize": { "warning": 50, "critical": 100 }
+      }
+    },
+    "integrations": {
+      "slack": {
+        "enabled": false,
+        "webhookUrl": ""
+      },
+      "email": {
+        "enabled": false,
+        "smtpServer": "",
+        "recipients": []
+      },
+      "github": {
+        "enabled": true,
+        "createIssueOnCritical": true,
+        "labelPrefix": "alert"
+      }
+    }
+  },
+  "backup": {
+    "enabled": true,
+    "backupPath": "./backups",
+    "encryptionEnabled": true,
+    "compressionEnabled": true,
+    "compressionLevel": 6,
+    "retentionDays": 30,
+    "maxBackups": 10,
+    "scheduleEnabled": true,
+    "schedule": "0 2 * * *",
+    "incrementalEnabled": true,
+    "items": ["config", "state", "database", "logs", "uploads"],
+    "excludePatterns": ["*.tmp", "*.log.gz", "node_modules"],
+    "storageBackends": {
+      "local": {
+        "enabled": true,
+        "path": "./backups"
+      },
+      "s3": {
+        "enabled": false,
+        "bucket": "",
+        "region": "",
+        "accessKeyId": "",
+        "secretAccessKey": ""
+      }
+    }
+  },
+  "disasterRecovery": {
+    "enabled": true,
+    "rto": 3600000,
+    "rpo": 86400000,
+    "healthCheckTimeout": 300000,
+    "verificationRetries": 3,
+    "autoFailoverEnabled": false,
+    "testingEnabled": true,
+    "testingSchedule": "monthly",
+    "recoveryPlan": "default",
+    "notifications": {
+      "onRecoveryStart": true,
+      "onRecoveryComplete": true,
+      "onRecoveryFail": true,
+      "onTestComplete": true
+    },
+    "failoverTargets": {
+      "primary": {
+        "url": "https://poppobuilder.com",
+        "healthCheck": "/health"
+      },
+      "secondary": {
+        "url": "https://backup.poppobuilder.com",
+        "healthCheck": "/health"
       }
     }
   }

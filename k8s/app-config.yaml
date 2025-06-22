@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: poppobuilder-app-config
+  namespace: poppobuilder
+data:
+  config.json: |
+    {
+      "language": {
+        "primary": "ja"
+      },
+      "claude": {
+        "timeout": 60000,
+        "maxRetries": 3,
+        "model": "claude-3-opus-20240229",
+        "maxConcurrent": 3
+      },
+      "rateLimiter": {
+        "perMinute": 10,
+        "perHour": 100,
+        "perDay": 1000
+      },
+      "github": {
+        "owner": "medamap",
+        "repo": "PoppoBuilderSuite"
+      },
+      "messaging": {
+        "mode": "queue",
+        "redis": {
+          "host": "redis",
+          "port": 6379
+        }
+      },
+      "agents": {
+        "ccpm": {
+          "enabled": true,
+          "schedule": "*/10 * * * *"
+        },
+        "ccag": {
+          "enabled": true,
+          "schedule": "*/15 * * * *"
+        },
+        "ccla": {
+          "enabled": true,
+          "schedule": "*/5 * * * *"
+        },
+        "ccsp": {
+          "enabled": true,
+          "host": "0.0.0.0",
+          "port": 3003
+        }
+      },
+      "monitoring": {
+        "prometheus": {
+          "enabled": true,
+          "port": 9090
+        },
+        "healthCheck": {
+          "enabled": true,
+          "interval": 60000
+        }
+      }
+    }

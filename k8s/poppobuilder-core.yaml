@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: poppobuilder-core
+  namespace: poppobuilder
+spec:
+  selector:
+    app: poppobuilder-core
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+    - name: dashboard
+      port: 3001
+      targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: poppobuilder-core
+  namespace: poppobuilder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: poppobuilder-core
+  template:
+    metadata:
+      labels:
+        app: poppobuilder-core
+    spec:
+      containers:
+      - name: poppobuilder-core
+        image: poppobuilder/core:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        - containerPort: 3001
+        envFrom:
+        - configMapRef:
+            name: poppobuilder-config
+        - secretRef:
+            name: poppobuilder-secrets
+        env:
+        - name: AGENT_TYPE
+          value: "core"
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        - name: state
+          mountPath: /app/state
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health/ready
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: poppobuilder-app-config
+      - name: logs
+        emptyDir: {}
+      - name: state
+        persistentVolumeClaim:
+          claimName: poppobuilder-state-pvc

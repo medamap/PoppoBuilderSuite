@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// プロセス名を設定（psコマンドで識別しやすくするため）
+// Set process name for easy identification in ps command
 process.title = 'PoppoBuilder-Main';
 
 const fs = require('fs');
@@ -14,28 +14,28 @@ const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const RestartScheduler = require('../scripts/restart-scheduler');
 const DashboardServer = require('../dashboard/server/index');
-const i18n = require('../lib/i18n');
+const { initI18n, t } = require('../lib/i18n');
+const I18nLogger = require('../lib/utils/i18n-logger');
+const MemoryManager = require('./memory-manager');
 
-// ConfigLoaderで階層的に設定を読み込み
+// Load hierarchical configuration using ConfigLoader
 const configLoader = new ConfigLoader();
 const poppoConfig = configLoader.loadConfig();
 
-// Initialize i18n
-(async () => {
-  await i18n.init({ language: poppoConfig.language?.primary || 'en' });
-})();
+// Initialize i18n will be done in main function
+let i18n;
 
-// メイン設定ファイルも読み込み（後方互換性のため）
+// Also load main config file (for backward compatibility)
 const mainConfig = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf-8')
 );
 
-// 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
+// Merge configurations (main config as base, overridden by PoppoConfig settings)
 const config = {
   ...mainConfig,
   language: poppoConfig.language || mainConfig.language,
   systemPrompt: poppoConfig.systemPrompt || mainConfig.systemPrompt,
-  // 環境変数やプロジェクト設定で上書き可能な項目
+  // Items that can be overridden by environment variables or project settings
   github: {
     ...mainConfig.github,
     ...(poppoConfig.github || {})
@@ -70,57 +70,98 @@ const config = {
   }
 };
 
-// インスタンス作成
-const logger = new Logger();
+// Create instances
+const baseLogger = new Logger();
+const logger = I18nLogger.wrap(baseLogger);
 const github = new GitHubClient(config.github);
 const rateLimiter = new EnhancedRateLimiter(config.rateLimiting || {});
 const taskQueue = new TaskQueue({ 
   maxConcurrent: config.claude.maxConcurrent,
   maxQueueSize: config.taskQueue?.maxQueueSize || 100 
 });
-// 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
+// Use independent process approach (tasks continue even after PoppoBuilder restart)
 const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger);
 
-// ダッシュボードサーバーの初期化（独立プロセス方式では簡易的に動作）
+// Initialize dashboard server (operates simply with independent process approach)
 const dashboardServer = new DashboardServer(config, null, logger);
 
-// 処理済みIssueを記録（メモリ内）
+// Initialize memory manager
+const memoryManager = new MemoryManager(config.memoryManagement || {
+  enabled: true,
+  checkInterval: 60000,
+  memoryThreshold: 500,
+  autoRecoveryEnabled: true,
+  heapSnapshotEnabled: false
+}, logger);
+
+// Record processed issues (in memory)
 const processedIssues = new Set();
 
-// 処理済みコメントを記録（メモリ内）
+// Record processed comments (in memory)
 const processedComments = new Map(); // issueNumber -> Set(commentIds)
 
-// タスクキューイベントハンドラー
-taskQueue.on('taskEnqueued', (task) => {
-  logger.logSystem('QUEUE_ENQUEUED', { taskId: task.id, priority: task.priority });
+// Task queue event handlers
+taskQueue.on('taskEnqueued', async (task) => {
+  await logger.logSystem('queue_enqueued', { taskId: task.id, priority: task.priority });
 });
 
-taskQueue.on('taskStarted', ({ taskId, processInfo }) => {
-  logger.logSystem('QUEUE_TASK_STARTED', { taskId, processInfo });
+taskQueue.on('taskStarted', async ({ taskId, processInfo }) => {
+  await logger.logSystem('queue_task_started', { taskId, processInfo });
 });
 
-taskQueue.on('taskCompleted', ({ taskId, success, duration }) => {
-  logger.logSystem('QUEUE_TASK_COMPLETED', { taskId, success, duration });
+taskQueue.on('taskCompleted', async ({ taskId, success, duration }) => {
+  if (success) {
+    await logger.logSystem('queue_task_completed', { taskId, success, duration });
+  } else {
+    await logger.logSystem('queue_task_failed', { taskId });
+  }
+});
+
+// Memory manager event handlers
+memoryManager.on('memoryPressure', ({ memoryData, reasons }) => {
+  logger.logSystem('memory_pressure', { 
+    heapUsedMB: Math.round(memoryData.process.heapUsed / 1024 / 1024),
+    systemUsage: Math.round(memoryData.system.percentage),
+    reasons 
+  });
+});
+
+memoryManager.on('memoryLeak', (activity) => {
+  logger.logSystem('memory_leak_detected', activity);
+});
+
+memoryManager.on('gc', (gcResult) => {
+  logger.logSystem('garbage_collection', {
+    freedMB: Math.round(gcResult.freedMB),
+    duration: gcResult.duration
+  });
+});
+
+memoryManager.on('clearCaches', () => {
+  // Clear internal caches when memory pressure is detected
+  processedIssues.clear();
+  processedComments.clear();
+  logger.logSystem('caches_cleared', { reason: 'memory_pressure' });
 });
 
 /**
- * Issueが処理対象かチェック
+ * Check if issue should be processed
  */
 function shouldProcessIssue(issue) {
-  // すでに処理済み
+  // Already processed
   if (processedIssues.has(issue.number)) {
     return false;
   }
 
-  // 作者のIssueかチェック
+  // Check if issue is by the author
   if (issue.author.login !== config.github.owner) {
     return false;
   }
 
-  // ラベルチェック
+  // Label check
   const labels = issue.labels.map(l => l.name);
   
-  // task:misc または task:dogfooding ラベルが必要
+  // Requires task:misc or task:dogfooding label
   if (!labels.includes('task:misc') && !labels.includes('task:dogfooding')) {
     return false;
   }
@@ -134,22 +175,21 @@ function shouldProcessIssue(issue) {
 }
 
 /**
- * Issueを処理
+ * Process issue
  */
 async function processIssue(issue) {
   const issueNumber = issue.number;
-  logger.logIssue(issueNumber, 'START', { title: issue.title, labels: issue.labels });
-  console.log(`\n${i18n.t('issue.processing', { number: issueNumber, title: issue.title })}`);
+  await logger.logIssue(issueNumber, 'processing', { number: issueNumber, title: issue.title });
+  console.log(`\n${t('messages:issue.processing', { number: issueNumber, title: issue.title })}`);
 
-  // 処理開始前に処理済みとして記録（二重起動防止）
+  // Record as processed before starting (prevent duplicate execution)
   processedIssues.add(issueNumber);
 
   try {
-    // processingラベルを追加
+    // Add processing label
     await github.addLabels(issueNumber, ['processing']);
-    logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'processing' });
 
-    // ラベル取得
+    // Get labels
     const labels = issue.labels.map(l => l.name);
     
     // 言語設定読み込み
@@ -172,44 +212,38 @@ async function processIssue(issue) {
     };
 
     // Claudeで実行（独立プロセス方式）
-    logger.logIssue(issueNumber, 'EXECUTE_START', { instruction });
     
     // dogfoodingかどうかを判定
     const isDogfooding = labels.includes('task:dogfooding');
     instruction.issue.type = isDogfooding ? 'dogfooding' : 'normal';
     
     const result = await processManager.execute(`issue-${issueNumber}`, instruction);
-    logger.logIssue(issueNumber, 'INDEPENDENT_STARTED', { 
-      taskId: result.taskId,
-      pid: result.pid 
-    });
+    await logger.logProcess(result.pid, 'started', { pid: result.pid });
 
-    console.log(`Issue #${issueNumber} を独立プロセス (${result.taskId}) として開始`);
-    console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
+    console.log(t('messages:issue.processing', { number: issueNumber, title: issue.title }));
+    console.log(`PID: ${result.pid}`);
     
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
-    logger.logIssue(issueNumber, 'ERROR', { 
-      message: error.message, 
-      stack: error.stack,
-      stdout: error.stdout,
-      stderr: error.stderr 
+    await logger.logIssue(issueNumber, 'failed', { 
+      number: issueNumber,
+      error: error.message
     });
-    console.error(`Issue #${issueNumber} の処理エラー:`, error.message);
+    console.error(t('messages:issue.failed', { number: issueNumber, error: error.message }));
     
     // より詳細なエラー情報をコメントに含める
     const errorDetails = [
-      `## ${i18n.t('labels.execution.error')}`,
+      `## ${t('labels.execution.error')}`,
       ``,
-      `### ${i18n.t('errors.message')}`,
+      `### ${t('errors.message')}`,
       `\`\`\``,
       error.message || '(エラーメッセージなし)',
       `\`\`\``,
-      error.stderr ? `\n### ${i18n.t('errors.stderr')}\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
-      error.stdout ? `\n### ${i18n.t('errors.stdout')}\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
+      error.stderr ? `\n### ${t('errors.stderr')}\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
+      error.stdout ? `\n### ${t('errors.stdout')}\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
       ``,
-      i18n.t('errors.detailedLog', { logPath: `logs/issue-${issueNumber}-*.log` })
+      t('errors.detailedLog', { logPath: `logs/issue-${issueNumber}-*.log` })
     ].filter(Boolean).join('\n');
     
     await github.addComment(issueNumber, errorDetails);
@@ -300,20 +334,12 @@ async function buildContext(issueNumber) {
  */
 async function processComment(issue, comment) {
   const issueNumber = issue.number;
-  logger.logIssue(issueNumber, 'COMMENT_START', { 
-    commentId: comment.id,
-    commentAuthor: comment.author.login 
-  });
-  console.log(`\n${i18n.t('comment.processing', { number: issueNumber })}`);
+  console.log(`\n${t('messages:issue.processing', { number: issueNumber })}`);
 
   try {
     // awaiting-responseを削除、processingラベルを追加
     await github.removeLabels(issueNumber, ['awaiting-response']);
     await github.addLabels(issueNumber, ['processing']);
-    logger.logIssue(issueNumber, 'LABEL_UPDATED', { 
-      removed: 'awaiting-response', 
-      added: 'processing' 
-    });
 
     // コンテキストを構築
     const conversation = await buildContext(issueNumber);
@@ -342,32 +368,24 @@ async function processComment(issue, comment) {
     };
 
     // Claudeで実行（独立プロセス方式）
-    logger.logIssue(issueNumber, 'COMMENT_EXECUTE_START', { 
-      commentId: comment.id,
-      conversationLength: conversation.length 
-    });
     
     instruction.issue.type = 'comment';
     instruction.issue.isCompletion = isCompletionComment(comment);
     
     const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction);
-    logger.logIssue(issueNumber, 'COMMENT_INDEPENDENT_STARTED', { 
-      taskId: result.taskId,
-      pid: result.pid 
-    });
+    await logger.logProcess(result.pid, 'started', { pid: result.pid });
 
-    console.log(`Issue #${issueNumber} のコメントを独立プロセス (${result.taskId}) として開始`);
-    console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
+    console.log(t('messages:issue.processing', { number: issueNumber }));
+    console.log(`PID: ${result.pid}`);
     
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
-    logger.logIssue(issueNumber, 'COMMENT_ERROR', { 
-      commentId: comment.id,
-      message: error.message, 
-      stack: error.stack 
+    await logger.logIssue(issueNumber, 'failed', { 
+      number: issueNumber,
+      error: error.message
     });
-    console.error(`Issue #${issueNumber} のコメント処理エラー:`, error.message);
+    console.error(t('messages:issue.failed', { number: issueNumber, error: error.message }));
     
     // エラー時はawaiting-responseに戻す
     await github.removeLabels(issueNumber, ['processing']);
@@ -401,7 +419,7 @@ async function checkComments() {
         
         if (!processed.has(commentId) && shouldProcessComment(issue, comment)) {
           // 処理対象のコメントを発見
-          console.log(i18n.t('comment.newFound', { number: issue.number, commentId }));
+          console.log(t('messages:issue.processing', { number: issue.number }));
           
           // 処理済みとして記録
           if (!processedComments.has(issue.number)) {
@@ -418,15 +436,15 @@ async function checkComments() {
               issueNumber: issue.number,
               labels: issue.labels.map(l => l.name)
             });
-            console.log(`💬 Issue #${issue.number} のコメントをキューに追加 (タスクID: ${taskId})`);
+            console.log(t('messages:task.created', { id: taskId }));
           } catch (error) {
-            console.error(`コメントのキュー追加エラー:`, error.message);
+            console.error(t('messages:task.failed', { id: 'comment', error: error.message }));
           }
         }
       }
     }
   } catch (error) {
-    console.error('コメントチェックエラー:', error.message);
+    console.error(t('messages:system.error', { error: error.message }));
   }
 }
 
@@ -443,7 +461,7 @@ async function processQueuedTasks() {
     if (rateLimitStatus.limited) {
       // レート制限中はタスクをキューに戻す
       taskQueue.enqueue(task);
-      console.log(`⏸️  レート制限中: ${rateLimitStatus.api} API`);
+      console.log(t('messages:github.rateLimit', { api: rateLimitStatus.api }));
       break;
     }
     
@@ -456,7 +474,7 @@ async function processQueuedTasks() {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
         }).catch((error) => {
-          console.error(`タスク ${task.id} エラー:`, error.message);
+          console.error(t('messages:task.failed', { id: task.id, error: error.message }));
           taskQueue.completeTask(task.id, false);
           
           // リトライ判定
@@ -467,7 +485,7 @@ async function processQueuedTasks() {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
         }).catch((error) => {
-          console.error(`コメントタスク ${task.id} エラー:`, error.message);
+          console.error(t('messages:task.failed', { id: task.id, error: error.message }));
           taskQueue.completeTask(task.id, false);
           
           // リトライ判定
@@ -475,7 +493,7 @@ async function processQueuedTasks() {
         });
       }
     } catch (error) {
-      console.error(`タスク処理エラー:`, error.message);
+      console.error(t('messages:task.failed', { id: 'unknown', error: error.message }));
       taskQueue.completeTask(task.id, false);
     }
   }
@@ -495,7 +513,7 @@ async function handleTaskError(task, error) {
         taskQueue.enqueue(task);
       }
     } catch (retryError) {
-      console.error(`タスク ${task.id} の最大リトライ回数に到達`);
+      console.error(t('messages:task.failed', { id: task.id, error: '最大リトライ回数に到達' }));
     }
   }
 }
@@ -508,12 +526,12 @@ async function checkCompletedTasks() {
     const completedResults = await processManager.pollCompletedTasks();
     
     for (const result of completedResults || []) {
-      console.log(`🎯 完了タスク ${result.taskId} の後処理開始`);
+      console.log(t('messages:task.completed', { id: result.taskId }));
       
       // GitHubコメント投稿
       const issueNumber = result.taskInfo.issueNumber;
       if (issueNumber && result.success) {
-        const comment = `## ${i18n.t('labels.execution.completed')}\n\n${result.output}`;
+        const comment = `## ${t('labels.execution.completed')}\n\n${result.output}`;
         await github.addComment(issueNumber, comment);
         
         // ラベル更新
@@ -521,17 +539,15 @@ async function checkCompletedTasks() {
         
         if (config.commentHandling && config.commentHandling.enabled) {
           await github.addLabels(issueNumber, ['awaiting-response']);
-          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'awaiting-response' });
         } else {
           await github.addLabels(issueNumber, ['completed']);
-          logger.logIssue(issueNumber, 'LABEL_ADDED', { label: 'completed' });
         }
         
-        console.log(`✅ Issue #${issueNumber} の後処理完了`);
+        console.log(t('messages:issue.completed', { number: issueNumber }));
         
         // タスクタイプに応じた後処理
         if (result.taskInfo.type === 'dogfooding') {
-          console.log('🔧 DOGFOODINGタスク完了 - 30秒後に再起動をスケジュール...');
+          console.log(t('messages:task.completed', { id: 'dogfooding' }));
           
           try {
             const { spawn } = require('child_process');
@@ -542,9 +558,9 @@ async function checkCompletedTasks() {
             });
             child.unref();
             
-            console.log('再起動スケジューラーを起動しました (PID: ' + child.pid + ')');
+            console.log(t('messages:process.started', { pid: child.pid }));
           } catch (error) {
-            console.error('再起動スケジューラー起動エラー:', error.message);
+            console.error(t('messages:process.failed', { pid: 'scheduler', error: error.message }));
           }
         } else if (result.taskInfo.type === 'comment') {
           // コメント処理の場合は完了判定を行う
@@ -553,30 +569,24 @@ async function checkCompletedTasks() {
           if (isCompletion) {
             // 完了キーワードが含まれている場合
             await github.addLabels(issueNumber, ['completed']);
-            logger.logIssue(issueNumber, 'COMMENT_COMPLETED', { 
-              reason: 'completion_keyword' 
-            });
-            console.log(`Issue #${issueNumber} のコメント処理完了（完了キーワード検出）`);
+            console.log(t('messages:issue.completed', { number: issueNumber }));
           } else {
             // 続けて対話する場合
             await github.addLabels(issueNumber, ['awaiting-response']);
-            logger.logIssue(issueNumber, 'COMMENT_AWAITING', { 
-              commentCount: 1 
-            });
-            console.log(`Issue #${issueNumber} のコメント処理完了（応答待ち）`);
+            console.log(t('messages:issue.completed', { number: issueNumber }));
           }
         }
       } else if (issueNumber && !result.success) {
         // エラー時の処理
-        const errorComment = `## ${i18n.t('labels.execution.error')}\n\n\`\`\`\n${result.error}\n\`\`\`\n\n${i18n.t('errors.detailedLog', { logPath: 'logs/*.log' })}`;
+        const errorComment = `## ${t('labels.execution.error')}\n\n\`\`\`\n${result.error}\n\`\`\`\n\n${t('errors.detailedLog', { logPath: 'logs/*.log' })}`;
         await github.addComment(issueNumber, errorComment);
         await github.removeLabels(issueNumber, ['processing']);
         
-        console.log(`❌ Issue #${issueNumber} でエラーが発生`);
+        console.log(t('messages:issue.failed', { number: issueNumber, error: result.error }));
       }
     }
   } catch (error) {
-    console.error('完了タスクチェックエラー:', error.message);
+    console.error(t('messages:task.failed', { id: 'completion-check', error: error.message }));
   }
 }
 
@@ -584,7 +594,16 @@ async function checkCompletedTasks() {
  * メインループ
  */
 async function mainLoop() {
-  console.log(i18n.t('system.starting'));
+  // Initialize i18n system first
+  try {
+    i18n = await initI18n();
+    console.log(t('messages:startup.ready'));
+  } catch (error) {
+    console.error('Failed to initialize i18n:', error.message);
+    // Fallback to raw messages
+  }
+
+  console.log(t('messages:system.starting'));
   
   // 設定階層情報を表示
   configLoader.displayConfigHierarchy();
@@ -592,13 +611,11 @@ async function mainLoop() {
   console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
   
   // 独立プロセス方式の状態表示
-  console.log(i18n.t('system.independentProcess.enabled'));
+  console.log(t('messages:system.started'));
   
-  if (config.dynamicTimeout?.enabled) {
-    console.log(i18n.t('system.dynamicTimeout.enabled'));
-  } else {
-    console.log(i18n.t('system.dynamicTimeout.disabled'));
-  }
+  // Start memory manager
+  await memoryManager.start();
+  console.log('Memory manager started');
   
   // レート制限の初期チェック
   await rateLimiter.preflightCheck();
@@ -609,22 +626,26 @@ async function mainLoop() {
       const rateLimitStatus = await rateLimiter.isRateLimited();
       if (rateLimitStatus.limited) {
         const waitSeconds = Math.ceil(rateLimitStatus.waitTime / 1000);
-        console.log(`⚠️  ${rateLimitStatus.api.toUpperCase()} APIレート制限中... 残り${waitSeconds}秒`);
+        console.log(t('messages:github.rateLimit', { 
+          remaining: rateLimitStatus.remaining || 0, 
+          limit: rateLimitStatus.limit || 'unknown',
+          reset: waitSeconds + 's'
+        }));
         await rateLimiter.waitForReset();
         continue;
       }
 
       // Issue取得
-      console.log(i18n.t('system.checkingIssues'));
+      console.log(t('messages:system.processing_issues', { count: 0 }));
       const issues = await github.listIssues({ state: 'open' });
       
       // 処理対象のIssueを抽出
       const targetIssues = issues.filter(shouldProcessIssue);
       
       if (targetIssues.length === 0) {
-        console.log(i18n.t('issue.noTarget'));
+        console.log(t('messages:system.no_issues_found'));
       } else {
-        console.log(i18n.t('issue.found', { count: targetIssues.length }));
+        console.log(t('messages:system.processing_issues', { count: targetIssues.length }));
         
         // 古い順に処理
         targetIssues.sort((a, b) => 
@@ -640,9 +661,9 @@ async function mainLoop() {
               issueNumber: issue.number,
               labels: issue.labels.map(l => l.name)
             });
-            console.log(`📋 ${i18n.t('issue.addedToQueue', { number: issue.number, taskId })}`);
+            console.log(t('messages:task.created', { id: taskId }));
           } catch (error) {
-            console.error(`Issue #${issue.number} のキュー追加エラー:`, error.message);
+            console.error(t('messages:issue.failed', { number: issue.number, error: error.message }));
           }
         }
       }
@@ -659,25 +680,35 @@ async function mainLoop() {
       // キューの状態を表示
       const queueStatus = taskQueue.getStatus();
       if (queueStatus.queued > 0 || queueStatus.running > 0) {
-        console.log(`📊 ${i18n.t('queue.status', { running: queueStatus.running, queued: queueStatus.queued })}`);
-        console.log(`   ${i18n.t('queue.priority', { priorities: JSON.stringify(queueStatus.queuesByPriority) })}`);
+        console.log(t('messages:system.processing_issues', { count: queueStatus.running + queueStatus.queued }));
       }
 
     } catch (error) {
-      console.error('メインループエラー:', error.message);
+      console.error(t('messages:system.error', { error: error.message }));
     }
 
     // ポーリング間隔待機
-    console.log(`\n${i18n.t('system.waitingNext', { seconds: config.polling.interval / 1000 })}`);
+    console.log(`\n${t('messages:system.uptime', { time: config.polling.interval / 1000 + 's' })}`);
     await new Promise(resolve => setTimeout(resolve, config.polling.interval));
   }
 }
 
 // プロセス終了時のクリーンアップ
 process.on('SIGINT', () => {
-  console.log(`\n\n${i18n.t('system.shutdown')}`);
+  console.log(`\n\n${t('messages:system.stopping')}`);
   processManager.killAll();
   dashboardServer.stop();
+  memoryManager.stop();
+  console.log('Memory manager stopped');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log(`\n\n${t('messages:system.stopping')}`);
+  processManager.killAll();
+  dashboardServer.stop();
+  memoryManager.stop();
+  console.log('Memory manager stopped');
   process.exit(0);
 });
 

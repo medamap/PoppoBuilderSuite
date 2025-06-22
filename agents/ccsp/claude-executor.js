@@ -1,8 +1,8 @@
 /**
- * Claude CLI実行エンジン
+ * Claude CLI Execution Engine
  * 
- * Issue #142: CCSPの高度な制御機能とモニタリング実装
- * Claude CLIコマンドの実行とエラーハンドリングを担当
+ * Issue #142: CCSP Advanced Control and Monitoring Implementation
+ * Handles Claude CLI command execution and error handling
  */
 
 const { spawn } = require('child_process');
@@ -22,11 +22,11 @@ class ClaudeExecutor {
       ...options
     };
     
-    // セッション状態の追跡
+    // Session state tracking
     this.sessionTimeout = false;
     this.lastLoginCheck = null;
     
-    // 統計情報
+    // Statistics
     this.stats = {
       totalExecutions: 0,
       successCount: 0,
@@ -44,7 +44,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * 一時ディレクトリの確保
+   * Ensure temporary directory
    */
   async ensureTempDir() {
     try {
@@ -55,8 +55,8 @@ class ClaudeExecutor {
   }
   
   /**
-   * Claude CLIコマンドの実行
-   * @param {Object} task - 実行タスク
+   * Execute Claude CLI command
+   * @param {Object} task - Execution task
    */
   async execute(task) {
     const {
@@ -86,7 +86,7 @@ class ClaudeExecutor {
       attempt++;
       
       try {
-        // セッションタイムアウトフラグのチェック
+        // Check session timeout flag
         if (this.sessionTimeout) {
           throw new Error('Session timeout detected, login required');
         }
@@ -122,7 +122,7 @@ class ClaudeExecutor {
           responseTime: `${responseTime}ms`
         });
         
-        // エラーパターンの分析
+        // Analyze error patterns
         const errorType = this.analyzeError(error.message);
         
         if (errorType === 'SESSION_TIMEOUT') {
@@ -133,7 +133,7 @@ class ClaudeExecutor {
         
         if (errorType === 'RATE_LIMIT') {
           this.stats.rateLimits++;
-          // レート制限の場合、より長い遅延
+          // For rate limit, use longer delay
           const delay = this.config.retryDelay * Math.pow(2, attempt);
           this.logger.warn(`Rate limit detected, waiting ${delay}ms before retry`, {
             executionId,
@@ -141,13 +141,13 @@ class ClaudeExecutor {
           });
           await this.sleep(delay);
         } else if (attempt < this.config.maxRetries) {
-          // 通常のリトライ遅延
+          // Normal retry delay
           await this.sleep(this.config.retryDelay);
         }
       }
     }
     
-    // すべてのリトライが失敗
+    // All retries failed
     this.stats.errorCount++;
     const responseTime = Date.now() - startTime;
     
@@ -162,34 +162,34 @@ class ClaudeExecutor {
   }
   
   /**
-   * 実際のClaude CLIコマンド実行
+   * Actual Claude CLI command execution
    */
   async executeClaudeCommand(prompt, files, timeout, executionId) {
     return new Promise(async (resolve, reject) => {
       let tempFiles = [];
       
       try {
-        // ファイルが指定されている場合、一時ファイルとして保存
+        // If files are specified, save as temporary files
         if (files && files.length > 0) {
           tempFiles = await this.createTempFiles(files, executionId);
         }
         
-        // Claude CLIコマンドの構築
+        // Build Claude CLI command
         const args = this.buildClaudeArgs(prompt, tempFiles);
         
         this.logger.debug('Executing claude command', {
           executionId,
-          args: args.slice(0, 3), // 最初の3つの引数のみログ出力
+          args: args.slice(0, 3), // Only log first 3 arguments
           tempFilesCount: tempFiles.length
         });
         
-        // Claude CLIプロセスの起動
+        // Start Claude CLI process
         const claude = spawn('claude', args, {
           stdio: ['pipe', 'pipe', 'pipe'],
           cwd: process.cwd(),
           env: {
             ...process.env,
-            CLAUDE_LOG_LEVEL: 'ERROR' // 不要なログを抑制
+            CLAUDE_LOG_LEVEL: 'ERROR' // Suppress unnecessary logs
           }
         });
         
@@ -197,7 +197,7 @@ class ClaudeExecutor {
         let stderr = '';
         let isResolved = false;
         
-        // タイムアウト設定
+        // Timeout setting
         const timeoutId = setTimeout(() => {
           if (!isResolved) {
             claude.kill('SIGTERM');
@@ -206,32 +206,32 @@ class ClaudeExecutor {
           }
         }, timeout);
         
-        // 標準出力の収集
+        // Collect standard output
         claude.stdout.on('data', (data) => {
           stdout += data.toString();
         });
         
-        // 標準エラーの収集
+        // Collect standard error
         claude.stderr.on('data', (data) => {
           stderr += data.toString();
         });
         
-        // プロセス終了の処理
+        // Process termination handling
         claude.on('close', async (code) => {
           clearTimeout(timeoutId);
           
-          // 一時ファイルのクリーンアップ
+          // Clean up temporary files
           await this.cleanupTempFiles(tempFiles);
           
           if (isResolved) return;
           isResolved = true;
           
           if (code === 0) {
-            // 成功
+            // Success
             const cleanOutput = this.cleanClaudeOutput(stdout);
             resolve(cleanOutput);
           } else {
-            // エラー
+            // Error
             const errorMessage = stderr || stdout || `Claude process exited with code ${code}`;
             reject(new Error(errorMessage));
           }
@@ -255,20 +255,20 @@ class ClaudeExecutor {
   }
   
   /**
-   * Claude CLIの引数を構築
+   * Build Claude CLI arguments
    */
   buildClaudeArgs(prompt, tempFiles) {
     const args = [];
     
-    // ファイルが指定されている場合
+    // If files are specified
     if (tempFiles.length > 0) {
       for (const file of tempFiles) {
         args.push(file);
       }
     }
     
-    // プロンプトの追加
-    // 注: Claude API呼び出し禁止の注記を自動追加
+    // Add prompt
+    // Note: Automatically add note prohibiting Claude API calls
     const enhancedPrompt = this.enhancePrompt(prompt);
     args.push(enhancedPrompt);
     
@@ -276,12 +276,12 @@ class ClaudeExecutor {
   }
   
   /**
-   * プロンプトの強化（API呼び出し禁止の注記追加）
+   * Enhance prompt (add note prohibiting API calls)
    */
   enhancePrompt(prompt) {
     const apiWarning = `
-注意: このタスクではClaude APIを直接呼び出さないでください。
-すべてのClaude API呼び出しはCCSPエージェント経由で行われます。
+Note: Do not call Claude API directly in this task.
+All Claude API calls are made through the CCSP agent.
 
 `;
     
@@ -289,7 +289,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * 一時ファイルの作成
+   * Create temporary files
    */
   async createTempFiles(files, executionId) {
     const tempFiles = [];
@@ -315,7 +315,7 @@ class ClaudeExecutor {
           error: error.message
         });
         
-        // 部分的に作成されたファイルをクリーンアップ
+        // Clean up partially created files
         await this.cleanupTempFiles(tempFiles);
         throw error;
       }
@@ -325,7 +325,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * 一時ファイルのクリーンアップ
+   * Clean up temporary files
    */
   async cleanupTempFiles(tempFiles) {
     for (const file of tempFiles) {
@@ -342,10 +342,10 @@ class ClaudeExecutor {
   }
   
   /**
-   * Claude出力のクリーニング
+   * Clean Claude output
    */
   cleanClaudeOutput(output) {
-    // 不要な制御文字やプロンプト文字を除去
+    // Remove unnecessary control characters and prompt characters
     return output
       .replace(/\x1b\[[0-9;]*m/g, '') // ANSI escape codes
       .replace(/^[\s\S]*?claude>\s*/m, '') // claude> prompt
@@ -353,12 +353,12 @@ class ClaudeExecutor {
   }
   
   /**
-   * エラーの分析
+   * Analyze error
    */
   analyzeError(errorMessage) {
     const message = errorMessage.toLowerCase();
     
-    // セッションタイムアウト
+    // Session timeout
     if (message.includes('invalid api key') ||
         message.includes('please run /login') ||
         message.includes('api login failure') ||
@@ -366,21 +366,21 @@ class ClaudeExecutor {
       return 'SESSION_TIMEOUT';
     }
     
-    // レート制限
+    // Rate limit
     if (message.includes('rate limit') ||
         message.includes('usage limit') ||
         message.includes('too many requests')) {
       return 'RATE_LIMIT';
     }
     
-    // ネットワークエラー
+    // Network error
     if (message.includes('network') ||
         message.includes('connection') ||
         message.includes('timeout')) {
       return 'NETWORK_ERROR';
     }
     
-    // 入力エラー
+    // Input error
     if (message.includes('invalid input') ||
         message.includes('file not found') ||
         message.includes('permission denied')) {
@@ -391,7 +391,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * セッション状態のリセット
+   * Reset session state
    */
   resetSession() {
     this.sessionTimeout = false;
@@ -400,7 +400,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * 統計情報の取得
+   * Get statistics
    */
   getStats() {
     const total = this.stats.totalExecutions;
@@ -415,7 +415,7 @@ class ClaudeExecutor {
   }
   
   /**
-   * 統計情報のリセット
+   * Reset statistics
    */
   resetStats() {
     this.stats = {
@@ -430,19 +430,19 @@ class ClaudeExecutor {
   }
   
   /**
-   * スリープユーティリティ
+   * Sleep utility
    */
   async sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
   
   /**
-   * クリーンアップ
+   * Cleanup
    */
   async shutdown() {
     this.logger.info('Claude Executor shutting down', this.getStats());
     
-    // 一時ディレクトリのクリーンアップ
+    // Clean up temporary directory
     try {
       const files = await fs.readdir(this.config.tempDir);
       for (const file of files) {

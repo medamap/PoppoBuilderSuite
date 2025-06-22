@@ -1,95 +1,112 @@
-# PoppoBuilder Suite ドキュメント
+# PoppoBuilder Suite Documentation
 
-PoppoBuilder Suiteの包括的なドキュメントです。目的に応じて必要なドキュメントを参照してください。
+Comprehensive documentation for PoppoBuilder Suite. Please refer to the appropriate documentation for your needs.
 
-## 📚 目次
+## 📚 Table of Contents
 
-### 🚀 はじめに
-- [クイックスタートガイド](quick-start.md) - 5分でPoppoBuilderを始める
-- [インストールガイド](INSTALL.md) ([English](INSTALL_en.md)) - 詳細なセットアップ手順
-- [セットアップガイド](setup-guide.md) ([English](setup-guide_en.md)) - 環境構築の詳細
+### 🚀 Getting Started
+- [Quick Start Guide](quick-start.md) - Get started with PoppoBuilder in 5 minutes ([Japanese](ja/quick-start.md))
+- [Installation Guide](INSTALL_en.md) ([Japanese](INSTALL.md)) - Detailed setup instructions
+- [Setup Guide](setup-guide.md) ([Japanese](ja/setup-guide.md)) - Environment configuration details
 
-### 🎯 機能別ガイド
-- [メモリ管理ガイド](features/memory-management-guide.md) - メモリ使用量の監視と最適化
-- [エラーハンドリングガイド](features/error-handling-guide.md) - エラー処理とリカバリー
-- [テストフレームワーク活用ガイド](features/testing-guide.md) - テストの実行と開発
-- [ダッシュボード操作ガイド](features/dashboard-guide.md) - Webダッシュボードの使い方
-- [動的タイムアウト](features/dynamic-timeout.md) ([English](features/dynamic-timeout_en.md))
-- [レート制限](features/rate-limiting.md) - API制限への対応
+### 🎯 Feature Guides
+- [Memory Management Guide](features/memory-management-guide.md) - Memory usage monitoring and optimization
+- [Error Handling Guide](features/error-handling-guide.md) - Error processing and recovery
+- [Testing Framework Guide](features/testing-guide.md) - Test execution and development
+- [Dashboard Operation Guide](features/dashboard-guide.md) - Web dashboard usage
+- [Dynamic Timeout](features/dynamic-timeout_en.md) ([Japanese](features/dynamic-timeout.md))
+- [Rate Limiting](features/rate-limiting.md) - API limit handling
+- [Internationalization System](features/i18n-system.md) - Multilingual support
+- [Error System](features/error-system.md) - Comprehensive error handling
 
-### 📖 APIリファレンス
-- [CLIコマンドリファレンス](api/cli-reference.md) - 全コマンドの詳細
-- [設定オプション詳細](config-management.md) - 設定ファイルの完全ガイド
-- [イベントとフック](api/events-and-hooks.md) - カスタマイズポイント
-- [プラグイン開発ガイド](api/plugin-development.md) - 拡張機能の作成
+### 📖 API Reference
+- [CLI Command Reference](api/cli-reference.md) - Complete command details
+- [Configuration Options](config-management.md) - Complete configuration file guide
+- [Events and Hooks](api/events-and-hooks.md) - Customization points
+- [Plugin Development Guide](api/plugin-development.md) - Extension development
 
-### 🛠️ トラブルシューティング
-- [トラブルシューティングガイド](troubleshooting.md) - よくある問題と解決方法
-- [エラーハンドリング](error-handling.md) - エラーの詳細と対処法
-- [セッションタイムアウト対処](session-timeout-handling.md) - 長時間実行時の問題
-- [既知の問題](troubleshoot/) - 特定のエラーへの対処
+### 🛠️ Troubleshooting
+- [Troubleshooting Guide](troubleshooting.md) - Common problems and solutions
+- [Error Handling](error-handling.md) - Error details and fixes
+- [Session Timeout Handling](session-timeout-handling.md) - Long-running execution issues
+- [Known Issues](troubleshoot/) - Specific error handling
 
-### 💡 ベストプラクティス
-- [ベストプラクティス集](best-practices.md) - 推奨される使用方法
-- [セキュリティガイドライン](security/agent-authentication.md) - セキュアな運用
-- [パフォーマンスチューニング](performance-tuning.md) - 最適化のヒント
-- [マルチプロジェクト運用](guides/multi-project-guide.md) ([English](guides/multi-project-guide_en.md))
+### 💡 Best Practices
+- [Best Practices](best-practices.md) - Recommended usage patterns
+- [Security Guidelines](security/agent-authentication.md) - Secure operations
+- [Performance Tuning](performance-tuning.md) - Optimization tips
+- [Multi-Project Operations](guides/multi-project-guide_en.md) ([Japanese](guides/multi-project-guide.md))
 
-### 🏗️ アーキテクチャ
-- [システム概要](architecture/system-overview.md) ([English](architecture/system-overview_en.md))
-- [エージェント分離アーキテクチャ](architecture/agent-separation.md) ([English](architecture/agent-separation_en.md))
-- [エージェント通信プロトコル](design/agent-communication-protocol.md) ([English](design/agent-communication-protocol_en.md))
-- [状態管理システム](unified-state-management.md) - JSONベースの状態管理
+### 🏗️ Architecture
+- [System Overview](architecture/system-overview.md) ([Japanese](ja/system-overview.md))
+- [Agent Separation Architecture](architecture/agent-separation_en.md) ([Japanese](architecture/agent-separation.md))
+- [Agent Communication Protocol](design/agent-communication-protocol_en.md) ([Japanese](design/agent-communication-protocol.md))
+- [State Management System](unified-state-management.md) - JSON-based state management
 
-### 🤖 エージェント
-- [CCQAエージェント](agents/ccqa-agent.md) - コード品質保証
-- [CCRAエージェント](agents/ccra-agent.md) - コードレビュー自動化
-- [CCTAエージェント](agents/ccta-agent.md) - テスト自動実行
-- [動的スケーリング](agents/dynamic-scaling.md) - エージェントの自動スケール
+### 🤖 Agents
+- [CCQA Agent](agents/ccqa-agent.md) - Code quality assurance
+- [CCRA Agent](agents/ccra-agent.md) - Code review automation
+- [CCTA Agent](agents/ccta-agent.md) - Automated test execution
+- [Dynamic Scaling](agents/dynamic-scaling.md) - Automatic agent scaling
 
-### 🧪 テスト
-- [E2Eテスト](testing/e2e-testing.md) - エンドツーエンドテスト
-- [統合テスト](testing/integration-testing.md) - コンポーネント間テスト
-- [パフォーマンステスト](testing/performance-testing.md) - 性能測定
+### 🧪 Testing
+- [E2E Testing](testing/e2e-testing.md) - End-to-end testing
+- [Integration Testing](testing/integration-testing.md) - Component interaction testing
+- [Performance Testing](testing/performance-testing.md) - Performance measurement
 
-### 📋 要件定義・設計
-- [要件定義](requirements/) - 各機能の要件
-- [設計書](design/) - 詳細設計ドキュメント
-- [実装履歴](implementation-history/) - 過去の実装記録
+### 📋 Requirements & Design
+- [Requirements](requirements/) - Feature requirements
+- [Design Documents](design/) - Detailed design documentation
+- [Implementation History](implementation-history/) - Past implementation records
 
-### 🔧 高度な機能
-- [バックアップ・リストア](backup-restore.md) - データの保護
-- [ログローテーション](log-rotation.md) - ログ管理
-- [通知機能](guides/notification-guide.md) - Slack/Email通知
-- [トレーサビリティ](guides/traceability-guide.md) ([English](guides/traceability-guide_en.md))
-- [GitHub Projects連携](github-projects-integration.md) - プロジェクト管理
+### 🔧 Advanced Features
+- [Backup & Restore](backup-restore.md) - Data protection
+- [Log Rotation](log-rotation.md) - Log management
+- [Notification Features](guides/notification-guide.md) - Slack/Email notifications
+- [Traceability](guides/traceability-guide_en.md) ([Japanese](guides/traceability-guide.md))
+- [GitHub Projects Integration](github-projects-integration.md) - Project management
 
-### 🌐 その他
-- [メッセージング移行ガイド](messaging-migration-guide.md) - Redisキューへの移行
-- [Redis状態管理](redis-state-management.md) - Redisを使用した状態管理
-- [WebSocketリアルタイム更新](websocket-realtime-updates.md) - リアルタイム通信
+### 🌐 Other Features
+- [Messaging Migration Guide](messaging-migration-guide.md) - Migration to Redis queues
+- [Redis State Management](redis-state-management.md) - Redis-based state management
+- [WebSocket Real-time Updates](websocket-realtime-updates.md) - Real-time communication
 
-## 🔍 ドキュメントの探し方
+## 🔍 How to Find Documentation
 
-### 目的別
-- **すぐに使い始めたい** → [クイックスタートガイド](quick-start.md)
-- **詳しくインストールしたい** → [インストールガイド](INSTALL.md)
-- **エラーが出た** → [トラブルシューティング](troubleshooting.md)
-- **設定を変更したい** → [設定オプション詳細](config-management.md)
-- **コマンドを知りたい** → [CLIコマンドリファレンス](api/cli-reference.md)
-- **拡張したい** → [プラグイン開発ガイド](api/plugin-development.md)
+### By Purpose
+- **Want to start immediately** → [Quick Start Guide](quick-start.md)
+- **Want detailed installation** → [Installation Guide](INSTALL_en.md)
+- **Getting errors** → [Troubleshooting](troubleshooting.md)
+- **Want to change configuration** → [Configuration Options](config-management.md)
+- **Want to know commands** → [CLI Command Reference](api/cli-reference.md)
+- **Want to extend functionality** → [Plugin Development Guide](api/plugin-development.md)
 
-### レベル別
-- **初級者** → クイックスタート、インストールガイド
-- **中級者** → 機能別ガイド、APIリファレンス
-- **上級者** → アーキテクチャ、設計書、プラグイン開発
+### By Experience Level
+- **Beginner** → Quick Start, Installation Guide
+- **Intermediate** → Feature Guides, API Reference
+- **Advanced** → Architecture, Design Documents, Plugin Development
 
-## 📝 ドキュメントへの貢献
+## 📝 Contributing to Documentation
 
-ドキュメントの改善提案は大歓迎です！
-- 誤字・脱字の修正
-- より分かりやすい説明への改善
-- 新しい使用例の追加
-- 図表の追加
+We welcome documentation improvement suggestions!
+- Fix typos and grammatical errors
+- Improve explanations for better clarity
+- Add new usage examples
+- Add diagrams and illustrations
 
-改善提案はGitHub Issueでお知らせください。
+Please submit improvement suggestions via GitHub Issues.
+
+## 🌍 Multilingual Documentation
+
+PoppoBuilder Suite documentation is available in multiple languages:
+- **English** - Complete documentation with examples and guides
+- **日本語 (Japanese)** - Native Japanese documentation with technical terminology
+
+The system features comprehensive internationalization support:
+- **Automatic Language Detection** - Based on system locale or configuration
+- **Dynamic Message Translation** - Real-time translation of all system messages
+- **Error Message Localization** - Comprehensive error messages in both languages
+- **Log Message Translation** - Multilingual logging with structured error codes
+- **CLI Internationalization** - Command-line interface in multiple languages
+
+For more information about internationalization features, see the [Internationalization System Guide](features/i18n-system.md).

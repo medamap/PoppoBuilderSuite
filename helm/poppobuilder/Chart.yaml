@@ -1,0 +1,21 @@
+apiVersion: v2
+name: poppobuilder
+description: A Helm chart for PoppoBuilder Suite - AI-powered GitHub automation system
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - github
+  - automation
+  - ai
+  - claude
+maintainers:
+  - name: PoppoBuilder Team
+    email: support@poppobuilder.example.com
+sources:
+  - https://github.com/medamap/PoppoBuilderSuite
+dependencies:
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled

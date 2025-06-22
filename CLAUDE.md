@@ -98,20 +98,46 @@ npm test
 # 現在のブランチ確認
 git branch
 
-# コミット（Claude Code署名付き）
-git commit -m "メッセージ
+# コミット（Claude Code署名付き）- 英語で記述
+# IMPORTANT: All commit messages MUST be in English
+git commit -m "feat: Add feature description
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# プルリクエスト作成時も英語で記述
+# IMPORTANT: All PR titles and descriptions MUST be in English
+gh pr create --title "feat: Add new feature" --body "## Summary
+- Added new feature X
+- Fixed bug Y
+- Updated documentation
+
+## Test plan
+- [ ] Unit tests pass
+- [ ] Integration tests pass"
 ```
+
+## 🌐 GitHub Output Language Policy (重要)
+
+**ALL GitHub outputs MUST be in English for global reach:**
+1. **Commit messages**: Use conventional format (feat:, fix:, docs:, etc.) in English
+2. **Issue titles and descriptions**: Create in English
+3. **Pull Request titles and descriptions**: Create in English
+4. **Error reports in comments**: Use English (but detect user language for regular responses)
+
+**User interaction remains multilingual:**
+- Detect language from user's issue/comment
+- Respond in the user's preferred language
+- Only GitHub artifacts (commits, PRs, issues) must be in English
 
 ## ⚠️ 注意事項
 
 1. **最大プロセス数エラー**: 容量制限時はGitHubコメント投稿をスキップ
 2. **レート制限**: 自動的に待機して再試行
-3. **言語設定**: `.poppo/config.json`で`ja`/`en`を切り替え
+3. **言語設定**: `.poppo/config.json`で`ja`/`en`を切り替え（ユーザー対応用）
 4. **認証**: ダッシュボードのデフォルトパスワードは必ず変更
+5. **GitHub出力言語**: すべてのコミット、Issue、PRは英語で作成
 
 ## 🔗 関連ドキュメント
 

@@ -1,194 +1,194 @@
-# PoppoBuilder Suite システムアーキテクチャ
+# PoppoBuilder Suite System Architecture
 
-## 核心概念
+## Core Concepts
 
-PoppoBuilder Suiteは、GitHub IssueとClaude CLIを統合した完全自動化タスク処理システムファミリーです。独立プロセス管理により、メインプロセスの再起動後もタスクが継続実行される設計となっています。
+PoppoBuilder Suite is a fully automated task processing system family that integrates GitHub Issues with Claude CLI. It's designed with independent process management, allowing tasks to continue executing even after the main process restarts.
 
-## システムコンポーネント
+## System Components
 
-### 1. メインシステム（PoppoBuilder）
+### 1. Main System (PoppoBuilder)
 
-#### 中核機能
-- GitHub Issue監視（5分間隔）
-- ラベルベースのタスク検出（`task:misc`、`task:dogfooding`）
-- Claude CLIとの統合実行
-- コメント追記による継続的対話
-- 独立プロセス管理
+#### Core Features
+- GitHub Issue monitoring (5-minute intervals)
+- Label-based task detection (`task:misc`, `task:dogfooding`)
+- Claude CLI integration and execution
+- Continuous dialogue through comment additions
+- Independent process management
 
-#### プロセス管理
-- 独立プロセスマネージャー（PoppoBuilder再起動後もタスク継続）
-- タスクキュー管理（優先度付き）
-- レート制限対応
-- 動的タイムアウト制御
+#### Process Management
+- Independent Process Manager (tasks continue after PoppoBuilder restart)
+- Task queue management (with priorities)
+- Rate limit handling
+- Dynamic timeout control
 
-### 2. システムファミリー
+### 2. System Family
 
-#### PoppoBuilder（ぽっぽちゃん）🚂
-- メインの自動タスク処理システム
-- Issue監視とClaude CLI実行
-- 独立プロセス管理
+#### PoppoBuilder (Poppo-chan) 🚂
+- Main automated task processing system
+- Issue monitoring and Claude CLI execution
+- Independent process management
 
-#### MedamaRepair（目玉さん）👁️
-- PoppoBuilder監視・自動復旧（1分ごと）
-- プロセス健全性チェック
-- 異常時の自動再起動
+#### MedamaRepair (Medama-san) 👁️
+- PoppoBuilder monitoring and auto-recovery (every minute)
+- Process health check
+- Automatic restart on anomalies
 
-#### MeraCleaner（メラさん）🔥
-- エラーコメント分析・整理（30分ごと）
-- 重複エラーの統合
-- エラーパターン分析
+#### MeraCleaner (Mera-san) 🔥
+- Error comment analysis and cleanup (every 30 minutes)
+- Duplicate error consolidation
+- Error pattern analysis
 
-#### CCLAエージェント（クララちゃん）🤖
-- エラーログ収集・自動修復（5分ごと）
-- Phase 1-3実装（検出→分析→修復）
-- 学習型エラーパターン認識
+#### CCLA Agent (Clara-chan) 🤖
+- Error log collection and auto-repair (every 5 minutes)
+- Phase 1-3 implementation (detection → analysis → repair)
+- Learning-based error pattern recognition
 
-#### CCAGエージェント（カグラちゃん）📝
-- ドキュメント生成・多言語対応
-- APIドキュメント生成
-- README更新
+#### CCAG Agent (Kagura-chan) 📝
+- Documentation generation and multilingual support
+- API documentation generation
+- README updates
 
-#### CCPMエージェント（ドレミちゃん）🔍
-- コードレビュー・リファクタリング提案
-- セキュリティ監査
-- パターンベース問題検出
+#### CCPM Agent (Doremi-chan) 🔍
+- Code review and refactoring suggestions
+- Security audits
+- Pattern-based issue detection
 
-#### MirinOrphanManager（ミリンちゃん）🎋
-- 孤児Issue検出・管理（毎時3分・33分）
-- 放置Issue整理
-- ステータス確認
+#### MirinOrphanManager (Mirin-chan) 🎋
+- Orphan issue detection and management (at :03 and :33 every hour)
+- Abandoned issue cleanup
+- Status verification
 
-### 3. データ構造
+### 3. Data Structure
 
 ```
 PoppoBuilderSuite/
 ├── config/
-│   ├── config.json         # システム設定
-│   └── daemon-config.json  # デーモン設定
+│   ├── config.json         # System configuration
+│   └── daemon-config.json  # Daemon configuration
 ├── .poppo/
-│   ├── config.json         # 言語設定（ja/en）
-│   ├── traceability.yaml   # トレーサビリティデータ
-│   ├── processed-errors.json # 処理済みエラー記録
-│   └── learning-data.json  # 学習データ
+│   ├── config.json         # Language settings (ja/en)
+│   ├── traceability.yaml   # Traceability data
+│   ├── processed-errors.json # Processed error records
+│   └── learning-data.json  # Learning data
 ├── logs/
-│   ├── poppo-*.log         # 一般ログ
-│   ├── issue-*.log         # Issue別ログ
-│   ├── processes-*.log     # プロセスログ
-│   ├── running-tasks.json  # 実行中タスク状態
-│   └── process-state.json  # プロセス状態
+│   ├── poppo-*.log         # General logs
+│   ├── issue-*.log         # Issue-specific logs
+│   ├── processes-*.log     # Process logs
+│   ├── running-tasks.json  # Running task states
+│   └── process-state.json  # Process states
 ├── temp/
-│   ├── instruction-*.txt   # Claude指示ファイル
-│   ├── task-*.pid         # プロセスID
-│   ├── task-*.status      # タスク状態
-│   └── task-*.result      # 実行結果
-└── messages/              # エージェント間通信
+│   ├── instruction-*.txt   # Claude instruction files
+│   ├── task-*.pid         # Process IDs
+│   ├── task-*.status      # Task statuses
+│   └── task-*.result      # Execution results
+└── messages/              # Inter-agent communication
     ├── core/inbox/
     ├── ccpm/inbox/
     └── ccag/inbox/
 ```
 
-## プロセスフロー
+## Process Flow
 
-### 1. Issue処理フロー
+### 1. Issue Processing Flow
 ```
-GitHub Issue（ラベル付き）
+GitHub Issue (with labels)
         ↓
-PoppoBuilder（5分間隔でポーリング）
+PoppoBuilder (polling every 5 minutes)
         ↓
-タスクキュー（優先度付き）
+Task Queue (with priorities)
         ↓
-独立プロセスマネージャー
+Independent Process Manager
         ↓
-Claude CLI（独立プロセス）
+Claude CLI (independent process)
         ↓
-GitHubコメント投稿
-```
-
-### 2. コメント対話フロー
-```
-Issue処理完了 → awaiting-responseラベル
-        ↓
-ユーザーコメント追加
-        ↓
-PoppoBuilderが検出
-        ↓
-コンテキスト付きでClaude実行
-        ↓
-応答コメント投稿
+GitHub Comment Post
 ```
 
-### 3. エラー処理フロー
+### 2. Comment Dialogue Flow
 ```
-エラー発生 → ログ出力
+Issue Processing Complete → awaiting-response label
         ↓
-CCLAエージェントが検出（5分ごと）
+User adds comment
         ↓
-エラーパターン分析
+PoppoBuilder detects
         ↓
-自動修復試行 or Issue作成
+Execute Claude with context
         ↓
-学習データ更新
+Post response comment
 ```
 
-## 主要な設計決定
+### 3. Error Processing Flow
+```
+Error occurs → Log output
+        ↓
+CCLA Agent detects (every 5 minutes)
+        ↓
+Error pattern analysis
+        ↓
+Auto-repair attempt or Issue creation
+        ↓
+Learning data update
+```
 
-### 1. 独立プロセス管理
-- タスクは独立プロセスとして実行
-- PoppoBuilder再起動後も継続実行
-- PIDファイルによるプロセス追跡
-- 結果ファイルによる非同期結果取得
+## Key Design Decisions
 
-### 2. 優先度付きタスクキュー
-- dogfoodingタスクは最優先（優先度100）
-- 通常タスクは優先度50
-- FIFO + 優先度によるスケジューリング
+### 1. Independent Process Management
+- Tasks run as independent processes
+- Continue execution after PoppoBuilder restart
+- Process tracking via PID files
+- Asynchronous result retrieval via result files
 
-### 3. レート制限対応
-- GitHub/Claude APIレート制限を自動管理
-- エクスポネンシャルバックオフ実装
-- 事前チェックによる無駄な起動防止
+### 2. Priority Task Queue
+- Dogfooding tasks have highest priority (100)
+- Regular tasks have priority 50
+- FIFO + priority-based scheduling
 
-### 4. 動的タイムアウト
-- タスクの複雑度に応じて自動調整
-- 実行履歴による学習機能
-- dogfoodingは十分な時間確保
+### 3. Rate Limit Handling
+- Automatic GitHub/Claude API rate limit management
+- Exponential backoff implementation
+- Pre-check to prevent unnecessary launches
 
-### 5. エージェント分離
-- 機能別に特化したエージェント
-- ファイルベースメッセージング
-- 水平スケーリング対応設計
+### 4. Dynamic Timeout
+- Automatic adjustment based on task complexity
+- Learning feature based on execution history
+- Sufficient time allocation for dogfooding
 
-## 現在の実装状況
+### 5. Agent Separation
+- Functionally specialized agents
+- File-based messaging
+- Horizontal scaling ready design
 
-### ✅ 実装済み機能
-1. **基本機能**
-   - Issue自動処理
-   - 独立プロセス管理
-   - コメント追記対応
-   - Dogfooding自動再起動
-   - 多言語対応（ja/en）
+## Current Implementation Status
 
-2. **高度な機能**
-   - プロセス管理ダッシュボード
-   - レート制限対応強化
-   - 動的タイムアウト制御
-   - エラーログ収集（Phase 1-3）
-   - トレーサビリティ機能（Phase 1-3）
-   - 通知機能（Discord/Pushover/Telegram）
-   - エージェント分離アーキテクチャ
+### ✅ Implemented Features
+1. **Basic Features**
+   - Automatic Issue processing
+   - Independent process management
+   - Comment addition support
+   - Dogfooding auto-restart
+   - Multilingual support (ja/en)
 
-3. **運用機能**
-   - マルチプロジェクト対応
-   - グローバルキュー管理
-   - 認証機能付きダッシュボード
-   - 整合性監査機能
+2. **Advanced Features**
+   - Process management dashboard
+   - Enhanced rate limit handling
+   - Dynamic timeout control
+   - Error log collection (Phase 1-3)
+   - Traceability features (Phase 1-3)
+   - Notification features (Discord/Pushover/Telegram)
+   - Agent separation architecture
 
-### 🚧 今後の拡張
-- Kubernetes対応
-- Webhookによるリアルタイム同期
-- 機械学習による最適化
+3. **Operational Features**
+   - Multi-project support
+   - Global queue management
+   - Dashboard with authentication
+   - Consistency audit features
 
-## アーキテクチャ図
+### 🚧 Future Extensions
+- Kubernetes support
+- Real-time sync via Webhooks
+- Machine learning optimization
+
+## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

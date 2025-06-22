@@ -1,0 +1,535 @@
+{
+  "title": "PoppoBuilder Suite - 統合パフォーマンスベンチマーク",
+  "executionInfo": {
+    "startTime": "2025-06-22T06:54:31.307Z",
+    "endTime": "2025-06-22T06:55:31.816Z",
+    "totalDuration": 60509,
+    "testMode": "short",
+    "benchmarkTypes": [
+      "performance"
+    ]
+  },
+  "results": {
+    "performance": {
+      "type": "performance",
+      "duration": 60508,
+      "profile": {
+        "timestamp": 1750575331314,
+        "uptime": 60.033500792,
+        "activeHandles": 2,
+        "activeRequests": 1,
+        "activeOperations": 0,
+        "resourceUsage": {
+          "cpu": {
+            "current": 0.00035879465137028037,
+            "average": 0.008624395254646897,
+            "peak": 0.18145867281099934
+          },
+          "memory": {
+            "current": 75.1354412070399,
+            "average": 77.47485552277156,
+            "peak": 83.76805882760532
+          },
+          "eventLoop": {
+            "current": 1001.232458,
+            "average": 1000.4644907627119,
+            "peak": 1004.92475
+          },
+          "gc": {
+            "frequency": 6,
+            "totalPauseTime": 2.3831660002470016,
+            "avgPauseTime": 0.3971943333745003
+          }
+        },
+        "operationPerformance": {},
+        "memoryAnalysis": {
+          "current": {
+            "heapUsed": 5,
+            "heapTotal": 7,
+            "rss": 22,
+            "external": 2
+          },
+          "trend": {
+            "direction": "increasing",
+            "rate": 0.037807004091322705
+          },
+          "fragmentation": 25
+        },
+        "recommendations": [
+          {
+            "type": "eventloop",
+            "severity": "medium",
+            "message": "Event loop lag detected. Consider using async operations.",
+            "action": "optimize_blocking_operations"
+          }
+        ]
+      },
+      "performanceTests": [
+        {
+          "id": "test-operation-0",
+          "startTime": "122522544553375",
+          "startTimestamp": 1750575331316,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 0
+          },
+          "memoryAtStart": {
+            "rss": 24231936,
+            "heapTotal": 7389184,
+            "heapUsed": 5791352,
+            "external": 1951611,
+            "arrayBuffers": 49403
+          },
+          "endTime": "122522594410458",
+          "endTimestamp": 1750575331366,
+          "duration": 49.857083,
+          "memoryAtEnd": {
+            "rss": 26443776,
+            "heapTotal": 8437760,
+            "heapUsed": 6095456,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 2211840,
+            "heapUsed": 304104,
+            "heapTotal": 1048576
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-1",
+          "startTime": "122522594635083",
+          "startTimestamp": 1750575331366,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 1
+          },
+          "memoryAtStart": {
+            "rss": 26509312,
+            "heapTotal": 8437760,
+            "heapUsed": 6114376,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522644249875",
+          "endTimestamp": 1750575331416,
+          "duration": 49.614792,
+          "memoryAtEnd": {
+            "rss": 26509312,
+            "heapTotal": 8437760,
+            "heapUsed": 6015736,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": -98640,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-2",
+          "startTime": "122522644273916",
+          "startTimestamp": 1750575331416,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 2
+          },
+          "memoryAtStart": {
+            "rss": 26525696,
+            "heapTotal": 8437760,
+            "heapUsed": 6018808,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522694248375",
+          "endTimestamp": 1750575331466,
+          "duration": 49.974459,
+          "memoryAtEnd": {
+            "rss": 26525696,
+            "heapTotal": 8437760,
+            "heapUsed": 5792536,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": -226272,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-3",
+          "startTime": "122522694259500",
+          "startTimestamp": 1750575331466,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 3
+          },
+          "memoryAtStart": {
+            "rss": 26525696,
+            "heapTotal": 8437760,
+            "heapUsed": 5795688,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522744256791",
+          "endTimestamp": 1750575331516,
+          "duration": 49.997291,
+          "memoryAtEnd": {
+            "rss": 26542080,
+            "heapTotal": 8437760,
+            "heapUsed": 6254856,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 16384,
+            "heapUsed": 459168,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-4",
+          "startTime": "122522744292583",
+          "startTimestamp": 1750575331516,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 4
+          },
+          "memoryAtStart": {
+            "rss": 26558464,
+            "heapTotal": 8437760,
+            "heapUsed": 6257896,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522794252833",
+          "endTimestamp": 1750575331566,
+          "duration": 49.96025,
+          "memoryAtEnd": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5613608,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 16384,
+            "heapUsed": -644288,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-5",
+          "startTime": "122522794274333",
+          "startTimestamp": 1750575331566,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 5
+          },
+          "memoryAtStart": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5616912,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522844249958",
+          "endTimestamp": 1750575331616,
+          "duration": 49.975625,
+          "memoryAtEnd": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 6150960,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": 534048,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-6",
+          "startTime": "122522844266416",
+          "startTimestamp": 1750575331616,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 6
+          },
+          "memoryAtStart": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 6154080,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522894246625",
+          "endTimestamp": 1750575331666,
+          "duration": 49.980209,
+          "memoryAtEnd": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5956736,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": -197344,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-7",
+          "startTime": "122522894254458",
+          "startTimestamp": 1750575331666,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 7
+          },
+          "memoryAtStart": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5959936,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522944247500",
+          "endTimestamp": 1750575331716,
+          "duration": 49.993042,
+          "memoryAtEnd": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5641728,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": -318208,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-8",
+          "startTime": "122522944255875",
+          "startTimestamp": 1750575331716,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 8
+          },
+          "memoryAtStart": {
+            "rss": 26574848,
+            "heapTotal": 8437760,
+            "heapUsed": 5645008,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122522994258541",
+          "endTimestamp": 1750575331766,
+          "duration": 50.002666,
+          "memoryAtEnd": {
+            "rss": 26640384,
+            "heapTotal": 8437760,
+            "heapUsed": 6187808,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 65536,
+            "heapUsed": 542800,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        },
+        {
+          "id": "test-operation-9",
+          "startTime": "122522994369791",
+          "startTimestamp": 1750575331766,
+          "metadata": {
+            "type": "benchmark",
+            "iteration": 9
+          },
+          "memoryAtStart": {
+            "rss": 26656768,
+            "heapTotal": 8437760,
+            "heapUsed": 6199352,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "endTime": "122523044261250",
+          "endTimestamp": 1750575331816,
+          "duration": 49.891459,
+          "memoryAtEnd": {
+            "rss": 26656768,
+            "heapTotal": 8437760,
+            "heapUsed": 5583640,
+            "external": 1943419,
+            "arrayBuffers": 41211
+          },
+          "memoryDelta": {
+            "rss": 0,
+            "heapUsed": -615712,
+            "heapTotal": 0
+          },
+          "result": {
+            "success": true
+          }
+        }
+      ],
+      "metrics": {
+        "timestamp": "2025-06-22T06:55:31.816Z",
+        "uptime": 60.53486,
+        "baselines": {
+          "cpu": 51351.137931034486,
+          "memory": 5689980.9655172415,
+          "eventLoop": 1.1430202068965516
+        },
+        "currentMetrics": {
+          "cpu": {
+            "timestamp": 1750575330367,
+            "user": 70471,
+            "system": 18190,
+            "total": 88661,
+            "percentage": 0.00035879465137028037
+          },
+          "memory": {
+            "timestamp": 1750575330367,
+            "rss": 22872064,
+            "heapTotal": 7389184,
+            "heapUsed": 5551896,
+            "external": 1943419,
+            "arrayBuffers": 41211,
+            "heapUsagePercent": 75.1354412070399
+          },
+          "eventLoop": {
+            "timestamp": 1750575330367,
+            "lag": "1001232458",
+            "lagMS": 1001.232458
+          }
+        },
+        "resourceUsage": {
+          "cpu": {
+            "current": 0.00035879465137028037,
+            "average": 0.008624395254646897,
+            "peak": 0.18145867281099934
+          },
+          "memory": {
+            "current": 75.1354412070399,
+            "average": 77.47485552277156,
+            "peak": 83.76805882760532
+          },
+          "eventLoop": {
+            "current": 1001.232458,
+            "average": 1000.4644907627119,
+            "peak": 1004.92475
+          },
+          "gc": {
+            "frequency": 6,
+            "totalPauseTime": 2.3831660002470016,
+            "avgPauseTime": 0.3971943333745003
+          }
+        },
+        "operationStats": {
+          "benchmark": {
+            "count": 10,
+            "totalDuration": 499.246876,
+            "minDuration": 49.614792,
+            "maxDuration": 50.002666,
+            "avgDuration": 49.9246876,
+            "p50Duration": 49.974459,
+            "p95Duration": 50.002666,
+            "p99Duration": 50.002666,
+            "errorRate": 0,
+            "memoryImpact": {
+              "totalRssDelta": 2310144,
+              "totalHeapDelta": -260344,
+              "avgRssDelta": 231014.4,
+              "avgHeapDelta": -26034.4
+            },
+            "durations": [
+              49.857083,
+              49.614792,
+              49.974459,
+              49.997291,
+              49.96025,
+              49.975625,
+              49.980209,
+              49.993042,
+              50.002666,
+              49.891459
+            ]
+          }
+        },
+        "memoryAnalysis": {
+          "current": {
+            "heapUsed": 5,
+            "heapTotal": 7,
+            "rss": 22,
+            "external": 2
+          },
+          "trend": {
+            "direction": "increasing",
+            "rate": 0.037807004091322705
+          },
+          "fragmentation": 25
+        },
+        "recommendations": [
+          {
+            "type": "eventloop",
+            "severity": "medium",
+            "message": "Event loop lag detected. Consider using async operations.",
+            "action": "optimize_blocking_operations"
+          }
+        ],
+        "activeOperations": 0,
+        "totalMetricsCollected": {
+          "cpu": 59,
+          "memory": 59,
+          "eventLoop": 59,
+          "gc": 6
+        }
+      },
+      "timestamp": "2025-06-22T06:55:31.816Z"
+    }
+  },
+  "overallScore": 61,
+  "recommendations": [],
+  "systemInfo": {
+    "nodeVersion": "v23.11.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpuCount": 8,
+    "totalMemory": "8GB"
+  },
+  "timestamp": "2025-06-22T06:55:31.817Z"
+}

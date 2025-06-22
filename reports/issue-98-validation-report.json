@@ -1,0 +1,44 @@
+{
+  "timestamp": "2025-06-21T17:04:43.267Z",
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "successRate": "100.0%"
+  },
+  "results": [
+    {
+      "test": "ファイル構造",
+      "status": "PASS",
+      "details": "必要ファイル 2件中 2件存在"
+    },
+    {
+      "test": "二重起動防止",
+      "status": "PASS",
+      "details": "2つ目のプロセスが正しくブロックされ、適切に終了"
+    },
+    {
+      "test": "二重起動防止",
+      "status": "PASS",
+      "details": "2つ目のプロセスが正しくブロックされ、適切に終了"
+    },
+    {
+      "test": "状態管理",
+      "status": "PASS",
+      "details": "ロックファイルの作成・削除が正常"
+    },
+    {
+      "test": "エラーハンドリング",
+      "status": "PASS",
+      "details": "非ゼロ終了コード: 1"
+    },
+    {
+      "test": "クリーンアップ処理",
+      "status": "PASS",
+      "details": "SIGTERM受信後のクリーンアップが正常"
+    }
+  ],
+  "recommendations": [
+    "実装は適切に完了しています。本番環境での動作確認を推奨します。"
+  ]
+}

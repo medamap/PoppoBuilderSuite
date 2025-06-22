@@ -8,8 +8,8 @@ const GitHubClient = require('./github-client');
 const { createLogger } = require('./logger');
 
 /**
- * PoppoBuilderワーカー
- * 特定のプロジェクトのタスクを処理する
+ * PoppoBuilder Worker
+ * Processes tasks for a specific project
  */
 class PoppoWorker {
   constructor(projectId) {
@@ -27,35 +27,35 @@ class PoppoWorker {
   }
   
   /**
-   * ワーカーを初期化
+   * Initialize worker
    */
   async initialize() {
     try {
-      this.logger.info('ワーカーを初期化しています...', {
+      this.logger.info('Initializing worker...', {
         projectId: this.projectId,
         projectPath: this.projectPath,
         daemonUrl: this.daemonUrl
       });
       
-      // プロジェクト設定を読み込み
+      // Load project configuration
       const projectConfigPath = path.join(this.projectPath, '.poppo', 'project.json');
       const configData = await fs.readFile(projectConfigPath, 'utf-8');
       this.projectConfig = JSON.parse(configData);
       
-      // シグナルハンドラーを設定
+      // Set up signal handlers
       process.on('SIGINT', () => this.shutdown());
       process.on('SIGTERM', () => this.shutdown());
       
-      this.logger.info('ワーカーの初期化が完了しました');
+      this.logger.info('Worker initialization completed');
       
     } catch (error) {
-      this.logger.error('ワーカーの初期化に失敗しました:', error);
+      this.logger.error('Worker initialization failed:', error);
       throw error;
     }
   }
   
   /**
-   * デーモンAPIを呼び出し
+   * Call daemon API
    */
   async callDaemonApi(endpoint, method = 'GET', data = null) {
     try {
@@ -67,13 +67,13 @@ class PoppoWorker {
       });
       return response.data;
     } catch (error) {
-      this.logger.error('デーモンAPI呼び出しエラー:', error.message);
+      this.logger.error('Daemon API call error:', error.message);
       throw error;
     }
   }
   
   /**
-   * 次のタスクを取得
+   * Get next task
    */
   async getNextTask() {
     try {
@@ -88,7 +88,7 @@ class PoppoWorker {
       return null;
     } catch (error) {
       if (error.response && error.response.status === 404) {
-        // タスクがない場合
+        // No tasks available
         return null;
       }
       throw error;
@@ -96,25 +96,25 @@ class PoppoWorker {
   }
   
   /**
-   * タスクを処理
+   * Process task
    */
   async processTask(task) {
     this.currentTask = task;
     const startTime = Date.now();
     
     try {
-      this.logger.info('タスクの処理を開始します', {
+      this.logger.info('Starting task processing', {
         taskId: task.id,
         issueNumber: task.issueNumber
       });
       
-      // Issueの詳細を取得
+      // Get issue details
       const issue = await this.github.getIssue(task.issueNumber);
       
-      // システムプロンプトを構築
+      // Build system prompt
       const systemPrompt = this.buildSystemPrompt(issue);
       
-      // Claudeで処理
+      // Process with Claude
       const result = await this.processManager.executeTask({
         issueNumber: task.issueNumber,
         issueTitle: issue.title,
@@ -124,11 +124,11 @@ class PoppoWorker {
         timeout: this.getTaskTimeout(issue.labels)
       });
       
-      // 結果をコメントとして投稿
+      // Post result as comment
       if (result.success) {
         await this.github.postComment(task.issueNumber, result.output);
         
-        // タスクを完了
+        // Complete task
         await this.callDaemonApi(`/api/queue/complete/${task.id}`, 'POST', {
           result: {
             success: true,
@@ -137,12 +137,12 @@ class PoppoWorker {
           }
         });
         
-        this.logger.info('タスクを正常に完了しました', {
+        this.logger.info('Task completed successfully', {
           taskId: task.id,
           executionTime: Date.now() - startTime
         });
       } else {
-        throw new Error(result.error || 'タスクの実行に失敗しました');
+        throw new Error(result.error || 'Task execution failed');
       }
       
     } catch (error) {

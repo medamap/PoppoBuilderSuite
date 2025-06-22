@@ -2,29 +2,30 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * PoppoBuilder設定読み込みユーティリティ
+ * PoppoBuilder Configuration Loading Utility
  * 
- * 設定の優先順位:
- * 1. 環境変数 (POPPO_*)
- * 2. プロジェクト設定 (.poppo/config.json)
- * 3. グローバル設定 (~/.poppobuilder/config.json)
- * 4. システムデフォルト (config/defaults.json)
+ * Configuration priority:
+ * 1. Environment variables (POPPO_*)
+ * 2. Project configuration (.poppo/config.json)
+ * 3. Global configuration (~/.poppobuilder/config.json)
+ * 4. System defaults (config/defaults.json)
  */
 class ConfigLoader {
   constructor() {
     this.projectConfigPath = path.join(process.cwd(), '.poppo', 'config.json');
     this.globalConfigPath = path.join(require('os').homedir(), '.poppobuilder', 'config.json');
     this.systemDefaultPath = path.join(__dirname, '../config/defaults.json');
+    this.templatesDir = path.join(__dirname, '../config/templates');
     
-    // システムデフォルト設定を読み込み
+    // Load system default configuration
     this.systemDefaultConfig = this.loadSystemDefaults();
     
-    // 環境変数のプレフィックス
+    // Environment variable prefix
     this.envPrefix = 'POPPO_';
   }
 
   /**
-   * システムデフォルト設定の読み込み
+   * Load system default configuration
    */
   loadSystemDefaults() {
     try {
@@ -33,10 +34,10 @@ class ConfigLoader {
         return JSON.parse(content);
       }
     } catch (error) {
-      console.warn(`システムデフォルト設定読み込みエラー: ${error.message}`);
+      console.warn(`System default configuration loading error: ${error.message}`);
     }
     
-    // フォールバック用のハードコードされたデフォルト
+    // Hardcoded fallback defaults
     return {
       language: {
         primary: 'en',
@@ -50,28 +51,28 @@ class ConfigLoader {
   }
 
   /**
-   * 設定を読み込み（環境変数→プロジェクト→グローバル→システムデフォルトの順）
+   * Load configuration (environment variables → project → global → system defaults)
    */
   loadConfig() {
-    // 階層順に設定を読み込み（優先度の低い順）
+    // Load configurations in hierarchical order (lowest priority first)
     const configs = [
-      this.systemDefaultConfig,           // 4. システムデフォルト
-      this.loadGlobalConfig(),           // 3. グローバル設定
-      this.loadProjectConfig(),          // 2. プロジェクト設定
-      this.loadEnvironmentConfig()       // 1. 環境変数（最優先）
+      this.systemDefaultConfig,           // 4. System defaults
+      this.loadGlobalConfig(),           // 3. Global configuration
+      this.loadProjectConfig(),          // 2. Project configuration
+      this.loadEnvironmentConfig()       // 1. Environment variables (highest priority)
     ];
 
-    // 設定をマージ
+    // Merge configurations
     const mergedConfig = this.mergeConfigs(configs);
     
-    // 設定値のバリデーション
+    // Validate configuration values
     this.validateConfig(mergedConfig);
     
     return mergedConfig;
   }
 
   /**
-   * プロジェクト設定読み込み
+   * Load project configuration
    */
   loadProjectConfig() {
     try {
@@ -80,13 +81,13 @@ class ConfigLoader {
         return JSON.parse(content);
       }
     } catch (error) {
-      console.warn(`プロジェクト設定読み込みエラー: ${error.message}`);
+      console.warn(`Project configuration loading error: ${error.message}`);
     }
     return {};
   }
 
   /**
-   * グローバル設定読み込み
+   * Load global configuration
    */
   loadGlobalConfig() {
     try {
@@ -95,18 +96,18 @@ class ConfigLoader {
         return JSON.parse(content);
       }
     } catch (error) {
-      console.warn(`グローバル設定読み込みエラー: ${error.message}`);
+      console.warn(`Global configuration loading error: ${error.message}`);
     }
     return {};
   }
 
   /**
-   * 環境変数から設定を読み込み
+   * Load configuration from environment variables
    */
   loadEnvironmentConfig() {
     const envConfig = {};
     
-    // 環境変数をスキャンしてPOPPO_で始まるものを収集
+    // Scan environment variables and collect those starting with POPPO_
     for (const [key, value] of Object.entries(process.env)) {
       if (key.startsWith(this.envPrefix)) {
         const configPath = this.parseEnvKey(key);
@@ -120,8 +121,8 @@ class ConfigLoader {
   }
 
   /**
-   * 環境変数名を設定パスに変換
-   * 例: POPPO_LANGUAGE_PRIMARY -> ['language', 'primary']
+   * Convert environment variable name to configuration path
+   * Example: POPPO_LANGUAGE_PRIMARY -> ['language', 'primary']
    */
   parseEnvKey(envKey) {
     const key = envKey.substring(this.envPrefix.length);
@@ -373,33 +374,126 @@ Current task: Issue #${issueNumber} ${isDogfooding ? '(DOGFOODING)' : ''}`
   }
 
   /**
-   * 設定の階層情報を表示
+   * Load configuration template by language
+   */
+  loadTemplate(language) {
+    const templatePath = path.join(this.templatesDir, `config.${language}.json`);
+    
+    try {
+      if (fs.existsSync(templatePath)) {
+        const content = fs.readFileSync(templatePath, 'utf-8');
+        const template = JSON.parse(content);
+        // Remove meta information for production use
+        delete template._meta;
+        return template;
+      }
+    } catch (error) {
+      console.warn(`Template loading error for language '${language}': ${error.message}`);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get available configuration templates
+   */
+  getAvailableTemplates() {
+    const templates = [];
+    
+    try {
+      if (fs.existsSync(this.templatesDir)) {
+        const files = fs.readdirSync(this.templatesDir);
+        
+        for (const file of files) {
+          if (file.startsWith('config.') && file.endsWith('.json')) {
+            const language = file.replace('config.', '').replace('.json', '');
+            const templatePath = path.join(this.templatesDir, file);
+            
+            try {
+              const content = fs.readFileSync(templatePath, 'utf-8');
+              const template = JSON.parse(content);
+              
+              templates.push({
+                language,
+                path: templatePath,
+                meta: template._meta || { description: `Configuration template for ${language}` }
+              });
+            } catch (error) {
+              console.warn(`Error reading template ${file}: ${error.message}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Error reading templates directory: ${error.message}`);
+    }
+    
+    return templates;
+  }
+
+  /**
+   * Create configuration from template
+   */
+  createFromTemplate(language, targetPath = null) {
+    const template = this.loadTemplate(language);
+    
+    if (!template) {
+      throw new Error(`Template for language '${language}' not found`);
+    }
+    
+    const outputPath = targetPath || path.join(process.cwd(), 'config', 'config.json');
+    const outputDir = path.dirname(outputPath);
+    
+    // Ensure output directory exists
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    
+    // Write template to target location
+    fs.writeFileSync(outputPath, JSON.stringify(template, null, 2));
+    
+    console.log(`Configuration created from template '${language}' at: ${outputPath}`);
+    return template;
+  }
+
+  /**
+   * Display configuration hierarchy information
    */
   displayConfigHierarchy() {
     const sources = this.getConfigSources();
+    const templates = this.getAvailableTemplates();
     
-    console.log('\nPoppoBuilder設定階層情報:');
-    console.log('========================');
-    console.log('優先順位（高→低）:');
-    console.log('1. 環境変数:');
+    console.log('\nPoppoBuilder Configuration Hierarchy:');
+    console.log('====================================');
+    console.log('Priority (High → Low):');
+    console.log('1. Environment Variables:');
     const envVars = sources.environment.variables;
     if (Object.keys(envVars).length > 0) {
       Object.entries(envVars).forEach(([key, value]) => {
         console.log(`   ${key} = ${value}`);
       });
     } else {
-      console.log('   (設定なし)');
+      console.log('   (No settings)');
     }
     
-    console.log(`2. プロジェクト設定: ${sources.project.path}`);
-    console.log(`   ${sources.project.exists ? '✓ 存在' : '✗ 存在しない'}`);
+    console.log(`2. Project Configuration: ${sources.project.path}`);
+    console.log(`   ${sources.project.exists ? '✓ Exists' : '✗ Not found'}`);
     
-    console.log(`3. グローバル設定: ${sources.global.path}`);
-    console.log(`   ${sources.global.exists ? '✓ 存在' : '✗ 存在しない'}`);
+    console.log(`3. Global Configuration: ${sources.global.path}`);
+    console.log(`   ${sources.global.exists ? '✓ Exists' : '✗ Not found'}`);
     
-    console.log(`4. システムデフォルト: ${sources.systemDefault.path}`);
-    console.log(`   ${sources.systemDefault.exists ? '✓ 存在' : '✗ 存在しない'}`);
-    console.log('========================\n');
+    console.log(`4. System Defaults: ${sources.systemDefault.path}`);
+    console.log(`   ${sources.systemDefault.exists ? '✓ Exists' : '✗ Not found'}`);
+    
+    if (templates.length > 0) {
+      console.log('\nAvailable Templates:');
+      templates.forEach(template => {
+        console.log(`   ${template.language}: ${template.meta.description || 'No description'}`);
+        console.log(`     Path: ${template.path}`);
+      });
+    }
+    
+    console.log('====================================\n');
   }
 }
 

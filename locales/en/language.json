@@ -1,0 +1,24 @@
+{
+  "english": "English",
+  "japanese": "Japanese",
+  "spanish": "Spanish",
+  "french": "French",
+  "german": "German",
+  "chinese": "Chinese",
+  "korean": "Korean",
+  "portuguese": "Portuguese",
+  "italian": "Italian",
+  "russian": "Russian",
+  "codes": {
+    "en": "en",
+    "ja": "ja",
+    "es": "es",
+    "fr": "fr",
+    "de": "de",
+    "zh": "zh",
+    "ko": "ko",
+    "pt": "pt",
+    "it": "it",
+    "ru": "ru"
+  }
+}

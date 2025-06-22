@@ -10,7 +10,8 @@ const chalk = require('chalk');
 const path = require('path');
 const fs = require('fs');
 const packageInfo = require('../package.json');
-const i18n = require('../lib/i18n');
+const { t, initI18n } = require('../lib/i18n');
+const runtimeSwitcher = require('../lib/i18n/runtime-switcher');
 
 // コマンドの実装をインポート
 const InitCommand = require('../lib/commands/init');
@@ -21,100 +22,104 @@ const ConfigCommand = require('../lib/commands/config');
 // プログラム設定
 const program = new Command();
 
-program
-  .name('poppobuilder')
-  .description('AI-powered autonomous GitHub issue processor using Claude API')
-  .version(packageInfo.version)
-  .option('-v, --verbose', 'verbose output')
-  .option('-q, --quiet', 'quiet output');
+// Setup program (description will be set after i18n init)
+function setupProgram() {
+  program
+    .name('poppobuilder')
+    .description(t('commands:cli.description'))
+    .version(packageInfo.version)
+    .option('-v, --verbose', t('commands:cli.options.verbose'))
+    .option('-q, --quiet', t('commands:cli.options.quiet'))
+    .option('--lang <language>', t('commands:cli.options.lang'), 'en');
 
-// init コマンド - プロジェクト初期化
-program
-  .command('init')
-  .description('Initialize PoppoBuilder for this project')
-  .option('-f, --force', 'overwrite existing configuration')
-  .option('-l, --lang <language>', 'primary language (en/ja)', 'en')
-  .option('-d, --dir <directory>', 'project directory to initialize')
-  .option('-t, --template <template>', 'use a project template (default/minimal/advanced)')
-  .option('--description <desc>', 'project description')
-  .option('--priority <priority>', 'project priority (0-100)', '50')
-  .option('--tags <tags>', 'comma-separated project tags')
-  .option('--check-interval <ms>', 'check interval in milliseconds')
-  .option('--max-concurrent <num>', 'maximum concurrent tasks')
-  .option('--cpu-weight <weight>', 'CPU weight for resource allocation')
-  .option('--memory-limit <limit>', 'memory limit (e.g., 512M, 2G)')
-  .option('--disabled', 'register project as disabled')
-  .option('--no-agents', 'disable agent features')
-  .option('--no-interactive', 'skip interactive setup')
-  .action(async (options) => {
-    try {
-      const initCommand = new InitCommand();
-      await initCommand.execute(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
+  // init コマンド - プロジェクト初期化
+  program
+    .command('init')
+    .description(t('commands:init.description'))
+    .option('-f, --force', t('commands:init.options.force'))
+    .option('-l, --lang <language>', t('commands:init.options.lang'), 'en')
+    .option('-d, --dir <directory>', t('commands:init.options.dir'))
+    .option('-t, --template <template>', t('commands:init.options.template'))
+    .option('--description <desc>', t('commands:init.options.description'))
+    .option('--priority <priority>', t('commands:init.options.priority'), '50')
+    .option('--tags <tags>', t('commands:init.options.tags'))
+    .option('--check-interval <ms>', t('commands:init.options.checkInterval'))
+    .option('--max-concurrent <num>', t('commands:init.options.maxConcurrent'))
+    .option('--cpu-weight <weight>', t('commands:init.options.cpuWeight'))
+    .option('--memory-limit <limit>', t('commands:init.options.memoryLimit'))
+    .option('--disabled', t('commands:init.options.disabled'))
+    .option('--no-agents', t('commands:init.options.noAgents'))
+    .option('--no-interactive', t('commands:init.options.noInteractive'))
+    .action(async (options) => {
+      try {
+        const initCommand = new InitCommand();
+        await initCommand.execute(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
 
-// start コマンド - PoppoBuilder起動
-program
-  .command('start')
-  .description('Start PoppoBuilder service')
-  .option('-d, --daemon', 'run as daemon')
-  .option('-c, --config <path>', 'config file path', '.poppobuilder/config.json')
-  .option('--agents', 'enable agent mode')
-  .option('--dry-run', 'simulate without making changes')
-  .action(async (options) => {
-    try {
-      const startCommand = new StartCommand();
-      await startCommand.execute(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
+  // start コマンド - PoppoBuilder起動
+  program
+    .command('start')
+    .description(t('commands:start.description'))
+    .option('-d, --daemon', t('commands:start.options.daemon'))
+    .option('-c, --config <path>', t('commands:start.options.config'), '.poppobuilder/config.json')
+    .option('--agents', t('commands:start.options.agents'))
+    .option('--dry-run', t('commands:start.options.dryRun'))
+    .action(async (options) => {
+      try {
+        const startCommand = new StartCommand();
+        await startCommand.execute(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
 
-// stop コマンド - PoppoBuilder停止
-program
-  .command('stop')
-  .description('Stop PoppoBuilder service')
-  .option('--force', 'force stop all processes')
-  .action(async (options) => {
-    try {
-      const { stopService } = require('../lib/commands/stop');
-      await stopService(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
+  // stop コマンド - PoppoBuilder停止
+  program
+    .command('stop')
+    .description(t('commands:stop.description'))
+    .option('--force', t('commands:stop.options.force'))
+    .action(async (options) => {
+      try {
+        const { stopService } = require('../lib/commands/stop');
+        await stopService(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
 
-// status コマンド - 状態確認
-program
-  .command('status [projectId]')
-  .description('Show PoppoBuilder status (optionally for specific project)')
-  .option('-j, --json', 'output as JSON')
-  .option('-w, --watch', 'watch mode')
-  .action(async (projectId, options) => {
-    try {
-      const statusCommand = new StatusCommand();
-      await statusCommand.execute({ ...options, projectId });
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
+  // status コマンド - 状態確認
+  program
+    .command('status [projectId]')
+    .description(t('commands:status.description'))
+    .option('-j, --json', t('commands:status.options.json'))
+    .option('-w, --watch', t('commands:status.options.watch'))
+    .action(async (projectId, options) => {
+      try {
+        const statusCommand = new StatusCommand();
+        await statusCommand.execute({ ...options, projectId });
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
 
-// config コマンド - 設定管理
-program
-  .command('config [action] [args...]')
-  .description('Manage PoppoBuilder configuration')
-  .option('-g, --global', 'use global config')
-  .option('-l, --list', 'list all settings')
-  .option('-e, --edit', 'open config in editor')
-  .option('--max-processes <n>', 'set maximum concurrent processes')
-  .option('--strategy <strategy>', 'set scheduling strategy (round-robin, priority, weighted)')
-  .allowUnknownOption()
+  // config コマンド - 設定管理
+  program
+    .command('config [action] [args...]')
+    .description(t('commands:config.description'))
+    .option('-g, --global', t('commands:config.options.global'))
+    .option('-l, --list', t('commands:config.options.list'))
+    .option('-e, --edit', t('commands:config.options.edit'))
+    .option('--max-processes <n>', t('commands:config.options.maxProcesses'))
+    .option('--strategy <strategy>', t('commands:config.options.strategy'))
+    .option('--lang <language>', 'set global language (en, ja)')
+    .allowUnknownOption()
   .action(async (action, args, options) => {
     try {
       const configCommand = new ConfigCommand();
@@ -124,6 +129,8 @@ program
         await configCommand.execute('--max-processes', [options.maxProcesses]);
       } else if (options.strategy) {
         await configCommand.execute('--strategy', [options.strategy]);
+      } else if (options.lang) {
+        await configCommand.execute('--lang', [options.lang]);
       } else if (options.list) {
         await configCommand.execute('--list', []);
       } else {
@@ -165,233 +172,329 @@ program
   .option('-j, --json', 'output as JSON')
   .option('-v, --verbose', 'verbose output')
   .option('--detach', 'run daemon in detached mode', true)
-  .option('--no-detach', 'run daemon in foreground')
-  .action(async (action, options) => {
-    try {
-      const daemonCommand = new DaemonCommand();
-      await daemonCommand.execute(action, options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      if (options.verbose) {
-        console.error(error.stack);
+    .option('--no-detach', t('commands:daemon.options.noDetach'))
+    .action(async (action, options) => {
+      try {
+        const daemonCommand = new DaemonCommand();
+        await daemonCommand.execute(action, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        if (options.verbose) {
+          console.error(error.stack);
+        }
+        process.exit(1);
       }
-      process.exit(1);
+    });
+
+  // project コマンド - プロジェクト管理
+  program.addCommand(require('../lib/commands/project')());
+
+  // template コマンド - テンプレート管理
+  const TemplateCommand = require('../lib/commands/template');
+  const templateCommand = new TemplateCommand();
+  templateCommand.register(program);
+
+  // list コマンド - プロジェクト一覧
+  const ListCommand = require('../lib/commands/list');
+  program
+    .command('list')
+    .alias('ls')
+    .description(t('commands:list.description'))
+    .option('--enabled', t('commands:list.options.enabled'))
+    .option('--disabled', t('commands:list.options.disabled'))
+    .option('--tag <tag>', t('commands:list.options.tag'))
+    .option('--sort <field>', t('commands:list.options.sort'), 'name')
+    .option('--table', t('commands:list.options.table'))
+    .option('--json', t('commands:list.options.json'))
+    .option('--status', t('commands:list.options.status'))
+    .option('-v, --verbose', t('commands:list.options.verbose'))
+    .option('-q, --quiet', t('commands:list.options.quiet'))
+    .action(async (options) => {
+      try {
+        const listCommand = new ListCommand();
+        await listCommand.execute(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // logs コマンド - ログ表示
+  const LogsCommand = require('../lib/commands/logs');
+  const logsCommandDef = LogsCommand.getCommandDefinition();
+  const logsCommand = program
+    .command(logsCommandDef.command)
+    .description(t('commands:logs.description'));
+
+  // Add all options from command definition
+  logsCommandDef.options.forEach(option => {
+    logsCommand.option(...option);
+  });
+
+  logsCommand.action(logsCommandDef.action);
+
+  // monitor コマンド - システム監視
+  const MonitorCommand = require('../lib/commands/monitor');
+  const monitorCommandDef = MonitorCommand.getCommandDefinition();
+  const monitorCommand = program
+    .command(monitorCommandDef.command)
+    .description(t('commands:monitor.description'));
+
+  // Add all options from command definition
+  monitorCommandDef.options.forEach(option => {
+    monitorCommand.option(...option);
+  });
+
+  monitorCommand.action(monitorCommandDef.action);
+
+  // memory コマンド - メモリ監視・最適化
+  const MemoryCommand = require('../lib/commands/memory');
+  program
+    .command('memory [action]')
+    .description('Monitor and optimize memory usage')
+    .option('--json', 'output in JSON format')
+    .option('--interval <ms>', 'monitoring interval in milliseconds')
+    .option('--graph', 'show graph in monitor mode')
+    .option('--clear', 'clear screen in monitor mode')
+    .option('--output <file>', 'output file for reports/snapshots')
+    .option('--format <format>', 'report format (json, markdown)')
+    .option('--samples <n>', 'number of history samples')
+    .option('--clear-cache', 'clear require cache during optimization')
+    .option('--low-priority', 'set process to low priority')
+    .option('--quiet', 'minimal output')
+    .action(async (action, options) => {
+      try {
+        const memoryCommand = new MemoryCommand();
+        await memoryCommand.execute(action, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // enable コマンド - プロジェクト有効化
+  const EnableCommand = require('../lib/commands/enable');
+  program
+    .command('enable <projectname>')
+    .alias('on')
+    .description(t('commands:enable.description'))
+    .action(async (projectName, options) => {
+      try {
+        const enableCommand = new EnableCommand();
+        await enableCommand.execute(projectName, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // disable コマンド - プロジェクト無効化
+  const DisableCommand = require('../lib/commands/disable');
+  program
+    .command('disable <projectname>')
+    .alias('off')
+    .description(t('commands:disable.description'))
+    .option('--force', t('commands:disable.options.force'))
+    .action(async (projectName, options) => {
+      try {
+        const disableCommand = new DisableCommand();
+        await disableCommand.execute(projectName, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // remove コマンド - プロジェクト削除
+  const RemoveCommand = require('../lib/commands/remove');
+  program
+    .command('remove <projectname>')
+    .alias('rm')
+    .alias('del')
+    .description(t('commands:remove.description'))
+    .option('--force', t('commands:remove.options.force'))
+    .option('--clean', t('commands:remove.options.clean'))
+    .action(async (projectName, options) => {
+      try {
+        const removeCommand = new RemoveCommand();
+        await removeCommand.execute(projectName, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // move コマンド - プロジェクト移動
+  const MoveCommand = require('../lib/commands/move');
+  program
+    .command('move <projectIdOrPath> <newPath>')
+    .alias('mv')
+    .description(t('commands:move.description'))
+    .option('--force', t('commands:move.options.force'))
+    .option('--parents', t('commands:move.options.parents'))
+    .option('--merge', t('commands:move.options.merge'))
+    .option('--symlink', t('commands:move.options.symlink'))
+    .action(async (projectIdOrPath, newPath, options) => {
+      try {
+        const moveCommand = new MoveCommand();
+        await moveCommand.execute(projectIdOrPath, newPath, options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // doctor コマンド - 診断
+  program
+    .command('doctor')
+    .description(t('commands:doctor.description'))
+    .option('--fix', t('commands:doctor.options.fix'))
+    .action(async (options) => {
+      try {
+        const { runDoctor } = require('../lib/commands/doctor');
+        await runDoctor(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // upgrade コマンド - アップグレード
+  program
+    .command('upgrade')
+    .description(t('commands:upgrade.description'))
+    .option('--check', t('commands:upgrade.options.check'))
+    .action(async (options) => {
+      try {
+        const { upgradePoppoBuilder } = require('../lib/commands/upgrade');
+        await upgradePoppoBuilder(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
+  // pr コマンド - PR作成ガイド
+  const PRCommand = require('../lib/commands/pr');
+  const prCommandDef = PRCommand.getCommandDefinition();
+  const prCommand = program
+    .command(prCommandDef.command)
+    .description(t('commands:pr.description'));
+
+  // Add all options from command definition
+  prCommandDef.options.forEach(option => {
+    prCommand.option(...option);
+  });
+
+  prCommand.action(prCommandDef.action);
+
+  // エラーハンドリング
+  program.on('command:*', () => {
+    console.error(chalk.red(t('errors:command.invalid', { command: program.args.join(' ') })));
+    console.log(t('general.runHelp', { command: chalk.cyan('poppobuilder --help') }));
+    process.exit(1);
+  });
+
+  // ヘルプ表示のカスタマイズ
+  program.configureHelp({
+    // Override the built-in help formatter to support i18n
+    formatHelp: (cmd, helper) => {
+      const termWidth = helper.padWidth(cmd, helper);
+      const helpWidth = helper.helpWidth || 80;
+      const itemIndentWidth = 2;
+      const itemSeparatorWidth = 2;
+
+      function formatItem(term, description) {
+        if (description) {
+          const fullText = `${term.padEnd(termWidth + itemSeparatorWidth)}${description}`;
+          return helper.wrap(fullText, helpWidth - itemIndentWidth, termWidth + itemSeparatorWidth);
+        }
+        return term;
+      }
+
+      function formatList(textArray) {
+        return textArray.join('\n').replace(/^/gm, ' '.repeat(itemIndentWidth));
+      }
+
+      let output = [];
+
+      // Usage
+      const commandUsage = helper.commandUsage(cmd);
+      output = output.concat([t('commands:help.usage', { command: commandUsage }), '']);
+
+      // Description
+      const commandDescription = helper.commandDescription(cmd);
+      if (commandDescription.length > 0) {
+        output = output.concat([commandDescription, '']);
+      }
+
+      // Arguments
+      const argumentList = helper.visibleArguments(cmd).map((argument) => {
+        return formatItem(helper.argumentTerm(argument), helper.argumentDescription(argument));
+      });
+      if (argumentList.length > 0) {
+        output = output.concat(['Arguments:', formatList(argumentList), '']);
+      }
+
+      // Options  
+      const optionList = helper.visibleOptions(cmd).map((option) => {
+        return formatItem(helper.optionTerm(option), helper.optionDescription(option));
+      });
+      if (optionList.length > 0) {
+        output = output.concat([t('commands:help.options'), formatList(optionList), '']);
+      }
+
+      // Commands
+      const commandList = helper.visibleCommands(cmd).map((cmd) => {
+        return formatItem(helper.subcommandTerm(cmd), helper.subcommandDescription(cmd));
+      });
+      if (commandList.length > 0) {
+        output = output.concat([t('commands:help.commands'), formatList(commandList), '']);
+      }
+
+      return output.join('\n');
     }
   });
 
-// project コマンド - プロジェクト管理
-program.addCommand(require('../lib/commands/project')());
-
-// template コマンド - テンプレート管理
-const TemplateCommand = require('../lib/commands/template');
-const templateCommand = new TemplateCommand();
-templateCommand.register(program);
-
-// list コマンド - プロジェクト一覧
-const ListCommand = require('../lib/commands/list');
-program
-  .command('list')
-  .alias('ls')
-  .description('List all registered PoppoBuilder projects')
-  .option('--enabled', 'show only enabled projects')
-  .option('--disabled', 'show only disabled projects')
-  .option('--tag <tag>', 'filter by tag')
-  .option('--sort <field>', 'sort by field (name|priority|path|created|updated|activity)', 'name')
-  .option('--table', 'display as table')
-  .option('--json', 'output as JSON')
-  .option('--status', 'include runtime status information')
-  .option('-v, --verbose', 'show detailed information')
-  .option('-q, --quiet', 'minimal output')
-  .action(async (options) => {
-    try {
-      const listCommand = new ListCommand();
-      await listCommand.execute(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
+  program.on('--help', () => {
+    console.log('');
+    console.log(t('commands:help.examples'));
+    console.log('');
+    console.log(`  $ poppobuilder init                    # ${t('commands:help.examplesList.init')}`);
+    console.log(`  $ poppobuilder init --template advanced # ${t('commands:help.examplesList.initTemplate')}`);
+    console.log(`  $ poppobuilder start                   # ${t('commands:help.examplesList.start')}`);
+    console.log(`  $ poppobuilder start --daemon          # ${t('commands:help.examplesList.startDaemon')}`);
+    console.log(`  $ poppobuilder status                  # ${t('commands:help.examplesList.status')}`);
+    console.log(`  $ poppobuilder logs -f                 # ${t('commands:help.examplesList.logs')}`);
+    console.log(`  $ poppobuilder config --list           # ${t('commands:help.examplesList.config')}`);
+    console.log('');
+    console.log(t('commands:help.moreInfo'));
+    console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));
   });
 
-// logs コマンド - ログ表示
-const LogsCommand = require('../lib/commands/logs');
-const logsCommandDef = LogsCommand.getCommandDefinition();
-const logsCommand = program
-  .command(logsCommandDef.command)
-  .description(logsCommandDef.description);
-
-// Add all options from command definition
-logsCommandDef.options.forEach(option => {
-  logsCommand.option(...option);
-});
-
-logsCommand.action(logsCommandDef.action);
-
-// monitor コマンド - システム監視
-const MonitorCommand = require('../lib/commands/monitor');
-const monitorCommandDef = MonitorCommand.getCommandDefinition();
-const monitorCommand = program
-  .command(monitorCommandDef.command)
-  .description(monitorCommandDef.description);
-
-// Add all options from command definition
-monitorCommandDef.options.forEach(option => {
-  monitorCommand.option(...option);
-});
-
-monitorCommand.action(monitorCommandDef.action);
-
-// enable コマンド - プロジェクト有効化
-const EnableCommand = require('../lib/commands/enable');
-program
-  .command('enable <projectname>')
-  .alias('on')
-  .description('Enable a PoppoBuilder project')
-  .action(async (projectName, options) => {
-    try {
-      const enableCommand = new EnableCommand();
-      await enableCommand.execute(projectName, options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
+  // バージョン表示のカスタマイズ
+  program.on('option:version', () => {
+    console.log(`PoppoBuilder v${packageInfo.version}`);
+    console.log(`Node.js ${process.version}`);
+    console.log(`${t('general.platform')}: ${process.platform} ${process.arch}`);
+    process.exit(0);
   });
-
-// disable コマンド - プロジェクト無効化
-const DisableCommand = require('../lib/commands/disable');
-program
-  .command('disable <projectname>')
-  .alias('off')
-  .description('Disable a PoppoBuilder project')
-  .option('--force', 'disable even if there are running tasks')
-  .action(async (projectName, options) => {
-    try {
-      const disableCommand = new DisableCommand();
-      await disableCommand.execute(projectName, options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
-
-// remove コマンド - プロジェクト削除
-const RemoveCommand = require('../lib/commands/remove');
-program
-  .command('remove <projectname>')
-  .alias('rm')
-  .alias('del')
-  .description('Remove a PoppoBuilder project from the registry')
-  .option('--force', 'skip confirmation prompt')
-  .option('--clean', 'remove project-related files')
-  .action(async (projectName, options) => {
-    try {
-      const removeCommand = new RemoveCommand();
-      await removeCommand.execute(projectName, options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
-
-// doctor コマンド - 診断
-program
-  .command('doctor')
-  .description('Diagnose PoppoBuilder installation and configuration')
-  .option('--fix', 'attempt to fix issues automatically')
-  .action(async (options) => {
-    try {
-      const { runDoctor } = require('../lib/commands/doctor');
-      await runDoctor(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
-
-// upgrade コマンド - アップグレード
-program
-  .command('upgrade')
-  .description('Upgrade PoppoBuilder to the latest version')
-  .option('--check', 'check for updates only')
-  .action(async (options) => {
-    try {
-      const { upgradePoppoBuilder } = require('../lib/commands/upgrade');
-      await upgradePoppoBuilder(options);
-    } catch (error) {
-      console.error(chalk.red('Error:'), error.message);
-      process.exit(1);
-    }
-  });
-
-// pr コマンド - PR作成ガイド
-const PRCommand = require('../lib/commands/pr');
-const prCommandDef = PRCommand.getCommandDefinition();
-const prCommand = program
-  .command(prCommandDef.command)
-  .description(prCommandDef.description);
-
-// Add all options from command definition
-prCommandDef.options.forEach(option => {
-  prCommand.option(...option);
-});
-
-prCommand.action(prCommandDef.action);
-
-// エラーハンドリング
-program.on('command:*', () => {
-  console.error(chalk.red(`Invalid command: ${program.args.join(' ')}`));
-  console.log('Run', chalk.cyan('poppobuilder --help'), 'for a list of available commands.');
-  process.exit(1);
-});
-
-// ヘルプ表示のカスタマイズ
-program.on('--help', () => {
-  console.log('');
-  console.log('Examples:');
-  console.log('');
-  console.log('  $ poppobuilder init                    # Initialize in current directory');
-  console.log('  $ poppobuilder init --template advanced # Initialize with advanced template');
-  console.log('  $ poppobuilder start                   # Start processing issues');
-  console.log('  $ poppobuilder start --daemon          # Start as background service');
-  console.log('  $ poppobuilder status                  # Check service status');
-  console.log('  $ poppobuilder logs -f                 # Follow logs in real-time');
-  console.log('  $ poppobuilder config --list           # Show all configuration');
-  console.log('  $ poppobuilder template list           # List available templates');
-  console.log('  $ poppobuilder template create mytemp  # Create custom template');
-  console.log('  $ poppobuilder global-config show      # Show global configuration');
-  console.log('  $ poppobuilder global-config init      # Initialize global config');
-  console.log('  $ poppobuilder daemon start            # Start daemon process');
-  console.log('  $ poppobuilder daemon status           # Check daemon status');
-  console.log('  $ poppobuilder project register ./     # Register current directory as project');
-  console.log('  $ poppobuilder project list            # List all registered projects');
-  console.log('  $ poppobuilder project show <id>       # Show project details');
-  console.log('  $ poppobuilder list                    # List projects (default view)');
-  console.log('  $ poppobuilder ls --table --verbose    # Detailed table view');
-  console.log('  $ poppobuilder list --enabled --sort priority  # Enabled projects by priority');
-  console.log('  $ poppobuilder enable project-a        # Enable a project');
-  console.log('  $ poppobuilder on project-a            # Enable (alias)');
-  console.log('  $ poppobuilder disable project-b       # Disable a project');
-  console.log('  $ poppobuilder off project-b           # Disable (alias)');
-  console.log('  $ poppobuilder pr                      # Create PR with guided assistance');
-  console.log('  $ poppobuilder pr --draft              # Create draft PR');
-  console.log('  $ poppobuilder pr --base develop       # Create PR to specific branch');
-  console.log('');
-  console.log('For more information, visit:');
-  console.log(chalk.cyan('https://github.com/medamap/PoppoBuilderSuite'));
-});
-
-// バージョン表示のカスタマイズ
-program.on('option:version', () => {
-  console.log(`PoppoBuilder v${packageInfo.version}`);
-  console.log(`Node.js ${process.version}`);
-  console.log(`Platform: ${process.platform} ${process.arch}`);
-  process.exit(0);
-});
+} // End of setupProgram function
 
 // メイン処理
 async function main() {
   try {
-    // Initialize i18n with default language (English)
-    await i18n.init({ language: 'en' });
+    // Parse command line args to get language option early
+    const commandLineOptions = runtimeSwitcher.parseCommandLineArgs(process.argv);
+    
+    // Initialize runtime language switcher with command line options
+    const selectedLanguage = await runtimeSwitcher.initialize(commandLineOptions);
+    
+    // Initialize i18n with the selected language
+    await initI18n({ i18nextOptions: { lng: selectedLanguage } });
+
+    // Setup program with i18n translations
+    setupProgram();
 
     // グローバル設定の確認
     const globalConfigPath = path.join(process.env.HOME || process.env.USERPROFILE, '.poppobuilder', 'config.json');
@@ -399,15 +502,15 @@ async function main() {
     
     // 初期化されていない場合の警告
     if (process.argv[2] !== 'init' && !fs.existsSync(localConfigPath) && !fs.existsSync(globalConfigPath)) {
-      console.log(chalk.yellow('PoppoBuilder is not initialized in this project.'));
-      console.log('Run', chalk.cyan('poppobuilder init'), 'to get started.');
+      console.log(chalk.yellow(t('messages:notInitialized')));
+      console.log(t('messages:runInit', { command: chalk.cyan('poppobuilder init') }));
       console.log('');
     }
     
     // コマンド解析と実行
     await program.parseAsync(process.argv);
   } catch (error) {
-    console.error(chalk.red('Fatal error:'), error.message);
+    console.error(chalk.red(t('errors:fatal')), error.message);
     if (program.opts().verbose) {
       console.error(error.stack);
     }

@@ -14,7 +14,7 @@ class AutoPRCreator {
     // PR作成設定
     this.config = {
       branchPrefix: 'auto-repair/',
-      commitPrefix: '🔧 自動修復: ',
+      commitPrefix: '🔧 fix: Auto-repair ',
       prLabelPrefix: 'auto-repair',
       baseBranch: 'develop'
     };
@@ -54,7 +54,7 @@ class AutoPRCreator {
       };
       
     } catch (error) {
-      this.logger.error(`PR作成エラー: ${error.message}`);
+      this.logger.error(`PR creation error: ${error.message}`);
       return {
         success: false,
         error: error.message
@@ -117,24 +117,24 @@ class AutoPRCreator {
    * コミットメッセージの生成
    */
   generateCommitMessage(repairInfo) {
-    const errorType = repairInfo.analysis?.category || 'エラー';
-    const action = repairInfo.repairDetails?.action || '修復';
+    const errorType = repairInfo.analysis?.category || 'error';
+    const action = repairInfo.repairDetails?.action || 'repair';
     
-    const message = `${this.config.commitPrefix}${errorType}の${action}
+    const message = `${this.config.commitPrefix}${errorType} ${action}
 
-## 修復内容
-- エラーパターン: ${repairInfo.analysis?.patternId || 'Unknown'}
-- カテゴリ: ${errorType}
-- ハッシュ: ${repairInfo.errorHash || 'N/A'}
+## Repair Details
+- Error Pattern: ${repairInfo.analysis?.patternId || 'Unknown'}
+- Category: ${errorType}
+- Hash: ${repairInfo.errorHash || 'N/A'}
 
-## 修正内容
+## Changes Made
 ${this.formatRepairDetails(repairInfo.repairDetails)}
 
-## テスト結果
+## Test Results
 ${this.formatTestResults(repairInfo.testResults)}
 
 ---
-🤖 この修正はCCLAエージェントによって自動的に実行されました
+🤖 This fix was automatically performed by CCLA agent
 `;
     
     return message;
@@ -144,24 +144,24 @@ ${this.formatTestResults(repairInfo.testResults)}
    * 修復詳細のフォーマット
    */
   formatRepairDetails(details) {
-    if (!details) return '- 詳細情報なし';
+    if (!details) return '- No details available';
     
     const lines = [];
     
     if (details.filePath) {
-      lines.push(`- ファイル: ${details.filePath}`);
+      lines.push(`- File: ${details.filePath}`);
     }
     
     if (details.action) {
-      lines.push(`- アクション: ${details.action}`);
+      lines.push(`- Action: ${details.action}`);
     }
     
     if (details.method) {
-      lines.push(`- 修復方法: ${details.method}`);
+      lines.push(`- Repair Method: ${details.method}`);
     }
     
     if (details.originalCode && details.repairedCode) {
-      lines.push('- 変更内容:');
+      lines.push('- Changes:');
       lines.push('```diff');
       lines.push(`- ${details.originalCode}`);
       lines.push(`+ ${details.repairedCode}`);
@@ -175,26 +175,26 @@ ${this.formatTestResults(repairInfo.testResults)}
    * テスト結果のフォーマット
    */
   formatTestResults(results) {
-    if (!results) return '- テスト未実行';
+    if (!results) return '- Tests not executed';
     
     const lines = [];
     
     if (results.validation) {
-      lines.push(`- 検証: ${results.validation.valid ? '✅ 成功' : '❌ 失敗'}`);
+      lines.push(`- Validation: ${results.validation.valid ? '✅ Success' : '❌ Failed'}`);
       if (!results.validation.valid && results.validation.reason) {
-        lines.push(`  - 理由: ${results.validation.reason}`);
+        lines.push(`  - Reason: ${results.validation.reason}`);
       }
     }
     
     if (results.testsGenerated) {
-      lines.push(`- テスト生成: ${results.testsGenerated} 件`);
+      lines.push(`- Tests Generated: ${results.testsGenerated}`);
     }
     
     if (results.rollbackAvailable !== undefined) {
-      lines.push(`- ロールバック: ${results.rollbackAvailable ? '可能' : '不可'}`);
+      lines.push(`- Rollback: ${results.rollbackAvailable ? 'Available' : 'Not available'}`);
     }
     
-    return lines.join('\n') || '- テスト情報なし';
+    return lines.join('\n') || '- No test information';
   }
   
   /**
@@ -245,8 +245,8 @@ ${this.formatTestResults(repairInfo.testResults)}
       const prBodyFile = path.join(process.cwd(), `.pr-body-${Date.now()}.txt`);
       await fs.writeFile(prBodyFile, prBody, 'utf8');
       
-      const errorType = repairInfo.analysis?.category || 'エラー';
-      const prTitle = `🔧 自動修復: ${errorType}の修正 (#${repairInfo.errorHash || 'unknown'})`;
+      const errorType = repairInfo.analysis?.category || 'error';
+      const prTitle = `🔧 fix: Auto-repair ${errorType} (#${repairInfo.errorHash || 'unknown'})`;
       
       const output = execSync(
         `gh pr create --title "${prTitle}" --body-file "${prBodyFile}" --base ${this.config.baseBranch} --label "${this.config.prLabelPrefix}"`,
@@ -274,42 +274,42 @@ ${this.formatTestResults(repairInfo.testResults)}
    * PR本文の生成
    */
   generatePRBody(repairInfo) {
-    return `## 概要
-CCLAエージェントがエラーログを検出し、自動修復を実行しました。
+    return `## Summary
+CCLA agent detected error logs and executed automatic repair.
 
-## エラー情報
-- **カテゴリ**: ${repairInfo.analysis?.category || 'Unknown'}
-- **パターンID**: ${repairInfo.analysis?.patternId || 'Unknown'}
-- **重要度**: ${repairInfo.analysis?.severity || 'medium'}
-- **エラーハッシュ**: ${repairInfo.errorHash || 'N/A'}
+## Error Information
+- **Category**: ${repairInfo.analysis?.category || 'Unknown'}
+- **Pattern ID**: ${repairInfo.analysis?.patternId || 'Unknown'}
+- **Severity**: ${repairInfo.analysis?.severity || 'medium'}
+- **Error Hash**: ${repairInfo.errorHash || 'N/A'}
 
-## 修復内容
+## Repair Details
 ${this.formatRepairDetails(repairInfo.repairDetails)}
 
-## エラーメッセージ
+## Error Message
 \`\`\`
-${repairInfo.message || 'エラーメッセージなし'}
-\`\`\`
-
-## スタックトレース
-\`\`\`
-${repairInfo.stackTrace?.slice(0, 5).join('\n') || 'スタックトレースなし'}
+${repairInfo.message || 'No error message'}
 \`\`\`
 
-## テスト結果
+## Stack Trace
+\`\`\`
+${repairInfo.stackTrace?.slice(0, 5).join('\n') || 'No stack trace'}
+\`\`\`
+
+## Test Results
 ${this.formatTestResults(repairInfo.testResults)}
 
-## ロールバック手順
-${repairInfo.rollbackInfo ? this.formatRollbackInfo(repairInfo.rollbackInfo) : 'ロールバック情報なし'}
+## Rollback Instructions
+${repairInfo.rollbackInfo ? this.formatRollbackInfo(repairInfo.rollbackInfo) : 'No rollback information'}
 
-## チェックリスト
-- [ ] 修復内容を確認しました
-- [ ] テストが通過することを確認しました
-- [ ] 副作用がないことを確認しました
+## Checklist
+- [ ] Reviewed repair changes
+- [ ] Verified tests pass
+- [ ] Confirmed no side effects
 
 ---
-🤖 このPRはCCLAエージェントによって自動的に作成されました
-📝 詳細: Issue #${repairInfo.issueNumber || 'N/A'}
+🤖 This PR was automatically created by CCLA agent
+📝 Details: Issue #${repairInfo.issueNumber || 'N/A'}
 `;
   }
   
@@ -317,13 +317,13 @@ ${repairInfo.rollbackInfo ? this.formatRollbackInfo(repairInfo.rollbackInfo) : '
    * ロールバック情報のフォーマット
    */
   formatRollbackInfo(rollbackInfo) {
-    if (!rollbackInfo) return 'ロールバック情報なし';
+    if (!rollbackInfo) return 'No rollback information';
     
     const lines = [];
     
     if (rollbackInfo.backupId) {
-      lines.push(`1. バックアップID: ${rollbackInfo.backupId}`);
-      lines.push(`2. 以下のコマンドでロールバック可能:`);
+      lines.push(`1. Backup ID: ${rollbackInfo.backupId}`);
+      lines.push(`2. Rollback available with the following command:`);
       lines.push(`   \`npm run ccla:rollback ${rollbackInfo.backupId}\``);
     }
     

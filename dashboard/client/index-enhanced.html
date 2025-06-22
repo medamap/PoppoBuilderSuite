@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoppoBuilder Process Dashboard</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/dashboard-enhanced.css">
+    <link rel="stylesheet" href="css/accessibility.css">
+    <link rel="stylesheet" href="css/dark-mode.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/i18n.css">
+    
+    <!-- Theme and color scheme -->
+    <meta name="theme-color" content="#1976d2">
+    <meta name="color-scheme" content="light dark">
+    
+    <!-- Accessibility improvements -->
+    <meta name="description" content="PoppoBuilder Process Dashboard - Monitor and manage your automated GitHub issue processing system">
+    
+    <!-- Service Worker for offline support -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Keyboard shortcuts info -->
+    <script>
+        window.keyboardShortcuts = {
+            'Alt+R': 'refresh',
+            'Alt+S': 'stop-all',
+            'Alt+1': 'system-tab',
+            'Alt+2': 'processes-tab',
+            'Alt+3': 'logs-tab',
+            'Alt+4': 'analytics-tab',
+            'Alt+D': 'toggle-dark-mode',
+            'Ctrl+F': 'search',
+            'Escape': 'close-modal'
+        };
+    </script>
+</head>
+<body class="theme-light" tabindex="-1">
+    <!-- Skip to main content for screen readers -->
+    <a href="#main-content" class="skip-link" data-i18n="accessibility.skipToMain">メインコンテンツへスキップ</a>
+    
+    <!-- Accessibility announcements -->
+    <div id="announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    
+    <!-- Loading screen -->
+    <div id="loading-screen" class="loading-screen" aria-hidden="true">
+        <div class="loading-spinner" role="status">
+            <span class="sr-only" data-i18n="common.loading">読み込み中...</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Header with navigation -->
+        <header class="dashboard-header" role="banner">
+            <div class="header-main">
+                <h1 class="dashboard-title" data-i18n="header.title">
+                    <span class="title-icon" aria-hidden="true">🤖</span>
+                    PoppoBuilder Process Dashboard
+                </h1>
+                
+                <!-- Navigation tabs -->
+                <nav class="main-nav" role="navigation" aria-label="Main navigation">
+                    <ul class="nav-tabs" role="tablist">
+                        <li role="presentation">
+                            <button class="nav-tab active" 
+                                    role="tab" 
+                                    aria-selected="true"
+                                    aria-controls="system-panel"
+                                    id="system-tab"
+                                    data-tab="system"
+                                    data-i18n="navigation.system"
+                                    title="Alt+1">
+                                <span class="tab-icon" aria-hidden="true">📊</span>
+                                システム
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="nav-tab" 
+                                    role="tab" 
+                                    aria-selected="false"
+                                    aria-controls="processes-panel"
+                                    id="processes-tab"
+                                    data-tab="processes"
+                                    data-i18n="navigation.processes"
+                                    title="Alt+2">
+                                <span class="tab-icon" aria-hidden="true">⚙️</span>
+                                プロセス
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="nav-tab" 
+                                    role="tab" 
+                                    aria-selected="false"
+                                    aria-controls="logs-panel"
+                                    id="logs-tab"
+                                    data-tab="logs"
+                                    data-i18n="navigation.logs"
+                                    title="Alt+3">
+                                <span class="tab-icon" aria-hidden="true">📄</span>
+                                ログ
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button class="nav-tab" 
+                                    role="tab" 
+                                    aria-selected="false"
+                                    aria-controls="analytics-panel"
+                                    id="analytics-tab"
+                                    data-tab="analytics"
+                                    data-i18n="navigation.analytics"
+                                    title="Alt+4">
+                                <span class="tab-icon" aria-hidden="true">📈</span>
+                                分析
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <!-- Header actions -->
+            <div class="header-actions">
+                <!-- Theme toggle -->
+                <button id="theme-toggle" 
+                        class="btn btn-icon" 
+                        aria-label="ダークモード切り替え" 
+                        title="Alt+D"
+                        data-i18n="header.toggleTheme">
+                    <span class="theme-icon light-icon" aria-hidden="true">🌙</span>
+                    <span class="theme-icon dark-icon" aria-hidden="true">☀️</span>
+                </button>
+                
+                <!-- Language toggle -->
+                <button id="language-toggle" 
+                        class="btn btn-icon" 
+                        aria-label="言語切り替え"
+                        data-i18n="header.toggleLanguage">
+                    <span class="lang-icon" aria-hidden="true">🌐</span>
+                    <span class="lang-text">EN</span>
+                </button>
+                
+                <!-- Refresh button -->
+                <button id="refresh-btn" 
+                        class="btn btn-primary" 
+                        aria-label="更新" 
+                        title="Alt+R"
+                        data-i18n="header.refresh">
+                    <span class="btn-icon" aria-hidden="true">🔄</span>
+                    更新
+                </button>
+                
+                <!-- Emergency stop -->
+                <button id="stop-all-btn" 
+                        class="btn btn-danger" 
+                        aria-label="全プロセス停止" 
+                        title="Alt+S"
+                        data-i18n="header.stopAll">
+                    <span class="btn-icon" aria-hidden="true">⏹️</span>
+                    全停止
+                </button>
+                
+                <!-- Settings menu -->
+                <div class="dropdown">
+                    <button id="settings-btn" 
+                            class="btn btn-icon" 
+                            aria-label="設定メニュー"
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            data-i18n="header.settings">
+                        <span aria-hidden="true">⚙️</span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" aria-labelledby="settings-btn">
+                        <li role="presentation">
+                            <button role="menuitem" id="layout-settings" data-i18n="settings.layout">レイアウト設定</button>
+                        </li>
+                        <li role="presentation">
+                            <button role="menuitem" id="accessibility-settings" data-i18n="settings.accessibility">アクセシビリティ</button>
+                        </li>
+                        <li role="presentation">
+                            <button role="menuitem" id="keyboard-shortcuts" data-i18n="settings.shortcuts">キーボードショートカット</button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content area -->
+        <main id="main-content" class="dashboard-main" role="main">
+            
+            <!-- System Status Panel -->
+            <section id="system-panel" 
+                     class="dashboard-panel active" 
+                     role="tabpanel" 
+                     aria-labelledby="system-tab"
+                     tabindex="0">
+                
+                <!-- System Overview -->
+                <div class="panel-section">
+                    <h2 class="section-title" data-i18n="systemStatus.title">
+                        <span class="title-icon" aria-hidden="true">📊</span>
+                        システム状態
+                    </h2>
+                    
+                    <div class="system-overview">
+                        <div class="status-card primary" role="status" aria-live="polite">
+                            <div class="status-indicator" id="system-status">
+                                <span class="status-dot status-ok" aria-hidden="true"></span>
+                                <span class="status-text" data-i18n="systemStatus.running">正常稼働中</span>
+                            </div>
+                            <div class="status-details">
+                                <div class="uptime" id="system-uptime">
+                                    <label class="detail-label" data-i18n="systemStatus.uptime">稼働時間:</label>
+                                    <span class="detail-value">--</span>
+                                </div>
+                                <div class="last-update" id="last-update">
+                                    <label class="detail-label" data-i18n="systemStatus.lastUpdate">最終更新:</label>
+                                    <span class="detail-value">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Metrics -->
+                <div class="panel-section">
+                    <h3 class="subsection-title" data-i18n="systemStatus.metrics">主要指標</h3>
+                    <div class="metrics-grid" role="group" aria-label="System metrics">
+                        <div class="metric-card" role="status">
+                            <div class="metric-icon running" aria-hidden="true">▶️</div>
+                            <div class="metric-content">
+                                <div class="metric-label" data-i18n="systemStatus.stats.running">実行中</div>
+                                <div class="metric-value" id="running-count">0</div>
+                                <div class="metric-trend" id="running-trend" aria-label="実行中プロセスの推移"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card" role="status">
+                            <div class="metric-icon completed" aria-hidden="true">✅</div>
+                            <div class="metric-content">
+                                <div class="metric-label" data-i18n="systemStatus.stats.completed">完了</div>
+                                <div class="metric-value" id="completed-count">0</div>
+                                <div class="metric-trend" id="completed-trend" aria-label="完了プロセスの推移"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card" role="status">
+                            <div class="metric-icon error" aria-hidden="true">❌</div>
+                            <div class="metric-content">
+                                <div class="metric-label" data-i18n="systemStatus.stats.error">エラー</div>
+                                <div class="metric-value" id="error-count">0</div>
+                                <div class="metric-trend" id="error-trend" aria-label="エラープロセスの推移"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card" role="status">
+                            <div class="metric-icon total" aria-hidden="true">📊</div>
+                            <div class="metric-content">
+                                <div class="metric-label" data-i18n="systemStatus.stats.total">合計</div>
+                                <div class="metric-value" id="total-count">0</div>
+                                <div class="metric-trend" id="total-trend" aria-label="総プロセス数の推移"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resource Usage -->
+                <div class="panel-section">
+                    <h3 class="subsection-title" data-i18n="systemStatus.resources">リソース使用状況</h3>
+                    <div class="resource-monitors">
+                        <div class="resource-item">
+                            <label class="resource-label" data-i18n="systemStatus.memory">メモリ使用量</label>
+                            <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <div class="progress-fill" id="memory-progress"></div>
+                                <span class="progress-text" id="memory-text">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="resource-item">
+                            <label class="resource-label" data-i18n="systemStatus.cpu">CPU使用率</label>
+                            <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                                <div class="progress-fill" id="cpu-progress"></div>
+                                <span class="progress-text" id="cpu-text">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Processes Panel -->
+            <section id="processes-panel" 
+                     class="dashboard-panel" 
+                     role="tabpanel" 
+                     aria-labelledby="processes-tab"
+                     tabindex="0">
+                
+                <div class="panel-section">
+                    <div class="section-header">
+                        <h2 class="section-title" data-i18n="processList.title">
+                            <span class="title-icon" aria-hidden="true">⚙️</span>
+                            プロセス一覧
+                        </h2>
+                        
+                        <!-- Process controls -->
+                        <div class="section-controls">
+                            <div class="control-group">
+                                <label for="process-filter" class="control-label" data-i18n="processList.filter">フィルター:</label>
+                                <select id="process-filter" class="control-select" aria-describedby="process-filter-help">
+                                    <option value="all" data-i18n="processList.filterAll">すべて</option>
+                                    <option value="running" data-i18n="processList.filterRunning">実行中</option>
+                                    <option value="completed" data-i18n="processList.filterCompleted">完了</option>
+                                    <option value="error" data-i18n="processList.filterError">エラー</option>
+                                </select>
+                                <div id="process-filter-help" class="control-help sr-only" data-i18n="processList.filterHelp">プロセスをステータスでフィルター</div>
+                            </div>
+                            
+                            <div class="control-group">
+                                <label for="process-sort" class="control-label" data-i18n="processList.sort">ソート:</label>
+                                <select id="process-sort" class="control-select">
+                                    <option value="start-time" data-i18n="processList.sortStartTime">開始時刻</option>
+                                    <option value="duration" data-i18n="processList.sortDuration">実行時間</option>
+                                    <option value="status" data-i18n="processList.sortStatus">ステータス</option>
+                                    <option value="memory" data-i18n="processList.sortMemory">メモリ使用量</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Process list with virtual scrolling -->
+                    <div class="process-list-container" role="region" aria-label="Process list">
+                        <div class="process-list-header" role="row">
+                            <div class="process-col process-id" role="columnheader" data-i18n="processList.headers.id">ID</div>
+                            <div class="process-col process-status" role="columnheader" data-i18n="processList.headers.status">ステータス</div>
+                            <div class="process-col process-start" role="columnheader" data-i18n="processList.headers.start">開始時刻</div>
+                            <div class="process-col process-duration" role="columnheader" data-i18n="processList.headers.duration">実行時間</div>
+                            <div class="process-col process-memory" role="columnheader" data-i18n="processList.headers.memory">メモリ</div>
+                            <div class="process-col process-actions" role="columnheader" data-i18n="processList.headers.actions">操作</div>
+                        </div>
+                        
+                        <div id="process-list" class="process-list" role="rowgroup" aria-live="polite">
+                            <div class="loading-placeholder" data-i18n="processList.loading">読み込み中...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs Panel -->
+            <section id="logs-panel" 
+                     class="dashboard-panel" 
+                     role="tabpanel" 
+                     aria-labelledby="logs-tab"
+                     tabindex="0">
+                
+                <div class="panel-section">
+                    <h2 class="section-title" data-i18n="logSearch.title">
+                        <span class="title-icon" aria-hidden="true">📄</span>
+                        ログ検索・表示
+                    </h2>
+                    
+                    <!-- Search form -->
+                    <form class="search-form" role="search" aria-label="Log search">
+                        <div class="search-row">
+                            <div class="search-field">
+                                <label for="search-keyword" class="search-label" data-i18n="logSearch.keyword">キーワード</label>
+                                <input type="text" 
+                                       id="search-keyword" 
+                                       class="search-input" 
+                                       placeholder="検索キーワードを入力..." 
+                                       data-i18n="logSearch.keywordPlaceholder"
+                                       aria-describedby="search-keyword-help">
+                                <div id="search-keyword-help" class="search-help" data-i18n="logSearch.keywordHelp">ログメッセージ内のキーワードで検索</div>
+                            </div>
+                            
+                            <div class="search-field">
+                                <label for="search-level" class="search-label" data-i18n="logSearch.level">ログレベル</label>
+                                <select id="search-level" class="search-select">
+                                    <option value="" data-i18n="logSearch.allLevels">全レベル</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="WARN">WARN</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="DEBUG">DEBUG</option>
+                                </select>
+                            </div>
+                            
+                            <div class="search-field">
+                                <label for="search-issue" class="search-label" data-i18n="logSearch.issue">Issue番号</label>
+                                <input type="number" 
+                                       id="search-issue" 
+                                       class="search-input" 
+                                       placeholder="123" 
+                                       min="1"
+                                       aria-describedby="search-issue-help">
+                                <div id="search-issue-help" class="search-help" data-i18n="logSearch.issueHelp">特定のIssue番号でフィルター</div>
+                            </div>
+                        </div>
+                        
+                        <div class="search-row">
+                            <div class="search-field">
+                                <label for="search-start-date" class="search-label" data-i18n="logSearch.startDate">開始日時</label>
+                                <input type="datetime-local" id="search-start-date" class="search-date">
+                            </div>
+                            
+                            <div class="search-field">
+                                <label for="search-end-date" class="search-label" data-i18n="logSearch.endDate">終了日時</label>
+                                <input type="datetime-local" id="search-end-date" class="search-date">
+                            </div>
+                        </div>
+                        
+                        <div class="search-actions">
+                            <button type="submit" id="search-btn" class="btn btn-primary" data-i18n="logSearch.search">
+                                <span class="btn-icon" aria-hidden="true">🔍</span>
+                                検索
+                            </button>
+                            <button type="reset" id="clear-search-btn" class="btn btn-secondary" data-i18n="logSearch.clear">
+                                クリア
+                            </button>
+                            <button type="button" id="export-btn" class="btn btn-secondary" data-i18n="logSearch.export">
+                                <span class="btn-icon" aria-hidden="true">📥</span>
+                                エクスポート
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Search results -->
+                    <div id="search-results" class="search-results" role="region" aria-label="Search results" aria-live="polite">
+                        <div class="search-stats" id="search-stats" role="status"></div>
+                        <div class="search-result-list" id="search-result-list"></div>
+                    </div>
+                </div>
+                
+                <!-- Real-time logs -->
+                <div class="panel-section">
+                    <h3 class="subsection-title" data-i18n="realtimeLogs.title">リアルタイムログ</h3>
+                    <div class="realtime-controls">
+                        <button id="toggle-realtime" class="btn btn-secondary" data-i18n="realtimeLogs.toggle">
+                            <span class="btn-icon" aria-hidden="true">⏸️</span>
+                            一時停止
+                        </button>
+                        <button id="clear-logs" class="btn btn-secondary" data-i18n="realtimeLogs.clear">
+                            <span class="btn-icon" aria-hidden="true">🗑️</span>
+                            クリア
+                        </button>
+                    </div>
+                    <div id="log-container" class="log-container" role="log" aria-live="polite" aria-label="Real-time logs">
+                        <div class="log-entry connecting" data-i18n="realtimeLogs.connecting">ダッシュボードに接続中...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Panel -->
+            <section id="analytics-panel" 
+                     class="dashboard-panel" 
+                     role="tabpanel" 
+                     aria-labelledby="analytics-tab"
+                     tabindex="0">
+                
+                <div class="panel-section">
+                    <h2 class="section-title" data-i18n="analytics.title">
+                        <span class="title-icon" aria-hidden="true">📈</span>
+                        パフォーマンス分析
+                    </h2>
+                    
+                    <!-- Analytics navigation -->
+                    <nav class="analytics-nav" role="navigation" aria-label="Analytics navigation">
+                        <ul class="sub-nav-tabs" role="tablist">
+                            <li role="presentation">
+                                <button class="sub-nav-tab active" 
+                                        role="tab" 
+                                        aria-selected="true"
+                                        aria-controls="statistics-section"
+                                        id="statistics-tab"
+                                        data-subtab="statistics"
+                                        data-i18n="analytics.tabs.statistics">統計情報</button>
+                            </li>
+                            <li role="presentation">
+                                <button class="sub-nav-tab" 
+                                        role="tab" 
+                                        aria-selected="false"
+                                        aria-controls="trends-section"
+                                        id="trends-tab"
+                                        data-subtab="trends"
+                                        data-i18n="analytics.tabs.trends">トレンド</button>
+                            </li>
+                            <li role="presentation">
+                                <button class="sub-nav-tab" 
+                                        role="tab" 
+                                        aria-selected="false"
+                                        aria-controls="history-section"
+                                        id="history-tab"
+                                        data-subtab="history"
+                                        data-i18n="analytics.tabs.history">実行履歴</button>
+                            </li>
+                        </ul>
+                    </nav>
+                    
+                    <!-- Statistics Section -->
+                    <div id="statistics-section" 
+                         class="analytics-section active" 
+                         role="tabpanel" 
+                         aria-labelledby="statistics-tab">
+                        <!-- Statistics content will be loaded here -->
+                        <div class="loading-placeholder" data-i18n="analytics.loading.stats">統計データを読み込み中...</div>
+                    </div>
+                    
+                    <!-- Trends Section -->
+                    <div id="trends-section" 
+                         class="analytics-section" 
+                         role="tabpanel" 
+                         aria-labelledby="trends-tab">
+                        <!-- Trends content will be loaded here -->
+                        <div class="loading-placeholder" data-i18n="analytics.loading.trends">トレンドデータを読み込み中...</div>
+                    </div>
+                    
+                    <!-- History Section -->
+                    <div id="history-section" 
+                         class="analytics-section" 
+                         role="tabpanel" 
+                         aria-labelledby="history-tab">
+                        <!-- History content will be loaded here -->
+                        <div class="loading-placeholder" data-i18n="analytics.loading.history">履歴データを読み込み中...</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals and Dialogs -->
+    
+    <!-- Process Detail Modal -->
+    <div id="process-detail-modal" 
+         class="modal" 
+         role="dialog" 
+         aria-labelledby="process-detail-title" 
+         aria-modal="true"
+         aria-hidden="true">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="process-detail-title" class="modal-title" data-i18n="processDetail.title">プロセス詳細</h2>
+                <button class="modal-close" aria-label="閉じる" data-i18n="common.close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body" id="process-detail-content" tabindex="0">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" 
+         class="modal" 
+         role="dialog" 
+         aria-labelledby="settings-title" 
+         aria-modal="true"
+         aria-hidden="true">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="settings-title" class="modal-title" data-i18n="settings.title">設定</h2>
+                <button class="modal-close" aria-label="閉じる">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body" tabindex="0">
+                <!-- Settings content -->
+                <div class="settings-section">
+                    <h3 data-i18n="settings.accessibility">アクセシビリティ</h3>
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            <input type="checkbox" id="reduce-motion" class="setting-checkbox">
+                            <span data-i18n="settings.reduceMotion">アニメーションを減らす</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            <input type="checkbox" id="high-contrast" class="setting-checkbox">
+                            <span data-i18n="settings.highContrast">高コントラストモード</span>
+                        </label>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">
+                            <input type="range" id="font-size" class="setting-range" min="12" max="24" value="16">
+                            <span data-i18n="settings.fontSize">フォントサイズ</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div id="shortcuts-modal" 
+         class="modal" 
+         role="dialog" 
+         aria-labelledby="shortcuts-title" 
+         aria-modal="true"
+         aria-hidden="true">
+        <div class="modal-backdrop" aria-hidden="true"></div>
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="shortcuts-title" class="modal-title" data-i18n="shortcuts.title">キーボードショートカット</h2>
+                <button class="modal-close" aria-label="閉じる">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </header>
+            <div class="modal-body" tabindex="0">
+                <dl class="shortcuts-list">
+                    <dt>Alt + R</dt>
+                    <dd data-i18n="shortcuts.refresh">ページを更新</dd>
+                    <dt>Alt + S</dt>
+                    <dd data-i18n="shortcuts.stopAll">全プロセス停止</dd>
+                    <dt>Alt + D</dt>
+                    <dd data-i18n="shortcuts.darkMode">ダークモード切り替え</dd>
+                    <dt>Alt + 1-4</dt>
+                    <dd data-i18n="shortcuts.navigation">メインタブ切り替え</dd>
+                    <dt>Ctrl + F</dt>
+                    <dd data-i18n="shortcuts.search">検索フォーカス</dd>
+                    <dt>Escape</dt>
+                    <dd data-i18n="shortcuts.escape">モーダルを閉じる</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/enhanced-app.js"></script>
+    <script src="js/accessibility.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/virtual-scroll.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => console.log('SW registered'))
+                .catch(error => console.log('SW registration failed'));
+        }
+    </script>
+</body>
+</html>

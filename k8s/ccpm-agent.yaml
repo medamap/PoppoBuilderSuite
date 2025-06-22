@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ccpm-agent
+  namespace: poppobuilder
+spec:
+  selector:
+    app: ccpm-agent
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ccpm-agent
+  namespace: poppobuilder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ccpm-agent
+  template:
+    metadata:
+      labels:
+        app: ccpm-agent
+        agent-type: ccpm
+    spec:
+      containers:
+      - name: ccpm-agent
+        image: poppobuilder/ccpm:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: poppobuilder-config
+        - secretRef:
+            name: poppobuilder-secrets
+        env:
+        - name: AGENT_TYPE
+          value: "ccpm"
+        - name: AGENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        - name: data
+          mountPath: /app/data/ccpm
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: poppobuilder-app-config
+      - name: logs
+        emptyDir: {}
+      - name: data
+        emptyDir: {}

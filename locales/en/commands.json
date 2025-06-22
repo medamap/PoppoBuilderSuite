@@ -1,0 +1,275 @@
+{
+  "cli": {
+    "description": "AI-powered autonomous GitHub issue processor using Claude API",
+    "options": {
+      "verbose": "verbose output",
+      "quiet": "quiet output",
+      "lang": "set interface language (en/ja)"
+    }
+  },
+  "help": {
+    "description": "Show help information",
+    "usage": "Usage: {{command}} [options]",
+    "options": "Options:",
+    "commands": "Commands:",
+    "examples": "Examples:",
+    "moreInfo": "For more information, visit:",
+    "examplesList": {
+      "init": "Initialize in current directory",
+      "initTemplate": "Initialize with advanced template",
+      "start": "Start processing issues",
+      "startDaemon": "Start as background service",
+      "status": "Check service status",
+      "logs": "Follow logs in real-time",
+      "config": "Show all configuration"
+    }
+  },
+  "init": {
+    "description": "Initialize PoppoBuilder for this project",
+    "alreadyInitialized": "PoppoBuilder is already initialized in this directory",
+    "success": "Successfully initialized PoppoBuilder",
+    "configCreated": "Configuration file created: {{path}}",
+    "promptLanguage": "Select your preferred language:",
+    "promptGithubToken": "Enter your GitHub token:",
+    "promptRepo": "Enter the GitHub repository (owner/repo):",
+    "options": {
+      "force": "overwrite existing configuration",
+      "lang": "primary language (en/ja)",
+      "dir": "project directory to initialize",
+      "template": "use a project template (default/minimal/advanced)",
+      "description": "project description",
+      "priority": "project priority (0-100)",
+      "tags": "comma-separated project tags",
+      "checkInterval": "check interval in milliseconds",
+      "maxConcurrent": "maximum concurrent tasks",
+      "cpuWeight": "CPU weight for resource allocation",
+      "memoryLimit": "memory limit (e.g., 512M, 2G)",
+      "disabled": "register project as disabled",
+      "noAgents": "disable agent features",
+      "noInteractive": "skip interactive setup"
+    }
+  },
+  "start": {
+    "description": "Start PoppoBuilder service",
+    "starting": "Starting PoppoBuilder...",
+    "started": "PoppoBuilder started successfully",
+    "alreadyRunning": "PoppoBuilder is already running (PID: {{pid}})",
+    "failed": "Failed to start PoppoBuilder: {{error}}",
+    "options": {
+      "daemon": "run as daemon",
+      "config": "config file path",
+      "agents": "enable agent mode",
+      "dryRun": "simulate without making changes"
+    }
+  },
+  "stop": {
+    "description": "Stop PoppoBuilder service",
+    "stopping": "Stopping PoppoBuilder...",
+    "stopped": "PoppoBuilder stopped successfully",
+    "notRunning": "PoppoBuilder is not running",
+    "failed": "Failed to stop PoppoBuilder: {{error}}",
+    "options": {
+      "force": "force stop all processes"
+    }
+  },
+  "status": {
+    "description": "Show PoppoBuilder status (optionally for specific project)",
+    "running": "PoppoBuilder is running (PID: {{pid}})",
+    "notRunning": "PoppoBuilder is not running",
+    "uptime": "Uptime: {{time}}",
+    "memory": "Memory usage: {{usage}}",
+    "activeTasks": "Active tasks: {{count}}",
+    "options": {
+      "json": "output as JSON",
+      "watch": "watch mode"
+    }
+  },
+  "config": {
+    "description": "Manage PoppoBuilder configuration",
+    "show": {
+      "description": "Show current configuration",
+      "format": "Output format (json, yaml)"
+    },
+    "set": {
+      "description": "Set configuration value",
+      "success": "Configuration updated: {{key}} = {{value}}",
+      "failed": "Failed to update configuration: {{error}}"
+    },
+    "get": {
+      "description": "Get configuration value",
+      "notFound": "Configuration key not found: {{key}}"
+    },
+    "validate": {
+      "description": "Validate configuration",
+      "valid": "Configuration is valid",
+      "invalid": "Configuration is invalid:",
+      "errors": "Errors found:"
+    },
+    "options": {
+      "global": "use global config",
+      "list": "list all settings",
+      "edit": "open config in editor",
+      "maxProcesses": "set maximum concurrent processes",
+      "strategy": "set scheduling strategy (round-robin, priority, weighted)"
+    },
+    "language": {
+      "global": "global",
+      "project": "project",
+      "setSuccess": "Language set to {{language}} ({{scope}}) - Locale: {{locale}}",
+      "restartRequired": "Restart required for language changes to take effect"
+    }
+  },
+  "globalConfig": {
+    "description": "Manage PoppoBuilder global configuration"
+  },
+  "daemon": {
+    "description": "Manage PoppoBuilder daemon (start|stop|restart|status|reload|logs)",
+    "options": {
+      "json": "output as JSON",
+      "verbose": "verbose output",
+      "detach": "run daemon in detached mode",
+      "noDetach": "run daemon in foreground"
+    }
+  },
+  "list": {
+    "description": "List all registered PoppoBuilder projects",
+    "title": "PoppoBuilder Projects",
+    "noProjects": "No projects registered yet.",
+    "howToRegister": "To register a project:",
+    "initHint": "Initialize current directory",
+    "registerHint": "Register existing project",
+    "noMatches": "No projects match the specified filters.",
+    "totalProcessed": "Total processed",
+    "options": {
+      "enabled": "show only enabled projects",
+      "disabled": "show only disabled projects",
+      "tag": "filter by tag",
+      "sort": "sort by field (name|priority|path|created|updated|activity)",
+      "table": "display as table",
+      "json": "output as JSON",
+      "status": "include runtime status information",
+      "verbose": "show detailed information",
+      "quiet": "minimal output"
+    }
+  },
+  "monitor": {
+    "description": "Monitor PoppoBuilder system performance"
+  },
+  "enable": {
+    "description": "Enable a PoppoBuilder project"
+  },
+  "disable": {
+    "description": "Disable a PoppoBuilder project",
+    "options": {
+      "force": "disable even if there are running tasks"
+    }
+  },
+  "remove": {
+    "description": "Remove a PoppoBuilder project from the registry",
+    "options": {
+      "force": "skip confirmation prompt",
+      "clean": "remove project-related files"
+    }
+  },
+  "doctor": {
+    "description": "Diagnose PoppoBuilder installation and configuration",
+    "options": {
+      "fix": "attempt to fix issues automatically"
+    }
+  },
+  "upgrade": {
+    "description": "Upgrade PoppoBuilder to the latest version",
+    "options": {
+      "check": "check for updates only"
+    }
+  },
+  "pr": {
+    "description": "Create a pull request with guided assistance"
+  },
+  "logs": {
+    "description": "View PoppoBuilder logs",
+    "tail": "Show last {{lines}} lines",
+    "follow": "Follow log output",
+    "level": "Filter by log level",
+    "noLogs": "No logs found",
+    "options": {
+      "lines": "Number of lines to show",
+      "follow": "Follow log output",
+      "level": "Log level filter (error, warn, info, debug)"
+    }
+  },
+  "agent": {
+    "description": "Manage PoppoBuilder agents",
+    "list": {
+      "description": "List all agents",
+      "headers": {
+        "name": "Name",
+        "status": "Status",
+        "tasks": "Tasks",
+        "memory": "Memory"
+      },
+      "noAgents": "No agents found"
+    },
+    "start": {
+      "description": "Start an agent",
+      "success": "Agent {{name}} started successfully",
+      "failed": "Failed to start agent {{name}}: {{error}}"
+    },
+    "stop": {
+      "description": "Stop an agent",
+      "success": "Agent {{name}} stopped successfully",
+      "failed": "Failed to stop agent {{name}}: {{error}}"
+    },
+    "restart": {
+      "description": "Restart an agent",
+      "success": "Agent {{name}} restarted successfully",
+      "failed": "Failed to restart agent {{name}}: {{error}}"
+    }
+  },
+  "dashboard": {
+    "description": "Open PoppoBuilder dashboard",
+    "opening": "Opening dashboard at {{url}}",
+    "browserError": "Failed to open browser. Please visit: {{url}}",
+    "notRunning": "Dashboard is not running. Start PoppoBuilder first."
+  },
+  "backup": {
+    "description": "Backup PoppoBuilder data",
+    "creating": "Creating backup...",
+    "success": "Backup created successfully: {{path}}",
+    "failed": "Failed to create backup: {{error}}",
+    "options": {
+      "output": "Output path for backup file",
+      "compress": "Compress backup file",
+      "encrypt": "Encrypt backup file"
+    }
+  },
+  "restore": {
+    "description": "Restore PoppoBuilder data from backup",
+    "restoring": "Restoring from backup...",
+    "success": "Successfully restored from backup",
+    "failed": "Failed to restore from backup: {{error}}",
+    "confirm": "Are you sure you want to restore from {{path}}? This will overwrite current data.",
+    "options": {
+      "input": "Path to backup file",
+      "force": "Skip confirmation prompt"
+    }
+  },
+  "version": {
+    "description": "Show version information",
+    "poppobuilder": "PoppoBuilder version: {{version}}",
+    "node": "Node.js version: {{version}}",
+    "npm": "npm version: {{version}}"
+  },
+  "move": {
+    "description": "Move a PoppoBuilder project to a new location",
+    "projectNotFound": "Project not found: {{identifier}}",
+    "success": "Project moved successfully",
+    "error": "Failed to move project",
+    "options": {
+      "force": "force move even with uncommitted changes",
+      "parents": "create parent directories as needed",
+      "merge": "merge into existing directory",
+      "symlink": "create symlink at old location"
+    }
+  }
+}

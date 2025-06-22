@@ -1,0 +1,52 @@
+{
+  "levels": {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO",
+    "WARN": "WARN",
+    "ERROR": "ERROR",
+    "FATAL": "FATAL"
+  },
+  "messages": {
+    "starting": "Starting PoppoBuilder...",
+    "started": "PoppoBuilder started",
+    "stopping": "Stopping PoppoBuilder...",
+    "stopped": "PoppoBuilder stopped",
+    "processingIssue": "Processing Issue #{{number}}",
+    "processedIssue": "Processed Issue #{{number}}",
+    "errorProcessingIssue": "Error processing Issue #{{number}}",
+    "taskQueued": "Task queued: {{taskId}}",
+    "taskStarted": "Task {{taskId}} started",
+    "taskCompleted": "Task {{taskId}} completed",
+    "taskFailed": "Task {{taskId}} failed",
+    "connectingGitHub": "Connecting to GitHub...",
+    "connectedGitHub": "Connected to GitHub",
+    "connectingClaude": "Connecting to Claude API...",
+    "connectedClaude": "Connected to Claude API",
+    "rateLimitExceeded": "Rate limit exceeded. Retrying in {{seconds}} seconds",
+    "retrying": "Retrying... ({{attempt}}/{{maxAttempts}})",
+    "configLoaded": "Configuration loaded",
+    "configError": "Failed to load configuration",
+    "databaseConnected": "Database connected",
+    "databaseError": "Database error occurred",
+    "serverStarted": "Server started on port {{port}}",
+    "serverStopped": "Server stopped",
+    "agentStarted": "Agent {{name}} started",
+    "agentStopped": "Agent {{name}} stopped",
+    "fileCreated": "File created: {{path}}",
+    "fileUpdated": "File updated: {{path}}",
+    "fileDeleted": "File deleted: {{path}}",
+    "memoryUsage": "Memory usage: {{used}}MB / {{total}}MB ({{percentage}}%)",
+    "cpuUsage": "CPU usage: {{percentage}}%",
+    "tokenUsage": "Token usage: {{used}} / {{limit}} ({{percentage}}%)"
+  },
+  "categories": {
+    "system": "System",
+    "task": "Task",
+    "api": "API",
+    "database": "Database",
+    "file": "File",
+    "performance": "Performance",
+    "security": "Security",
+    "agent": "Agent"
+  }
+}

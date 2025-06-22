@@ -1,0 +1,101 @@
+{
+  "defaultValue": "[{{value}}]",
+  "yesNo": {
+    "Y/n": "(Y/n)",
+    "y/N": "(y/N)",
+    "y/n": "(y/n)"
+  },
+  "yesResponses": ["y", "yes", "yeah", "yep", "sure", "ok", "okay"],
+  "noResponses": ["n", "no", "nope", "nah"],
+  "select": "Select an option",
+  "selectWithDefault": "Select an option [{{default}}]",
+  "selectPrompt": "Enter your choice",
+  "invalidSelection": "Invalid selection. Please try again.",
+  "init": {
+    "projectName": "Project name",
+    "useDetectedRepo": "Use detected GitHub repo {{owner}}/{{repo}}?",
+    "githubOwner": "GitHub owner/organization",
+    "githubRepo": "GitHub repository name", 
+    "hasGithubToken": "Do you have a GitHub token?",
+    "githubToken": "GitHub token (will be stored securely)",
+    "githubTokenLater": "You will need to set GITHUB_TOKEN environment variable later.",
+    "primaryLanguage": "Primary language (en/ja)",
+    "enableClaude": "Enable Claude API integration?",
+    "maxConcurrentClaude": "Max concurrent Claude requests",
+    "hasClaudeKey": "Do you have a Claude API key?",
+    "claudeApiKey": "Claude API key (will be stored securely)",
+    "claudeKeyLater": "You will need to set CLAUDE_API_KEY environment variable later.",
+    "enableAgents": "Enable AI agents for enhanced features?",
+    "enableMonitoring": "Enable monitoring and dashboard?",
+    "dashboardPort": "Dashboard port",
+    "confirmOverwrite": "Configuration already exists. Overwrite?",
+    "initSuccess": "PoppoBuilder initialized successfully!",
+    "nextSteps": "Next steps:",
+    "nextStep1": "Set environment variables if needed",
+    "nextStep2": "Run 'poppobuilder start' to begin processing issues",
+    "nextStep3": "Visit the dashboard at http://localhost:{{port}} (if enabled)"
+  },
+  "remove": {
+    "confirmRemove": "Are you sure you want to remove project '{{name}}'?",
+    "confirmRemoveWithFiles": "Also remove all project files and data?",
+    "removing": "Removing project...",
+    "removeSuccess": "Project removed successfully",
+    "removeCancelled": "Remove operation cancelled"
+  },
+  "pr": {
+    "branchName": "Branch name for PR",
+    "prTitle": "Pull request title", 
+    "prDescription": "Pull request description (optional)",
+    "isDraft": "Create as draft PR?",
+    "addReviewers": "Add reviewers? (comma-separated usernames)",
+    "addLabels": "Add labels? (comma-separated)",
+    "creating": "Creating pull request...",
+    "prCreated": "Pull request created successfully!",
+    "prUrl": "PR URL: {{url}}"
+  },
+  "config": {
+    "confirmEdit": "Open configuration in editor?",
+    "selectEditor": "Select editor",
+    "editorNotFound": "Editor not found. Using default.",
+    "saveChanges": "Save changes?",
+    "configUpdated": "Configuration updated successfully"
+  },
+  "template": {
+    "selectTemplate": "Select a template",
+    "templateDescription": "Template: {{name}} - {{description}}",
+    "confirmUseTemplate": "Use template '{{name}}'?",
+    "customizingTemplate": "Customizing template...",
+    "templateApplied": "Template applied successfully"
+  },
+  "restore": {
+    "selectBackup": "Select backup to restore",
+    "confirmRestore": "Are you sure you want to restore from backup '{{name}}'? This will overwrite current data.",
+    "restoring": "Restoring from backup...",
+    "restoreSuccess": "Restore completed successfully",
+    "restoreCancelled": "Restore operation cancelled"
+  },
+  "common": {
+    "continue": "Continue?",
+    "retry": "Retry?",
+    "skip": "Skip?",
+    "abort": "Abort operation?",
+    "processing": "Processing...",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "done": "Done!",
+    "failed": "Failed!",
+    "success": "Success!",
+    "cancelled": "Cancelled",
+    "pressEnterToContinue": "Press Enter to continue..."
+  },
+  "move": {
+    "confirmMove": "Are you sure you want to move this project?",
+    "moveCancelled": "Move operation cancelled",
+    "uncommittedChanges": "Continue with uncommitted Git changes?",
+    "moving": "Moving project...",
+    "moveSuccess": "Project moved successfully",
+    "creatingDirectories": "Creating parent directories...",
+    "updatingRegistry": "Updating project registry...",
+    "creatingSymlink": "Creating symlink at old location..."
+  }
+}

@@ -5,70 +5,71 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PoppoBuilder Process Dashboard</title>
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/i18n.css">
 </head>
 <body>
     <div class="dashboard-container">
         <header class="dashboard-header">
-            <h1>🤖 PoppoBuilder Process Dashboard</h1>
+            <h1 data-i18n="header.title">🤖 PoppoBuilder Process Dashboard</h1>
             <div class="header-actions">
-                <button id="refreshBtn" class="btn btn-primary">更新</button>
-                <button id="stopAllBtn" class="btn btn-danger">全プロセス停止</button>
+                <button id="refreshBtn" class="btn btn-primary" data-i18n="header.refresh">更新</button>
+                <button id="stopAllBtn" class="btn btn-danger" data-i18n="header.stopAll">全プロセス停止</button>
             </div>
         </header>
 
         <section class="system-status">
             <div class="status-card">
-                <h3>システム状態</h3>
-                <div id="systemStatus" class="status-indicator status-ok">正常稼働中</div>
+                <h3 data-i18n="systemStatus.title">システム状態</h3>
+                <div id="systemStatus" class="status-indicator status-ok" data-i18n="systemStatus.running">正常稼働中</div>
             </div>
             <div class="stats-grid">
                 <div class="stat-item">
-                    <span class="stat-label">実行中</span>
+                    <span class="stat-label" data-i18n="systemStatus.stats.running">実行中</span>
                     <span id="runningCount" class="stat-value">0</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">完了</span>
+                    <span class="stat-label" data-i18n="systemStatus.stats.completed">完了</span>
                     <span id="completedCount" class="stat-value">0</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">エラー</span>
+                    <span class="stat-label" data-i18n="systemStatus.stats.error">エラー</span>
                     <span id="errorCount" class="stat-value">0</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">合計</span>
+                    <span class="stat-label" data-i18n="systemStatus.stats.total">合計</span>
                     <span id="totalCount" class="stat-value">0</span>
                 </div>
             </div>
         </section>
 
         <section class="process-list">
-            <h2>プロセス一覧</h2>
+            <h2 data-i18n="processList.title">プロセス一覧</h2>
             <div id="processListContainer" class="process-list-container">
-                <div class="loading">読み込み中...</div>
+                <div class="loading" data-i18n="processList.loading">読み込み中...</div>
             </div>
         </section>
 
         <section class="log-search">
-            <h2>ログ検索</h2>
+            <h2 data-i18n="logSearch.title">ログ検索</h2>
             <div class="search-controls">
                 <div class="search-row">
-                    <input type="text" id="searchKeyword" class="search-input" placeholder="キーワードを入力...">
+                    <input type="text" id="searchKeyword" class="search-input" data-i18n="logSearch.placeholder" placeholder="キーワードを入力...">
                     <select id="searchLevel" class="search-select">
-                        <option value="">全レベル</option>
+                        <option value="" data-i18n="logSearch.allLevels">全レベル</option>
                         <option value="ERROR">ERROR</option>
                         <option value="WARN">WARN</option>
                         <option value="INFO">INFO</option>
                         <option value="DEBUG">DEBUG</option>
                     </select>
-                    <input type="number" id="searchIssueNumber" class="search-input-small" placeholder="Issue番号">
+                    <input type="number" id="searchIssueNumber" class="search-input-small" data-i18n="logSearch.issueNumber" placeholder="Issue番号">
                 </div>
                 <div class="search-row">
                     <input type="datetime-local" id="searchStartDate" class="search-date">
                     <span>〜</span>
                     <input type="datetime-local" id="searchEndDate" class="search-date">
-                    <button id="searchBtn" class="btn btn-primary">検索</button>
-                    <button id="clearSearchBtn" class="btn btn-secondary">クリア</button>
-                    <button id="exportBtn" class="btn btn-secondary">エクスポート</button>
+                    <button id="searchBtn" class="btn btn-primary" data-i18n="logSearch.search">検索</button>
+                    <button id="clearSearchBtn" class="btn btn-secondary" data-i18n="logSearch.clear">クリア</button>
+                    <button id="exportBtn" class="btn btn-secondary" data-i18n="logSearch.export">エクスポート</button>
                 </div>
             </div>
             <div id="searchResults" class="search-results">
@@ -78,45 +79,45 @@
         </section>
 
         <section class="performance-analytics">
-            <h2>パフォーマンス分析</h2>
+            <h2 data-i18n="analytics.title">パフォーマンス分析</h2>
             <div class="analytics-tabs">
-                <button class="tab-btn active" data-tab="statistics">統計情報</button>
-                <button class="tab-btn" data-tab="trends">トレンド</button>
-                <button class="tab-btn" data-tab="history">実行履歴</button>
+                <button class="tab-btn active" data-tab="statistics" data-i18n="analytics.tabs.statistics">統計情報</button>
+                <button class="tab-btn" data-tab="trends" data-i18n="analytics.tabs.trends">トレンド</button>
+                <button class="tab-btn" data-tab="history" data-i18n="analytics.tabs.history">実行履歴</button>
             </div>
             
             <div id="statisticsTab" class="tab-content active">
                 <div class="stats-controls">
                     <select id="statsTaskType" class="stats-select">
-                        <option value="claude-cli">claude-cli</option>
-                        <option value="issue-process">issue-process</option>
-                        <option value="comment-process">comment-process</option>
+                        <option value="claude-cli" data-i18n="analytics.taskTypes.claudeCli">claude-cli</option>
+                        <option value="issue-process" data-i18n="analytics.taskTypes.issueProcess">issue-process</option>
+                        <option value="comment-process" data-i18n="analytics.taskTypes.commentProcess">comment-process</option>
                     </select>
-                    <button id="refreshStatsBtn" class="btn btn-primary">更新</button>
+                    <button id="refreshStatsBtn" class="btn btn-primary" data-i18n="common.refresh">更新</button>
                 </div>
                 <div id="statsContainer" class="stats-container">
-                    <div class="loading">統計データを読み込み中...</div>
+                    <div class="loading" data-i18n="analytics.loading.stats">統計データを読み込み中...</div>
                 </div>
             </div>
             
             <div id="trendsTab" class="tab-content">
                 <div class="trends-controls">
                     <select id="trendsTaskType" class="trends-select">
-                        <option value="claude-cli">claude-cli</option>
-                        <option value="issue-process">issue-process</option>
-                        <option value="comment-process">comment-process</option>
+                        <option value="claude-cli" data-i18n="analytics.taskTypes.claudeCli">claude-cli</option>
+                        <option value="issue-process" data-i18n="analytics.taskTypes.issueProcess">issue-process</option>
+                        <option value="comment-process" data-i18n="analytics.taskTypes.commentProcess">comment-process</option>
                     </select>
                     <select id="trendsMetric" class="trends-select">
-                        <option value="duration_ms">実行時間</option>
-                        <option value="memory_usage">メモリ使用量</option>
-                        <option value="cpu_usage">CPU使用率</option>
+                        <option value="duration_ms" data-i18n="analytics.metrics.duration">実行時間</option>
+                        <option value="memory_usage" data-i18n="analytics.metrics.memory">メモリ使用量</option>
+                        <option value="cpu_usage" data-i18n="analytics.metrics.cpu">CPU使用率</option>
                     </select>
                     <select id="trendsDays" class="trends-select">
-                        <option value="7">過去7日間</option>
-                        <option value="14">過去14日間</option>
-                        <option value="30">過去30日間</option>
+                        <option value="7" data-i18n="analytics.timeRanges.7days">過去7日間</option>
+                        <option value="14" data-i18n="analytics.timeRanges.14days">過去14日間</option>
+                        <option value="30" data-i18n="analytics.timeRanges.30days">過去30日間</option>
                     </select>
-                    <button id="refreshTrendsBtn" class="btn btn-primary">更新</button>
+                    <button id="refreshTrendsBtn" class="btn btn-primary" data-i18n="common.refresh">更新</button>
                 </div>
                 <div id="trendsChart" class="trends-chart">
                     <canvas id="trendsCanvas"></canvas>
@@ -126,30 +127,30 @@
             <div id="historyTab" class="tab-content">
                 <div class="history-controls">
                     <select id="historyTaskType" class="history-select">
-                        <option value="">全タスクタイプ</option>
-                        <option value="claude-cli">claude-cli</option>
-                        <option value="issue-process">issue-process</option>
-                        <option value="comment-process">comment-process</option>
+                        <option value="" data-i18n="common.allTypes">全タスクタイプ</option>
+                        <option value="claude-cli" data-i18n="analytics.taskTypes.claudeCli">claude-cli</option>
+                        <option value="issue-process" data-i18n="analytics.taskTypes.issueProcess">issue-process</option>
+                        <option value="comment-process" data-i18n="analytics.taskTypes.commentProcess">comment-process</option>
                     </select>
                     <select id="historyStatus" class="history-select">
-                        <option value="">全ステータス</option>
-                        <option value="success">成功</option>
-                        <option value="error">エラー</option>
-                        <option value="timeout">タイムアウト</option>
+                        <option value="" data-i18n="analytics.status.all">全ステータス</option>
+                        <option value="success" data-i18n="analytics.status.success">成功</option>
+                        <option value="error" data-i18n="analytics.status.error">エラー</option>
+                        <option value="timeout" data-i18n="analytics.status.timeout">タイムアウト</option>
                     </select>
-                    <button id="refreshHistoryBtn" class="btn btn-primary">更新</button>
-                    <button id="exportHistoryBtn" class="btn btn-secondary">エクスポート</button>
+                    <button id="refreshHistoryBtn" class="btn btn-primary" data-i18n="common.refresh">更新</button>
+                    <button id="exportHistoryBtn" class="btn btn-secondary" data-i18n="logSearch.export">エクスポート</button>
                 </div>
                 <div id="historyContainer" class="history-container">
-                    <div class="loading">実行履歴を読み込み中...</div>
+                    <div class="loading" data-i18n="analytics.loading.history">実行履歴を読み込み中...</div>
                 </div>
             </div>
         </section>
 
         <section class="realtime-logs">
-            <h2>リアルタイムログ</h2>
+            <h2 data-i18n="realtimeLogs.title">リアルタイムログ</h2>
             <div id="logContainer" class="log-container">
-                <div class="log-entry">ダッシュボードに接続中...</div>
+                <div class="log-entry" data-i18n="realtimeLogs.connecting">ダッシュボードに接続中...</div>
             </div>
         </section>
     </div>
@@ -157,13 +158,14 @@
     <!-- プロセス詳細モーダル -->
     <div id="processDetailModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>プロセス詳細</h2>
+            <span class="close" data-i18n="common.close">&times;</span>
+            <h2 data-i18n="processDetail.title">プロセス詳細</h2>
             <div id="processDetailContent"></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/app.js"></script>
     <script src="js/analytics.js"></script>
 </body>
