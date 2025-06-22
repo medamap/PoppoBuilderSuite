@@ -721,9 +721,18 @@ async function checkComments() {
  * タスクキューからタスクを処理
  */
 async function processQueuedTasks() {
+  let newIssuesStarted = 0; // 新規Issue開始数をカウント
+  
   while (taskQueue.canExecute() && taskQueue.getQueueSize() > 0) {
     const task = taskQueue.dequeue();
     if (!task) break;
+    
+    // 新規Issueの場合、1回のポーリングで1つまで
+    if (task.type === 'issue' && newIssuesStarted >= 1) {
+      taskQueue.enqueue(task); // キューに戻す
+      console.log('📋 新規Issue処理は1回のポーリングで1つまでに制限');
+      break;
+    }
     
     // レート制限チェック
     const rateLimitStatus = await rateLimiter.isRateLimited();
@@ -739,6 +748,7 @@ async function processQueuedTasks() {
     
     try {
       if (task.type === 'issue') {
+        newIssuesStarted++; // カウントアップ
         processIssue(task.issue).then(() => {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
@@ -750,6 +760,7 @@ async function processQueuedTasks() {
           handleTaskError(task, error);
         });
       } else if (task.type === 'comment') {
+        // コメント処理は制限しない
         processComment(task.issue, task.comment).then(() => {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
