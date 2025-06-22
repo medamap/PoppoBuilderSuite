@@ -1,18 +1,29 @@
 #!/usr/bin/env node
 
 /**
- * PoppoBuilder プロセスモニターCLI
+ * PoppoBuilder Process Monitor CLI
  * 
- * コマンド:
- *   poppo status              - 実行中のプロセス一覧表示
- *   poppo kill <task-id>      - 特定タスクの停止
- *   poppo logs <task-id>      - タスク別ログ表示
+ * Commands:
+ *   poppo status              - Show running processes
+ *   poppo kill <task-id>      - Stop specific task
+ *   poppo logs <task-id>      - Show task logs
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawn } = require('child_process');
 const readline = require('readline');
+const os = require('os');
+
+// Setup i18n before using it
+const i18nPath = path.join(__dirname, '..', 'lib', 'i18n');
+const { initI18n, t } = require(i18nPath);
+// Initialize i18n synchronously
+initI18n().catch(console.error);
+
+// Import table formatter
+const tableFormatterPath = path.join(__dirname, '..', 'lib', 'utils', 'table-formatter');
+const tableFormatter = require(tableFormatterPath);
 
 // 設定とログパス
 const basePath = process.cwd();
@@ -185,41 +196,62 @@ function showStatus(options = {}) {
   }
   
   // 通常の出力
-  console.log(`${colors.bold}PoppoBuilder プロセス状態${colors.reset}`);
-  console.log(`${colors.gray}更新時刻: ${new Date().toLocaleString('ja-JP')}${colors.reset}\n`);
+  console.log(`${colors.bold}${t('process:title')}${colors.reset}`);
+  console.log(`${colors.gray}${t('process:updateTime')}: ${new Date().toLocaleString()}${colors.reset}\n`);
   
   if (tasks.length === 0) {
-    console.log(`${colors.yellow}実行中のタスクはありません${colors.reset}`);
+    console.log(`${colors.yellow}${t('process:noTasks')}${colors.reset}`);
     return;
   }
   
-  // ヘッダー
-  console.log(`${colors.bold}TaskID              Issue   PID     状態        実行時間    CPU     メモリ${colors.reset}`);
-  console.log(`${colors.gray}${'─'.repeat(78)}${colors.reset}`);
-  
-  // タスク一覧
-  for (const task of tasks) {
+  // Prepare table data
+  const tableData = tasks.map(task => {
     const processInfo = task.pid ? getProcessInfo(task.pid) : { exists: false, cpu: 0, memory: 0 };
-    const statusColor = task.status === 'running' ? colors.green : 
-                       task.status === 'error' ? colors.red : colors.yellow;
-    const runningStatus = processInfo.exists ? '●' : '○';
     const duration = task.startTime ? formatDuration(task.startTime) : '-';
     const cpu = processInfo.exists ? `${processInfo.cpu.toFixed(1)}%` : '-';
     const memory = processInfo.exists ? formatMemory(processInfo.memory) : '-';
     
-    console.log(
-      `${(task.taskId || '').padEnd(20)}` +
-      `#${(task.issueNumber || '-').toString().padEnd(6)}` +
-      `${(task.pid || '-').toString().padEnd(8)}` +
-      `${statusColor}${runningStatus} ${(task.status || 'unknown').padEnd(10)}${colors.reset}` +
-      `${duration.padEnd(12)}` +
-      `${cpu.padEnd(8)}` +
-      `${memory}`
-    );
-  }
-  
-  console.log(`${colors.gray}${'─'.repeat(78)}${colors.reset}`);
-  console.log(`${colors.gray}合計: ${tasks.length} タスク${colors.reset}`);
+    return {
+      taskId: task.taskId || '-',
+      issueNumber: task.issueNumber ? `#${task.issueNumber}` : '-',
+      pid: task.pid || '-',
+      status: t(`process:status.${task.status || 'unknown'}`),
+      duration,
+      cpu,
+      memory
+    };
+  });
+
+  // Define columns
+  const columns = [
+    { key: 'taskId', labelKey: 'process:columns.taskId', maxWidth: 20 },
+    { key: 'issueNumber', labelKey: 'process:columns.issue' },
+    { key: 'pid', labelKey: 'process:columns.pid', align: 'right' },
+    { 
+      key: 'status', 
+      labelKey: 'process:columns.status',
+      formatter: (value, item) => {
+        const statusMap = {
+          [t('process:status.running')]: colors.green,
+          [t('process:status.error')]: colors.red,
+          [t('process:status.completed')]: colors.blue
+        };
+        const color = statusMap[value] || colors.yellow;
+        return color + value + colors.reset;
+      }
+    },
+    { key: 'duration', labelKey: 'process:columns.duration', align: 'right' },
+    { key: 'cpu', labelKey: 'process:columns.cpu', align: 'right' },
+    { key: 'memory', labelKey: 'process:columns.memory', align: 'right' }
+  ];
+
+  // Format and print table
+  const table = tableFormatter.formatTable(tableData, {
+    columns,
+    summary: t('process:summary.total', { count: tasks.length })
+  });
+
+  console.log(table);
 }
 
 // killコマンドの実装

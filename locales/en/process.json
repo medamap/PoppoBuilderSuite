@@ -1,0 +1,34 @@
+{
+  "title": "PoppoBuilder Process Status",
+  "updateTime": "Updated at",
+  "noTasks": "No running tasks",
+  "columns": {
+    "taskId": "Task ID",
+    "issue": "Issue",
+    "pid": "PID",
+    "status": "Status",
+    "duration": "Duration",
+    "cpu": "CPU",
+    "memory": "Memory"
+  },
+  "status": {
+    "running": "Running",
+    "completed": "Completed",
+    "error": "Error",
+    "pending": "Pending",
+    "unknown": "Unknown"
+  },
+  "summary": {
+    "total": "Total: {{count}} tasks"
+  },
+  "kill": {
+    "confirm": "Stop task {{taskId}}?",
+    "notFound": "Task {{taskId}} not found",
+    "success": "Task {{taskId}} stopped",
+    "failed": "Failed to stop task {{taskId}}: {{error}}"
+  },
+  "logs": {
+    "notFound": "Logs for task {{taskId}} not found",
+    "following": "Following logs... (Ctrl+C to exit)"
+  }
+}

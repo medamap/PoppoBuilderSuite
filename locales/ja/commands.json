@@ -74,11 +74,35 @@
   },
   "status": {
     "description": "PoppoBuilderの状態を表示（オプションで特定のプロジェクト）",
+    "title": "PoppoBuilder ステータス",
     "running": "PoppoBuilderは実行中です (PID: {{pid}})",
     "notRunning": "PoppoBuilderは実行されていません",
     "uptime": "稼働時間: {{time}}",
     "memory": "メモリ使用量: {{usage}}",
     "activeTasks": "アクティブなタスク: {{count}}件",
+    "daemon": {
+      "title": "デーモンステータス:",
+      "uptime": "稼働時間:"
+    },
+    "summary": {
+      "title": "サマリー:",
+      "totalProjects": "総プロジェクト数",
+      "activeProjects": "アクティブプロジェクト",
+      "runningProcesses": "実行中プロセス",
+      "issuesProcessed": "処理済みイシュー",
+      "totalErrors": "総エラー数"
+    },
+    "projects": {
+      "title": "プロジェクト:",
+      "noProjects": "登録されたプロジェクトがありません"
+    },
+    "columns": {
+      "processes": "プロセス",
+      "activeIssues": "アクティブイシュー"
+    },
+    "time": {
+      "justNow": "たった今"
+    },
     "options": {
       "json": "JSONとして出力",
       "watch": "ウォッチモード"

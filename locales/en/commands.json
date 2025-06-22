@@ -74,11 +74,35 @@
   },
   "status": {
     "description": "Show PoppoBuilder status (optionally for specific project)",
+    "title": "PoppoBuilder Status",
     "running": "PoppoBuilder is running (PID: {{pid}})",
     "notRunning": "PoppoBuilder is not running",
     "uptime": "Uptime: {{time}}",
     "memory": "Memory usage: {{usage}}",
     "activeTasks": "Active tasks: {{count}}",
+    "daemon": {
+      "title": "Daemon Status:",
+      "uptime": "Uptime:"
+    },
+    "summary": {
+      "title": "Summary:",
+      "totalProjects": "Total Projects",
+      "activeProjects": "Active Projects",
+      "runningProcesses": "Running Processes",
+      "issuesProcessed": "Issues Processed",
+      "totalErrors": "Total Errors"
+    },
+    "projects": {
+      "title": "Projects:",
+      "noProjects": "No projects registered"
+    },
+    "columns": {
+      "processes": "Processes",
+      "activeIssues": "Active Issues"
+    },
+    "time": {
+      "justNow": "just now"
+    },
     "options": {
       "json": "output as JSON",
       "watch": "watch mode"
