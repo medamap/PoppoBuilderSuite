@@ -5,9 +5,9 @@ Comprehensive documentation for PoppoBuilder Suite. Please refer to the appropri
 ## 📚 Table of Contents
 
 ### 🚀 Getting Started
-- [Quick Start Guide](quick-start.md) - Get started with PoppoBuilder in 5 minutes ([Japanese](ja/quick-start.md))
-- [Installation Guide](INSTALL_en.md) ([Japanese](INSTALL.md)) - Detailed setup instructions
-- [Setup Guide](setup-guide.md) ([Japanese](ja/setup-guide.md)) - Environment configuration details
+- [Quick Start Guide](guides/quick-start.md) - Get started with PoppoBuilder in 5 minutes
+- [Installation Guide](INSTALL.md) - Detailed setup instructions
+- [Setup Guide](setup-guide.md) - Environment configuration details
 
 ### 🎯 Feature Guides
 - [Memory Management Guide](features/memory-management-guide.md) - Memory usage monitoring and optimization
@@ -74,8 +74,8 @@ Comprehensive documentation for PoppoBuilder Suite. Please refer to the appropri
 ## 🔍 How to Find Documentation
 
 ### By Purpose
-- **Want to start immediately** → [Quick Start Guide](quick-start.md)
-- **Want detailed installation** → [Installation Guide](INSTALL_en.md)
+- **Want to start immediately** → [Quick Start Guide](guides/quick-start.md)
+- **Want detailed installation** → [Installation Guide](INSTALL.md)
 - **Getting errors** → [Troubleshooting](troubleshooting.md)
 - **Want to change configuration** → [Configuration Options](config-management.md)
 - **Want to know commands** → [CLI Command Reference](api/cli-reference.md)

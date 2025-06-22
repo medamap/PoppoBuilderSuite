@@ -1,227 +1,227 @@
-# トレーサビリティ機能使用ガイド
+# Traceability Feature Usage Guide
 
-## 概要
+## Overview
 
-PoppoBuilder Suiteのトレーサビリティ機能は、要求から実装、テストまでの追跡可能性を確保し、変更時の影響範囲を自動分析する強力なツールです。
+The traceability feature in PoppoBuilder Suite is a powerful tool that ensures traceability from requirements to implementation and testing, and automatically analyzes the impact of changes.
 
-## 機能概要
+## Feature Overview
 
-### Phase 1: 基本機能（実装済み）
-- ID自動採番システム（PBS-REQ-001形式）
-- 双方向リンク管理
-- YAMLベースのデータ永続化
-- 整合性チェック機能
-- トレーサビリティマトリックス生成
+### Phase 1: Basic Features (Implemented)
+- Automatic ID numbering system (PBS-REQ-001 format)
+- Bidirectional link management
+- YAML-based data persistence
+- Consistency check functionality
+- Traceability matrix generation
 
-### Phase 2: 変更影響分析（実装済み）
-- 変更時の影響範囲自動分析
-- 影響度レベル表示（High/Medium/Low）
-- 更新必要箇所の特定
-- 推奨アクションの生成
-- 詳細影響分析レポート
+### Phase 2: Change Impact Analysis (Implemented)
+- Automatic impact analysis for changes
+- Impact level display (High/Medium/Low)
+- Identification of areas requiring updates
+- Generation of recommended actions
+- Detailed impact analysis reports
 
-## 使用方法
+## Usage
 
-### 基本コマンド
+### Basic Commands
 
-#### アイテムの追加
+#### Adding Items
 ```bash
 npm run trace add <phase> <title>
 
-# 例
-npm run trace add REQ "ユーザー認証機能"
-npm run trace add SPEC "OAuth2認証仕様"
-npm run trace add IMP "認証モジュール実装"
+# Examples
+npm run trace add REQ "User authentication feature"
+npm run trace add SPEC "OAuth2 authentication specification"
+npm run trace add IMP "Authentication module implementation"
 ```
 
-#### リンクの作成
+#### Creating Links
 ```bash
 npm run trace link <from-id> <to-id> [link-type]
 
-# 例
+# Examples
 npm run trace link PBS-SPEC-001 PBS-REQ-001 implements
 npm run trace link PBS-IMP-001 PBS-SPEC-001
 ```
 
-#### アイテム一覧の表示
+#### Listing Items
 ```bash
-# 全アイテムを表示
+# Show all items
 npm run trace list
 
-# フェーズ別に表示
+# Show by phase
 npm run trace list REQ
 npm run trace list SPEC
 ```
 
-#### トレーサビリティマトリックスの生成
+#### Generating Traceability Matrix
 ```bash
 npm run trace matrix
-# → traceability-matrix.md が生成されます
+# → Generates traceability-matrix.md
 ```
 
-#### 整合性チェック
+#### Consistency Check
 ```bash
 npm run trace check
-# 未実装の要求、テストのない実装などを検出
+# Detects unimplemented requirements, implementations without tests, etc.
 ```
 
-### 影響分析コマンド
+### Impact Analysis Commands
 
-#### 変更影響分析
+#### Change Impact Analysis
 ```bash
 npm run trace impact <item-id> [change-type]
 
-# 変更時の影響を分析
+# Analyze impact of modification
 npm run trace impact PBS-REQ-001 modify
 
-# 削除時の影響を分析
+# Analyze impact of deletion
 npm run trace impact PBS-SPEC-001 delete
 
-# 追加時の影響を分析
+# Analyze impact of addition
 npm run trace impact PBS-IMP-003 add
 ```
 
-#### 総合影響分析
+#### Comprehensive Impact Analysis
 ```bash
 npm run trace analyze <item-id>
-# 各変更タイプごとの影響サマリーを表示
+# Shows impact summary for each change type
 ```
 
-### 更新・削除操作
+### Update and Delete Operations
 
-#### アイテムの更新
+#### Updating Items
 ```bash
 npm run trace update <item-id> <field> <value>
 
-# 例
-npm run trace update PBS-REQ-001 title "改善されたユーザー認証機能"
+# Examples
+npm run trace update PBS-REQ-001 title "Improved user authentication feature"
 npm run trace update PBS-IMP-001 status "completed"
-npm run trace update PBS-SPEC-001 description "詳細な認証フロー"
+npm run trace update PBS-SPEC-001 description "Detailed authentication flow"
 ```
 
-#### アイテムの削除
+#### Deleting Items
 ```bash
 npm run trace delete <item-id>
-# 削除前に影響分析が実行され、確認が求められます
+# Impact analysis is performed before deletion, and confirmation is requested
 ```
 
-## フェーズとリンクタイプ
+## Phases and Link Types
 
-### フェーズ
-- `REQ` - 要求定義
-- `SPEC` - 要件定義  
-- `HLD` - 概要設計（High Level Design）
-- `DLD` - 詳細設計（Detailed Design）
-- `IMP` - 実装
-- `TEST` - テスト
+### Phases
+- `REQ` - Requirements
+- `SPEC` - Specifications  
+- `HLD` - High Level Design
+- `DLD` - Detailed Design
+- `IMP` - Implementation
+- `TEST` - Testing
 
-### リンクタイプ
-- `implements` - 実装関係（デフォルト）
-- `references` - 参照関係
-- `derives_from` - 派生関係
-- `conflicts_with` - 競合関係
-- `supersedes` - 置き換え関係
+### Link Types
+- `implements` - Implementation relationship (default)
+- `references` - Reference relationship
+- `derives_from` - Derivation relationship
+- `conflicts_with` - Conflict relationship
+- `supersedes` - Replacement relationship
 
-## ID形式
+## ID Format
 
-すべてのアイテムには自動的にIDが付与されます：
+All items are automatically assigned IDs:
 ```
-PBS-<PHASE>-<連番>
+PBS-<PHASE>-<sequential number>
 
-例：
-- PBS-REQ-001  (要求定義001)
-- PBS-SPEC-001 (要件定義001)
-- PBS-IMP-001  (実装001)
+Examples:
+- PBS-REQ-001  (Requirement 001)
+- PBS-SPEC-001 (Specification 001)
+- PBS-IMP-001  (Implementation 001)
 ```
 
-## 影響分析の解釈
+## Interpreting Impact Analysis
 
-### 影響度レベル
-- **High**: 直接的な実装関係があり、必ず確認・更新が必要
-- **Medium**: 関連があり、更新を検討すべき
-- **Low**: 間接的な影響のみ、念のため確認
+### Impact Levels
+- **High**: Direct implementation relationship exists, verification and updates are required
+- **Medium**: Related, updates should be considered
+- **Low**: Only indirect impact, check just in case
 
-### 影響要因
-1. **フェーズ間の関係**: 上流の変更は下流に大きな影響
-2. **リンクタイプ**: implementsやconflicts_withは強い影響
-3. **距離**: 直接リンクは影響大、間接リンクは影響小
+### Impact Factors
+1. **Inter-phase relationships**: Upstream changes have major impact downstream
+2. **Link types**: implements and conflicts_with have strong impact
+3. **Distance**: Direct links have high impact, indirect links have low impact
 
-## 実用例
+## Practical Examples
 
-### 新機能追加のワークフロー
+### New Feature Addition Workflow
 ```bash
-# 1. 要求を追加
-npm run trace add REQ "通知機能の実装"
+# 1. Add requirement
+npm run trace add REQ "Notification feature implementation"
 # → PBS-REQ-002
 
-# 2. 要件を定義
-npm run trace add SPEC "リアルタイム通知仕様"
+# 2. Define specification
+npm run trace add SPEC "Real-time notification specification"
 # → PBS-SPEC-003
 
-# 3. リンクを作成
+# 3. Create link
 npm run trace link PBS-SPEC-003 PBS-REQ-002
 
-# 4. 実装を追加
-npm run trace add IMP "WebSocket通知モジュール"
+# 4. Add implementation
+npm run trace add IMP "WebSocket notification module"
 # → PBS-IMP-003
 
-# 5. 実装と要件をリンク
+# 5. Link implementation to specification
 npm run trace link PBS-IMP-003 PBS-SPEC-003
 
-# 6. マトリックスで確認
+# 6. Verify with matrix
 npm run trace matrix
 ```
 
-### 要求変更時の影響確認
+### Checking Impact of Requirement Changes
 ```bash
-# 1. 変更前に影響を分析
+# 1. Analyze impact before change
 npm run trace impact PBS-REQ-001 modify
 
-# 2. 影響レポートを確認
-# - 影響を受けるアイテムのリスト
-# - 更新が必要な箇所
-# - 推奨アクション
+# 2. Review impact report
+# - List of affected items
+# - Areas requiring updates
+# - Recommended actions
 
-# 3. 要求を更新
-npm run trace update PBS-REQ-001 title "改善された認証機能"
+# 3. Update requirement
+npm run trace update PBS-REQ-001 title "Improved authentication feature"
 
-# 4. 影響を受けるアイテムを順次更新
+# 4. Update affected items sequentially
 ```
 
-### 不要になったアイテムの削除
+### Deleting Obsolete Items
 ```bash
-# 1. 削除影響を事前分析
+# 1. Pre-analyze deletion impact
 npm run trace impact PBS-SPEC-002 delete
 
-# 2. 削除を実行（確認あり）
+# 2. Execute deletion (with confirmation)
 npm run trace delete PBS-SPEC-002
-# → 影響分析結果が表示され、確認を求められます
+# → Impact analysis results are displayed and confirmation is requested
 ```
 
-## データの保存場所
+## Data Storage Locations
 
-- **トレーサビリティデータ**: `.poppo/traceability.yaml`
-- **マトリックス**: `traceability-matrix.md`
-- **影響分析レポート**: `impact-analysis-<ID>-<timestamp>.md`
+- **Traceability data**: `.poppo/traceability.yaml`
+- **Matrix**: `traceability-matrix.md`
+- **Impact analysis reports**: `impact-analysis-<ID>-<timestamp>.md`
 
-## ベストプラクティス
+## Best Practices
 
-1. **こまめな更新**: 実装やドキュメント変更時は必ずトレーサビリティも更新
-2. **定期的な整合性チェック**: `npm run trace check`で問題を早期発見
-3. **変更前の影響分析**: 大きな変更前は必ず`impact`コマンドで確認
-4. **適切なリンクタイプの使用**: デフォルトの`implements`以外も活用
-5. **説明の追加**: 重要なアイテムには`description`を設定
+1. **Frequent updates**: Always update traceability when implementing or changing documentation
+2. **Regular consistency checks**: Early detection of issues with `npm run trace check`
+3. **Pre-change impact analysis**: Always check with `impact` command before major changes
+4. **Use appropriate link types**: Utilize more than just the default `implements`
+5. **Add descriptions**: Set `description` for important items
 
-## トラブルシューティング
+## Troubleshooting
 
-### リンクエラーが発生する場合
-- 両方のアイテムが存在することを確認: `npm run trace list`
-- IDが正しいことを確認（大文字小文字も区別されます）
+### When Link Errors Occur
+- Verify both items exist: `npm run trace list`
+- Confirm IDs are correct (case-sensitive)
 
-### 影響分析が期待と異なる場合
-- リンク関係を確認: `npm run trace matrix`
-- 整合性をチェック: `npm run trace check`
+### When Impact Analysis Differs from Expectations
+- Check link relationships: `npm run trace matrix`
+- Check consistency: `npm run trace check`
 
-### データが消えた場合
-- `.poppo/traceability.yaml`のバックアップから復元
-- Gitでバージョン管理している場合は`git checkout`で復元
+### When Data is Lost
+- Restore from `.poppo/traceability.yaml` backup
+- If version controlled with Git, restore with `git checkout`

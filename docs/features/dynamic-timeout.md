@@ -1,113 +1,113 @@
-# 動的タイムアウト管理機能
+# Dynamic Timeout Management
 
-## 概要
+## Overview
 
-PoppoBuilderの動的タイムアウト管理機能は、タスクの種類や複雑度に応じてタイムアウト時間を自動的に調整する機能です。これにより、簡単なタスクは素早く処理し、複雑なタスクには十分な時間を確保することができます。
+PoppoBuilder's dynamic timeout management feature automatically adjusts timeout durations based on task type and complexity. This allows simple tasks to be processed quickly while ensuring complex tasks have sufficient time to complete.
 
-## 機能の特徴
+## Key Features
 
-### 1. タスク複雑度の自動判定
+### 1. Automatic Task Complexity Assessment
 
-Issue本文から以下の要素を分析して複雑度を判定します：
+The system analyzes the Issue body to determine complexity based on:
 
-- **本文の長さ**: 文字数に基づくスコア（最大10点）
-- **コードブロック数**: 各ブロックにつき2点
-- **リンク数**: 各リンクにつき0.5点
-- **画像数**: 各画像につき1点
-- **リストアイテム数**: 各アイテムにつき0.3点
-- **ラベルスコア**: 
-  - `complex`: 10点
-  - `feature`: 5点
-  - `documentation`: 3点
-  - `bug`: 2点
+- **Body length**: Score based on character count (max 10 points)
+- **Code blocks**: 2 points per block
+- **Links**: 0.5 points per link
+- **Images**: 1 point per image
+- **List items**: 0.3 points per item
+- **Label scores**: 
+  - `complex`: 10 points
+  - `feature`: 5 points
+  - `documentation`: 3 points
+  - `bug`: 2 points
 
-複雑度レベル:
-- **simple**: スコア10未満
-- **moderate**: スコア10〜20
-- **complex**: スコア20以上
+Complexity levels:
+- **simple**: Score < 10
+- **moderate**: Score 10-20
+- **complex**: Score ≥ 20
 
-### 2. タスクタイプ別のデフォルトタイムアウト
+### 2. Default Timeouts by Task Type
 
 ```json
 {
-  "misc": 30分,
-  "dogfooding": 2時間,
-  "documentation": 1時間,
-  "complex": 6時間,
-  "feature": 2時間,
-  "bug": 1時間
+  "misc": 30 minutes,
+  "dogfooding": 2 hours,
+  "documentation": 1 hour,
+  "complex": 6 hours,
+  "feature": 2 hours,
+  "bug": 1 hour
 }
 ```
 
-### 3. 実行履歴に基づく学習
+### 3. Learning from Execution History
 
-- 各タスクタイプの平均実行時間を記録
-- 履歴がある場合、デフォルト値と履歴の中間値を採用
-- 学習の影響を緩やかにすることで安定性を確保
+- Records average execution time for each task type
+- When history exists, uses the average of default and historical values
+- Gradual learning impact ensures stability
 
-### 4. タイムアウト延長機能
+### 4. Timeout Extension Feature
 
-実行中のタスクが追加時間を必要とする場合、現在のタイムアウトの50%を延長できます。
+Running tasks can request additional time, extending the current timeout by 50%.
 
-## 設定
+## Configuration
 
-`config/config.json`で以下の設定が可能です：
+Configure in `config/config.json`:
 
 ```json
 {
   "dynamicTimeout": {
-    "enabled": true,                    // 機能の有効/無効
-    "minTimeout": 600000,              // 最小タイムアウト（10分）
-    "maxTimeout": 86400000,            // 最大タイムアウト（24時間）
-    "timeoutProfiles": {               // タスクタイプ別デフォルト値
-      "misc": 1800000,                 // 30分
-      "dogfooding": 7200000,           // 2時間
-      "documentation": 3600000,        // 1時間
-      "complex": 21600000,             // 6時間
-      "feature": 7200000,              // 2時間
-      "bug": 3600000                   // 1時間
+    "enabled": true,                    // Enable/disable feature
+    "minTimeout": 600000,              // Minimum timeout (10 minutes)
+    "maxTimeout": 86400000,            // Maximum timeout (24 hours)
+    "timeoutProfiles": {               // Default values by task type
+      "misc": 1800000,                 // 30 minutes
+      "dogfooding": 7200000,           // 2 hours
+      "documentation": 3600000,        // 1 hour
+      "complex": 21600000,             // 6 hours
+      "feature": 7200000,              // 2 hours
+      "bug": 3600000                   // 1 hour
     },
     "complexityFactors": {
-      "enableLearning": true,          // 学習機能の有効/無効
-      "learningWeight": 0.5            // 学習の重み（0.0〜1.0）
+      "enableLearning": true,          // Enable/disable learning
+      "learningWeight": 0.5            // Learning weight (0.0-1.0)
     }
   }
 }
 ```
 
-## 使用例
+## Usage Examples
 
-### 1. シンプルなタスク
-
-```
-Issue内容: "現在時刻を教えてください"
-複雑度: simple (スコア: 0.16)
-タスクタイプ: misc
-計算されたタイムアウト: 24分（30分 × 0.8）
-```
-
-### 2. 複雑なタスク
+### 1. Simple Task
 
 ```
-Issue内容: 長い説明文、複数のコードブロック、リンク、画像を含む
-複雑度: complex (スコア: 29.56)
-タスクタイプ: complex
-ラベル: task:complex, feature
-計算されたタイムアウト: 720分（360分 × 2.0）
+Issue content: "What is the current time?"
+Complexity: simple (score: 0.16)
+Task type: misc
+Calculated timeout: 24 minutes (30 minutes × 0.8)
 ```
 
-### 3. 学習による調整
+### 2. Complex Task
 
 ```
-タスクタイプ: misc
-過去の平均実行時間: 15分
-デフォルト: 30分
-調整後: 21分（(30分 + 15分×1.5) / 2）
+Issue content: Long description with multiple code blocks, links, and images
+Complexity: complex (score: 29.56)
+Task type: complex
+Labels: task:complex, feature
+Calculated timeout: 720 minutes (360 minutes × 2.0)
 ```
 
-## 実行履歴
+### 3. Learning-based Adjustment
 
-実行履歴は`logs/execution-history.json`に保存されます：
+```
+Task type: misc
+Historical average: 15 minutes
+Default: 30 minutes
+Adjusted: 21 minutes ((30 + 15×1.5) / 2)
+```
+
+## Execution History
+
+Execution history is saved to `logs/execution-history.json`:
 
 ```json
 {
@@ -135,49 +135,49 @@ Issue内容: 長い説明文、複数のコードブロック、リンク、画�
 }
 ```
 
-## 統計情報
+## Statistics
 
-PoppoBuilder起動時に統計情報が表示されます：
+Statistics are displayed on PoppoBuilder startup:
 
 ```
-📊 タイムアウト統計: {
+📊 Timeout Statistics: {
   "taskTypes": {
     "misc": {
       "count": 10,
       "successRate": "80.0%",
-      "averageExecutionTime": "15分",
+      "averageExecutionTime": "15 min",
       "timeoutRate": "10.0%"
     },
     "dogfooding": {
       "count": 5,
       "successRate": "100.0%",
-      "averageExecutionTime": "45分",
+      "averageExecutionTime": "45 min",
       "timeoutRate": "0.0%"
     }
   },
   "overallStats": {
     "totalTasks": 15,
     "successRate": "86.7%",
-    "averageExecutionTime": "25分",
+    "averageExecutionTime": "25 min",
     "timeoutRate": "6.7%"
   }
 }
 ```
 
-## 今後の拡張予定
+## Future Enhancements
 
-1. **機械学習による予測精度向上**
-   - より多くの特徴量を考慮
-   - タスク間の類似度による予測
+1. **Machine Learning for Improved Prediction**
+   - Consider more features
+   - Task similarity-based prediction
 
-2. **プロセス間通信によるリアルタイム延長**
-   - 実行中のタスクからの延長リクエスト
-   - 進捗状況に基づく動的調整
+2. **Real-time Extension via IPC**
+   - Extension requests from running tasks
+   - Dynamic adjustment based on progress
 
-3. **詳細なメトリクス収集**
-   - CPU/メモリ使用率との相関分析
-   - 時間帯による実行時間の変動分析
+3. **Detailed Metrics Collection**
+   - Correlation with CPU/memory usage
+   - Time-of-day execution variations
 
-4. **カスタムルールの定義**
-   - 特定のキーワードによるタイムアウト調整
-   - ユーザー定義の複雑度判定ルール
+4. **Custom Rule Definition**
+   - Keyword-based timeout adjustments
+   - User-defined complexity rules

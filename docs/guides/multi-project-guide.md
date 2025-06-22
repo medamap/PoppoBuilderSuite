@@ -1,72 +1,72 @@
-# PoppoBuilder マルチプロジェクト管理ガイド
+# PoppoBuilder Multi-Project Management Guide
 
-## 概要
+## Overview
 
-PoppoBuilderのマルチプロジェクト機能により、複数のGitHubプロジェクトを一元管理し、プロジェクト間でタスクの優先度制御を行うことができます。
+PoppoBuilder's multi-project feature allows you to centrally manage multiple GitHub projects and control task priorities across projects.
 
-## アーキテクチャ
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    PoppoBuilder デーモン                      │
+│                    PoppoBuilder Daemon                       │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌──────────┐  │
-│  │ グローバルキュー │  │プロジェクト管理  │  │ APIサーバ │  │
-│  │  マネージャー    │  │   マネージャー   │  │ (Port 3003) │
+│  │  Global Queue   │  │     Project      │  │   API    │  │
+│  │    Manager      │  │     Manager      │  │  Server  │  │
 │  └─────────────────┘  └──────────────────┘  └──────────┘  │
 └─────────────────────────────────────────────────────────────┘
                                ↓
 ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  ワーカー1  │  │  ワーカー2  │  │  ワーカー3  │
-│ Project A   │  │ Project B   │  │ Project C   │
+│   Worker 1  │  │   Worker 2  │  │   Worker 3  │
+│  Project A  │  │  Project B  │  │  Project C  │
 └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
-## インストール
+## Installation
 
-1. 依存関係のインストール:
+1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. CLIツールのグローバルインストール（オプション）:
+2. Global CLI installation (optional):
 ```bash
 npm link
 ```
 
-## 使用方法
+## Usage
 
-### 1. デーモンの起動
+### 1. Starting the Daemon
 
 ```bash
-# デーモンを起動
+# Start daemon
 npm run poppo daemon --start
 
-# または
+# Or
 poppo daemon --start
 
-# デーモンの状態確認
+# Check daemon status
 poppo daemon --status
 
-# デーモンの停止
+# Stop daemon
 poppo daemon --stop
 ```
 
-### 2. プロジェクトの登録
+### 2. Registering Projects
 
 ```bash
-# 現在のディレクトリをプロジェクトとして登録
+# Register current directory as a project
 poppo project -r .
 
-# 別のディレクトリを登録
+# Register another directory
 poppo project -r /path/to/project
 
-# プロジェクト一覧の確認
+# List all projects
 poppo project -l
 ```
 
-### 3. プロジェクト設定
+### 3. Project Configuration
 
-プロジェクトを登録すると、`.poppo/project.json`ファイルが作成されます：
+When a project is registered, a `.poppo/project.json` file is created:
 
 ```json
 {
@@ -84,49 +84,49 @@ poppo project -l
 }
 ```
 
-### 4. 優先度管理
+### 4. Priority Management
 
-プロジェクトの優先度（0-100）を設定:
+Set project priority (0-100):
 
 ```bash
 poppo project -p my-project 80
 ```
 
-優先度の目安:
-- 100: 最高優先度（dogfoodingタスクなど）
-- 75-99: 高優先度
-- 50-74: 通常優先度
-- 25-49: 低優先度
-- 0-24: 最低優先度
+Priority guidelines:
+- 100: Highest priority (dogfooding tasks, etc.)
+- 75-99: High priority
+- 50-74: Normal priority
+- 25-49: Low priority
+- 0-24: Lowest priority
 
-### 5. タスクのスキャンとキュー管理
+### 5. Task Scanning and Queue Management
 
 ```bash
-# プロジェクトのタスクをスキャン
+# Scan project tasks
 poppo project -s my-project
 
-# グローバルキューの状態確認
+# Check global queue status
 poppo queue -s
 
-# ワーカーの状態確認
+# Check worker status
 poppo worker -l
 ```
 
-### 6. ダッシュボード
+### 6. Dashboard
 
-統合ダッシュボードでマルチプロジェクトの状態を可視化:
+Visualize multi-project status with the integrated dashboard:
 
 ```bash
-# ダッシュボードを開く
+# Open dashboard
 poppo dashboard
 
-# または直接アクセス
+# Or direct access
 http://localhost:3001/multi-project.html
 ```
 
-## 設定
+## Configuration
 
-### デーモン設定 (`config/daemon-config.json`)
+### Daemon Configuration (`config/daemon-config.json`)
 
 ```json
 {
@@ -140,9 +140,9 @@ http://localhost:3001/multi-project.html
 }
 ```
 
-### メインシステム設定 (`config/config.json`)
+### Main System Configuration (`config/config.json`)
 
-マルチプロジェクトモードを有効にする:
+Enable multi-project mode:
 
 ```json
 {
@@ -153,26 +153,26 @@ http://localhost:3001/multi-project.html
 }
 ```
 
-## 高度な機能
+## Advanced Features
 
-### リソース最適化
+### Resource Optimization
 
-デーモンは1分ごとにプロジェクト間のリソース配分を自動最適化します。以下の要素を考慮:
-- プロジェクト優先度
-- キュー内のタスク数
-- 過去の実行統計
+The daemon automatically optimizes resource allocation between projects every minute, considering:
+- Project priority
+- Number of queued tasks
+- Historical execution statistics
 
-### プロジェクトの健全性
+### Project Health
 
-プロジェクトの健全性は成功率に基づいて自動計算されます:
-- 🟢 Excellent: 成功率90%以上
-- 🔵 Good: 成功率70-89%
-- 🟡 Fair: 成功率50-69%
-- 🔴 Poor: 成功率50%未満
+Project health is automatically calculated based on success rate:
+- 🟢 Excellent: 90%+ success rate
+- 🔵 Good: 70-89% success rate
+- 🟡 Fair: 50-69% success rate
+- 🔴 Poor: <50% success rate
 
-### 自動タスクスキャン
+### Automatic Task Scanning
 
-`autoScan`設定により、定期的にプロジェクトのタスクを自動スキャンできます:
+Enable periodic task scanning with `autoScan` configuration:
 
 ```json
 {
@@ -183,63 +183,63 @@ http://localhost:3001/multi-project.html
 }
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### デーモンが起動しない
+### Daemon Won't Start
 
-1. ポート3003が使用されていないか確認:
+1. Check if port 3003 is in use:
 ```bash
 lsof -i :3003
 ```
 
-2. PIDファイルを削除:
+2. Remove PID file:
 ```bash
 rm ~/.poppo-builder/poppo-daemon.pid
 ```
 
-### ワーカーが起動しない
+### Workers Won't Start
 
-1. プロジェクトが正しく登録されているか確認:
+1. Verify project registration:
 ```bash
 poppo project -l
 ```
 
-2. プロジェクトディレクトリに`.poppo/project.json`が存在するか確認
+2. Check if `.poppo/project.json` exists in project directory
 
-### タスクが処理されない
+### Tasks Not Being Processed
 
-1. キューの状態を確認:
+1. Check queue status:
 ```bash
 poppo queue -s
 ```
 
-2. 対象のIssueに正しいラベルが付いているか確認
+2. Verify target issues have correct labels
 
-## APIリファレンス
+## API Reference
 
-### デーモンAPI
+### Daemon API
 
-- `GET /api/health` - ヘルスチェック
-- `POST /api/projects/register` - プロジェクト登録
-- `GET /api/projects` - プロジェクト一覧
-- `GET /api/queue/status` - キューステータス
-- `POST /api/queue/enqueue` - タスクエンキュー
-- `GET /api/workers` - ワーカー一覧
+- `GET /api/health` - Health check
+- `POST /api/projects/register` - Register project
+- `GET /api/projects` - List projects
+- `GET /api/queue/status` - Queue status
+- `POST /api/queue/enqueue` - Enqueue task
+- `GET /api/workers` - List workers
 
-## ベストプラクティス
+## Best Practices
 
-1. **プロジェクト優先度の設定**
-   - 重要なプロダクションプロジェクトには高優先度を設定
-   - 開発/テストプロジェクトには低優先度を設定
+1. **Setting Project Priorities**
+   - Set high priority for important production projects
+   - Set low priority for development/test projects
 
-2. **ワーカー数の調整**
-   - CPU/メモリリソースに応じて`maxWorkers`を調整
-   - 各プロジェクトの`maxConcurrentTasks`も適切に設定
+2. **Adjusting Worker Count**
+   - Adjust `maxWorkers` based on CPU/memory resources
+   - Set appropriate `maxConcurrentTasks` for each project
 
-3. **定期的なメンテナンス**
-   - ログファイルの定期的なローテーション
-   - 完了済みタスクのクリーンアップ
+3. **Regular Maintenance**
+   - Rotate log files periodically
+   - Clean up completed tasks
 
-4. **監視とアラート**
-   - ダッシュボードで定期的に状態を確認
-   - 重要なプロジェクトのエラー率を監視
+4. **Monitoring and Alerts**
+   - Check dashboard regularly
+   - Monitor error rates for critical projects
