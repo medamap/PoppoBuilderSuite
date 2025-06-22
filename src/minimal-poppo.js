@@ -3,6 +3,13 @@
 // プロセス名を設定（psコマンドで識別しやすくするため）
 process.title = 'PoppoBuilder-Main';
 
+// バージョン表示
+if (process.argv.includes('--version') || process.argv.includes('-v')) {
+  const packageJson = require('../package.json');
+  console.log(`PoppoBuilder Suite v${packageJson.version}`);
+  process.exit(0);
+}
+
 const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
@@ -145,7 +152,6 @@ const github = new GitHubClient(githubConfig);
 const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
 
 // FileStateManagerの初期化（IndependentProcessManagerで必要）
-const FileStateManager = require('./file-state-manager');
 const stateManager = new FileStateManager();
 
 // IssueLockManagerの初期化
@@ -210,8 +216,8 @@ const twoStageProcessor = new TwoStageProcessor(config, null, logger); // claude
 // バックアップスケジューラーの初期化
 const backupScheduler = new BackupScheduler(config, logger);
 
-// ファイルベースの状態管理を初期化
-const fileStateManager = new FileStateManager();
+// stateManagerを使用（上で既に初期化済み）
+const fileStateManager = stateManager;
 
 // GitHub Projects同期の初期化
 let githubProjectsSync = null;
