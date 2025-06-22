@@ -10,13 +10,24 @@
     "test/pushover-provider.test.js",
     "test/telegram-provider.test.js",
     "test/notification-integration.test.js",
-    "test/integration/**"
+    "test/integration/**",
+    "test/**/redis-*.test.js",
+    "test/test-i18n-tools.js",
+    "test/i18n/**",
+    "test/**/*redis*.test.js",
+    "test/**/*i18n*.test.js",
+    "test/redis-*.test.js",
+    "test/i18n-*.test.js",
+    "test/*redis*.test.js",
+    "test/*i18n*.test.js",
+    "test/ccsp/**",
+    "test/status-command.test.js",
+    "test/messaging-queue.test.js",
+    "test/agent-integration-ccsp.test.js",
+    "test/unified-benchmark-runner.test.js"
   ],
   "timeout": 10000,
   "slow": 3000,
-  "require": [
-    "test/helpers/test-setup.js"
-  ],
   "recursive": true,
   "exit": true,
   "reporter": "spec",

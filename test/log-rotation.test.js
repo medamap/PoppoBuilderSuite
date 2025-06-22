@@ -18,6 +18,7 @@ describe('ログローテーション機能', function() {
   const testArchiveDir = path.join(testLogDir, 'archive');
   let logger;
   let clock;
+  let sandbox;
 
   beforeEach(async () => {
     // テスト用ディレクトリを作成

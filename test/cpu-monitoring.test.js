@@ -10,6 +10,7 @@ describe('CPU使用量モニタリング機能', () => {
   const testStateFile = path.join(testLogDir, 'process-state.json');
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // テスト用のログディレクトリを作成
     if (!fs.existsSync(testLogDir)) {
       fs.mkdirSync(testLogDir, { recursive: true });

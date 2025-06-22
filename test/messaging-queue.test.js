@@ -6,6 +6,7 @@ const path = require('path');
 describe('メッセージキューシステム', () => {
   let messageQueue;
   let messageSchema;
+  let sandbox;
   let compatibilityLayer;
   let eventBus;
   
@@ -33,6 +34,7 @@ describe('メッセージキューシステム', () => {
   });
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     messageQueue = new MessageQueue(testConfig);
     messageSchema = new MessageSchema();
     eventBus = new EventBus(testConfig);

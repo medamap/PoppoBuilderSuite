@@ -17,6 +17,7 @@ describe('CCSP 統合バリデーション', function() {
   
   let redisClient;
   let ccssp;
+  let sandbox;
   
   before(async () => {
     // Redis接続テスト
@@ -87,6 +88,7 @@ describe('CCSP 統合バリデーション', function() {
   
   describe('2. API インターフェース検証', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       if (!ccssp) {
         ccssp = new CCSPAgent();
       }
@@ -223,6 +225,7 @@ describe('CCSP 統合バリデーション', function() {
   
   describe('4. コンポーネント間連携の検証', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       if (!ccssp) {
         ccssp = new CCSPAgent();
       }
@@ -268,6 +271,7 @@ describe('CCSP 統合バリデーション', function() {
   
   describe('5. エラーハンドリングの検証', () => {
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       if (!ccssp) {
         ccssp = new CCSPAgent();
       }

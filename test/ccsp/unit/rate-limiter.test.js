@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('CCSP Rate Limiter Unit Tests', () => {
   let helpers;
   let RateLimiter;
+  let sandbox;
   let rateLimiter;
   let mockRedis;
   let clock;
@@ -14,6 +15,7 @@ describe('CCSP Rate Limiter Unit Tests', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Use fake timers
     clock = sinon.useFakeTimers();
     

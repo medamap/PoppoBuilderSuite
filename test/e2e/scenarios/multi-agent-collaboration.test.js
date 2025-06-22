@@ -10,6 +10,7 @@ describe('E2E: マルチエージェント連携', function() {
 
   let testEnv;
   let apiMocks;
+  let sandbox;
   let processes = {};
 
   before(async function() {

@@ -168,7 +168,6 @@ describe('CCTA Agent Tests', () => {
 
 describe('TestRunner Tests', () => {
   let runner;
-  let sandbox;
   
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -229,7 +228,6 @@ describe('TestRunner Tests', () => {
 
 describe('CoverageReporter Tests', () => {
   let reporter;
-  let sandbox;
   
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -306,7 +304,6 @@ describe('CoverageReporter Tests', () => {
 
 describe('ReportGenerator Tests', () => {
   let generator;
-  let sandbox;
   
   beforeEach(() => {
     sandbox = sinon.createSandbox();

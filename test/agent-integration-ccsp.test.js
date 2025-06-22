@@ -2,36 +2,36 @@
  * AgentIntegrationとCCSP統合のテスト
  */
 
+const { expect } = require('chai');
+const sinon = require('sinon');
 const AgentIntegration = require('../src/agent-integration');
 const { AdvancedCCSPClient } = require('../src/ccsp-client-advanced');
 const Redis = require('ioredis');
 
-// モックの作成
-jest.mock('ioredis');
-jest.mock('../agents/core/agent-coordinator');
-
 describe('AgentIntegration CCSP統合テスト', () => {
   let agentIntegration;
   let mockRedis;
+  let sandbox;
   let mockLogger;
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Redisモック
     mockRedis = {
-      lpush: jest.fn().mockResolvedValue(1),
-      blpop: jest.fn().mockResolvedValue(null),
-      quit: jest.fn().mockResolvedValue('OK'),
-      ping: jest.fn().mockResolvedValue('PONG'),
-      on: jest.fn()
+      lpush: sinon.stub().resolves(1),
+      blpop: sinon.stub().resolves(null),
+      quit: sinon.stub().resolves('OK'),
+      ping: sinon.stub().resolves('PONG'),
+      on: sinon.stub()
     };
-    Redis.mockImplementation(() => mockRedis);
+    sinon.stub(Redis.prototype).callsFake(() => mockRedis);
     
     // ロガーモック
     mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn()
+      info: sinon.stub(),
+      warn: sinon.stub(),
+      error: sinon.stub(),
+      debug: sinon.stub()
     };
     
     // AgentIntegration設定
@@ -60,29 +60,29 @@ describe('AgentIntegration CCSP統合テスト', () => {
   });
   
   afterEach(() => {
-    jest.clearAllMocks();
+    sinon.restore();
   });
   
   describe('CCSP統合の初期化', () => {
-    test('CCSPクライアントが正しく初期化される', async () => {
+    it('CCSPクライアントが正しく初期化される', async () => {
       await agentIntegration.initialize();
       
-      expect(agentIntegration.ccspClient).toBeDefined();
-      expect(agentIntegration.ccspClient).toBeInstanceOf(AdvancedCCSPClient);
-      expect(mockLogger.info).toHaveBeenCalledWith('CCSPクライアントを初期化中...');
-      expect(mockLogger.info).toHaveBeenCalledWith('CCSPクライアントの初期化完了');
+      expect(agentIntegration.ccspClient).to.exist;
+      expect(agentIntegration.ccspClient).to.be.instanceOf(AdvancedCCSPClient);
+      expect(mockLogger.info).to.have.been.calledWith('CCSPクライアントを初期化中...');
+      expect(mockLogger.info).to.have.been.calledWith('CCSPクライアントの初期化完了');
     });
     
-    test('CCSPが無効な場合はクライアントが作成されない', async () => {
+    it('CCSPが無効な場合はクライアントが作成されない', async () => {
       agentIntegration.ccspEnabled = false;
       await agentIntegration.initialize();
       
-      expect(agentIntegration.ccspClient).toBeNull();
+      expect(agentIntegration.ccspClient).to.be.null;
     });
   });
   
   describe('Claude用プロンプト構築', () => {
-    test('buildClaudePromptが正しいプロンプトを生成する', () => {
+    it('buildClaudePromptが正しいプロンプトを生成する', () => {
       const issue = {
         number: 123,
         title: 'テストIssue',
@@ -95,15 +95,15 @@ describe('AgentIntegration CCSP統合テスト', () => {
       
       const prompt = agentIntegration.buildClaudePrompt(issue);
       
-      expect(prompt).toContain('# Issue #123: テストIssue');
-      expect(prompt).toContain('## ラベル\ntask:dogfooding, priority:high');
-      expect(prompt).toContain('## 内容\nこれはテスト用のIssueです。');
-      expect(prompt).toContain('PoppoBuilder Suiteのコードベースを理解し');
+      expect(prompt).to.include('# Issue #123: テストIssue');
+      expect(prompt).to.include('## ラベル\ntask:dogfooding, priority:high');
+      expect(prompt).to.include('## 内容\nこれはテスト用のIssueです。');
+      expect(prompt).to.include('PoppoBuilder Suiteのコードベースを理解し');
     });
   });
   
   describe('システムプロンプト構築', () => {
-    test('buildSystemPromptがラベルに応じた指示を含む', () => {
+    it('buildSystemPromptがラベルに応じた指示を含む', () => {
       const testCases = [
         {
           labels: [{ name: 'task:dogfooding' }],
@@ -127,9 +127,9 @@ describe('AgentIntegration CCSP統合テスト', () => {
         const issue = { labels };
         const systemPrompt = agentIntegration.buildSystemPrompt(issue);
         
-        expect(systemPrompt).toContain(expectedText);
-        expect(systemPrompt).toContain('直接Claude APIを呼び出すコードは絶対に作成しないでください');
-        expect(systemPrompt).toContain('CCSPエージェント経由でリクエスト');
+        expect(systemPrompt).to.include(expectedText);
+        expect(systemPrompt).to.include('直接Claude APIを呼び出すコードは絶対に作成しないでください');
+        expect(systemPrompt).to.include('CCSPエージェント経由でリクエスト');
       });
     });
   });
@@ -139,7 +139,7 @@ describe('AgentIntegration CCSP統合テスト', () => {
       await agentIntegration.initialize();
     });
     
-    test('executeClaudeViaCCSPが成功レスポンスを処理する', async () => {
+    it('executeClaudeViaCCSPが成功レスポンスを処理する', async () => {
       // 成功レスポンスをモック
       const mockResponse = {
         requestId: 'test-123',
@@ -148,7 +148,7 @@ describe('AgentIntegration CCSP統合テスト', () => {
         executionTime: 5000
       };
       
-      mockRedis.blpop.mockResolvedValueOnce(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
+      mockRedis.blpop.resolves(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
       
       const payload = {
         issueNumber: 123,
@@ -159,14 +159,14 @@ describe('AgentIntegration CCSP統合テスト', () => {
       
       const result = await agentIntegration.executeClaudeViaCCSP('test-123', payload);
       
-      expect(result.success).toBe(true);
-      expect(result.result.output).toBe('Claude実行結果');
-      expect(result.result.executionTime).toBe(5000);
-      expect(mockLogger.info).toHaveBeenCalledWith('[test-123] CCSP経由でClaude実行を開始');
-      expect(mockLogger.info).toHaveBeenCalledWith('[test-123] CCSP実行成功');
+      expect(result.success).to.be.true;
+      expect(result.result.output).to.equal('Claude実行結果');
+      expect(result.result.executionTime).to.equal(5000);
+      expect(mockLogger.info).to.have.been.calledWith('[test-123] CCSP経由でClaude実行を開始');
+      expect(mockLogger.info).to.have.been.calledWith('[test-123] CCSP実行成功');
     });
     
-    test('セッションタイムアウトを適切に処理する', async () => {
+    it('セッションタイムアウトを適切に処理する', async () => {
       const mockResponse = {
         requestId: 'test-123',
         success: false,
@@ -174,16 +174,16 @@ describe('AgentIntegration CCSP統合テスト', () => {
         sessionTimeout: true
       };
       
-      mockRedis.blpop.mockResolvedValueOnce(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
+      mockRedis.blpop.resolves(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
       
       const result = await agentIntegration.executeClaudeViaCCSP('test-123', {});
       
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('セッションタイムアウト');
-      expect(result.requiresManualAction).toBe(true);
+      expect(result.success).to.be.false;
+      expect(result.error).to.include('セッションタイムアウト');
+      expect(result.requiresManualAction).to.be.true;
     });
     
-    test('レート制限を適切に処理する', async () => {
+    it('レート制限を適切に処理する', async () => {
       const unlockTime = Date.now() + 3600000;
       const mockResponse = {
         requestId: 'test-123',
@@ -195,18 +195,18 @@ describe('AgentIntegration CCSP統合テスト', () => {
         }
       };
       
-      mockRedis.blpop.mockResolvedValueOnce(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
+      mockRedis.blpop.resolves(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
       
       const result = await agentIntegration.executeClaudeViaCCSP('test-123', {});
       
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('レート制限');
-      expect(result.retryAfter).toBe(3600000);
+      expect(result.success).to.be.false;
+      expect(result.error).to.include('レート制限');
+      expect(result.retryAfter).to.equal(3600000);
     });
   });
   
   describe('タスク処理の統合', () => {
-    test('claude-cliタスクがCCSP経由で実行される', async () => {
+    it('claude-cliタスクがCCSP経由で実行される', async () => {
       await agentIntegration.initialize();
       
       const issue = {
@@ -224,38 +224,38 @@ describe('AgentIntegration CCSP統合テスト', () => {
         executionTime: 3000
       };
       
-      mockRedis.blpop.mockResolvedValueOnce(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
+      mockRedis.blpop.resolves(['ccsp:response:agent-integration', JSON.stringify(mockResponse)]);
       
       // waitForTaskCompletionを直接呼び出し
       const result = await agentIntegration.waitForTaskCompletion('issue-123-claude-cli', 'claude-cli', issue);
       
-      expect(result.success).toBe(true);
-      expect(result.result.output).toBe('タスク完了');
+      expect(result.success).to.be.true;
+      expect(result.result.output).to.equal('タスク完了');
     });
   });
   
   describe('タスクマッピング', () => {
-    test('claude-cliがタスクマッピングに含まれている', () => {
+    it('claude-cliがタスクマッピングに含まれている', () => {
       const mapping = agentIntegration.getDefaultTaskMapping();
       
-      expect(mapping.labels['task:misc']).toContain('claude-cli');
-      expect(mapping.labels['task:feature']).toContain('claude-cli');
-      expect(mapping.labels['task:docs']).toContain('claude-cli');
-      expect(mapping.labels['task:bug']).toContain('claude-cli');
-      expect(mapping.labels['task:dogfooding']).toContain('claude-cli');
+      expect(mapping.labels['task:misc']).to.include('claude-cli');
+      expect(mapping.labels['task:feature']).to.include('claude-cli');
+      expect(mapping.labels['task:docs']).to.include('claude-cli');
+      expect(mapping.labels['task:bug']).to.include('claude-cli');
+      expect(mapping.labels['task:dogfooding']).to.include('claude-cli');
       
-      expect(mapping.keywords['claude']).toContain('claude-cli');
-      expect(mapping.keywords['実装']).toContain('claude-cli');
-      expect(mapping.keywords['修正']).toContain('claude-cli');
+      expect(mapping.keywords['claude']).to.include('claude-cli');
+      expect(mapping.keywords['実装']).to.include('claude-cli');
+      expect(mapping.keywords['修正']).to.include('claude-cli');
     });
   });
   
   describe('シャットダウン', () => {
-    test('CCSPクライアントがクリーンアップされる', async () => {
+    it('CCSPクライアントがクリーンアップされる', async () => {
       await agentIntegration.initialize();
       await agentIntegration.shutdown();
       
-      expect(mockRedis.quit).toHaveBeenCalled();
+      expect(mockRedis.quit).to.have.been.called;
     });
   });
 });

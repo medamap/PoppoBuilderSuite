@@ -278,25 +278,19 @@ class EnhancedIssueLockManager extends EventEmitter {
     if (nextTask) {
       this.stats.queueWaiting--;
       
-      // 非同期でロック取得を試行
-      setImmediate(async () => {
-        try {
-          const acquired = await this._attemptLockAcquisition(issueNumber, nextTask.lockInfo);
-          if (acquired) {
-            nextTask.resolve(true);
-            // 次の待機タスクを処理
-            this._processWaitingQueue(issueNumber);
-          } else {
-            // 再度キューに戻す
-            queue.unshift(nextTask);
-            this.stats.queueWaiting++;
-          }
-        } catch (error) {
-          nextTask.reject(error);
-          // エラーが発生した場合も次のタスクを処理
-          this._processWaitingQueue(issueNumber);
+      // 同期的にロック取得を試行
+      try {
+        const acquired = this._attemptLockAcquisition(issueNumber, nextTask.lockInfo);
+        if (acquired) {
+          nextTask.resolve(true);
+        } else {
+          // 再度キューに戻す
+          queue.unshift(nextTask);
+          this.stats.queueWaiting++;
         }
-      });
+      } catch (error) {
+        nextTask.reject(error);
+      }
     }
     
     // キューが空になったら削除

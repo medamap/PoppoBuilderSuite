@@ -4,7 +4,8 @@
  * Issue #142: CCSPの高度な制御機能とモニタリング実装
  */
 
-const assert = require('assert');
+const { expect } = require('chai');
+const sinon = require('sinon');
 const path = require('path');
 const CCSPAgent = require('../../agents/ccsp/index');
 const AdvancedQueueManager = require('../../agents/ccsp/advanced-queue-manager');
@@ -15,15 +16,16 @@ const PrometheusExporter = require('../../agents/ccsp/prometheus-exporter');
 const EmergencyStop = require('../../agents/ccsp/emergency-stop');
 const CCSPManagementAPI = require('../../agents/ccsp/management-api');
 
-// Set Jest timeout to 30 seconds
-jest.setTimeout(30000);
+// Set Mocha timeout to 30 seconds (handled by this.timeout() in individual tests)
 
 describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
   
   describe('AdvancedQueueManager', () => {
     let queueManager;
+    let sandbox;
     
     beforeEach(() => {
+      sandbox = sinon.createSandbox();
       queueManager = new AdvancedQueueManager({
         maxQueueSize: 100,
         schedulerInterval: 1000
@@ -34,6 +36,7 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       if (queueManager) {
         await queueManager.shutdown();
       }
+      sandbox.restore();
     });
     
     it('should enqueue tasks with different priorities', async function() {
@@ -47,14 +50,14 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const id2 = await queueManager.enqueue(tasks[1], 'normal');
       const id3 = await queueManager.enqueue(tasks[2], 'low');
       
-      assert(typeof id1 === 'string');
-      assert(typeof id2 === 'string');
-      assert(typeof id3 === 'string');
+      expect(typeof id1).to.equal('string');
+      expect(typeof id2).to.equal('string');
+      expect(typeof id3).to.equal('string');
       
       const status = queueManager.getStatus();
-      assert.equal(status.queues.urgent.size, 1);
-      assert.equal(status.queues.normal.size, 1);
-      assert.equal(status.queues.low.size, 1);
+      expect(status.queues.urgent.size).to.equal(1);
+      expect(status.queues.normal.size).to.equal(1);
+      expect(status.queues.low.size).to.equal(1);
     });
     
     it('should dequeue tasks in priority order', async function() {
@@ -66,9 +69,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const task2 = await queueManager.dequeue();
       const task3 = await queueManager.dequeue();
       
-      assert.equal(task1.priority, 'urgent');
-      assert.equal(task2.priority, 'normal');
-      assert.equal(task3.priority, 'low');
+      expect(task1.priority).to.equal('urgent');
+      expect(task2.priority).to.equal('normal');
+      expect(task3.priority).to.equal('low');
     });
     
     it('should handle scheduled tasks', async function() {
@@ -80,14 +83,14 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       );
       
       const status = queueManager.getStatus();
-      assert.equal(status.queues.scheduled.size, 1);
+      expect(status.queues.scheduled.size).to.equal( 1);
       
       // スケジューラーが動作するまで待機
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const updatedStatus = queueManager.getStatus();
-      assert.equal(updatedStatus.queues.scheduled.size, 0);
-      assert.equal(updatedStatus.queues.normal.size, 1);
+      expect(updatedStatus.queues.scheduled.size).to.equal( 0);
+      expect(updatedStatus.queues.normal.size).to.equal( 1);
     });
     
     it('should pause and resume queue processing', async function() {
@@ -95,12 +98,12 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       
       queueManager.pause();
       const pausedTask = await queueManager.dequeue();
-      assert.equal(pausedTask, null);
+      expect(pausedTask).to.equal( null);
       
       queueManager.resume();
       const resumedTask = await queueManager.dequeue();
-      assert(resumedTask !== null);
-      assert.equal(resumedTask.prompt, 'Test task');
+      expect(resumedTask !== null).to.be.true;
+      expect(resumedTask.prompt).to.equal( 'Test task');
     });
   });
   
@@ -129,9 +132,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       });
       
       const stats = usageMonitor.getCurrentWindowStats();
-      assert.equal(stats.requests, 1);
-      assert.equal(stats.successCount, 1);
-      assert.equal(stats.errorCount, 0);
+      expect(stats.requests).to.equal( 1);
+      expect(stats.successCount).to.equal( 1);
+      expect(stats.errorCount).to.equal( 0);
     });
     
     it('should track agent-specific statistics', function() {
@@ -153,10 +156,10 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const agentAStats = usageMonitor.getAgentStats('agent-a');
       const agentBStats = usageMonitor.getAgentStats('agent-b');
       
-      assert.equal(agentAStats.totalRequests, 1);
-      assert.equal(agentAStats.successCount, 1);
-      assert.equal(agentBStats.totalRequests, 1);
-      assert.equal(agentBStats.errorCount, 1);
+      expect(agentAStats.totalRequests).to.equal( 1);
+      expect(agentAStats.successCount).to.equal( 1);
+      expect(agentBStats.totalRequests).to.equal( 1);
+      expect(agentBStats.errorCount).to.equal( 1);
     });
     
     it('should predict usage patterns', function() {
@@ -172,9 +175,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       
       const prediction = usageMonitor.predictUsage(30);
       
-      assert(prediction.prediction !== null);
-      assert(typeof prediction.confidence === 'number');
-      assert(['increasing', 'decreasing', 'stable'].includes(prediction.trend));
+      expect(prediction.prediction !== null).to.be.true;
+      expect(typeof prediction.confidence === 'number').to.be.true;
+      expect(['increasing', 'decreasing', 'stable'].includes(prediction.trend)).to.be.true;
     });
   });
   
@@ -199,18 +202,18 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const rateLimitError = claudeExecutor.analyzeError('Rate limit exceeded');
       const networkError = claudeExecutor.analyzeError('Network timeout');
       
-      assert.equal(sessionError, 'SESSION_TIMEOUT');
-      assert.equal(rateLimitError, 'RATE_LIMIT');
-      assert.equal(networkError, 'NETWORK_ERROR');
+      expect(sessionError).to.equal( 'SESSION_TIMEOUT');
+      expect(rateLimitError).to.equal( 'RATE_LIMIT');
+      expect(networkError).to.equal( 'NETWORK_ERROR');
     });
     
     it('should enhance prompts with API warnings', function() {
       const originalPrompt = 'Test prompt';
       const enhancedPrompt = claudeExecutor.enhancePrompt(originalPrompt);
       
-      assert(enhancedPrompt.includes('Claude API'));
-      assert(enhancedPrompt.includes('CCSP'));
-      assert(enhancedPrompt.includes(originalPrompt));
+      expect(enhancedPrompt.includes('Claude API')).to.be.true;
+      expect(enhancedPrompt.includes('CCSP')).to.be.true;
+      expect(enhancedPrompt.includes(originalPrompt)).to.be.true;
     });
     
     it('should track execution statistics', function() {
@@ -220,9 +223,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       
       const stats = claudeExecutor.getStats();
       
-      assert.equal(stats.totalExecutions, 10);
-      assert.equal(stats.successRate, 0.8);
-      assert.equal(stats.errorRate, 0.2);
+      expect(stats.totalExecutions).to.equal( 10);
+      expect(stats.successRate).to.equal( 0.8);
+      expect(stats.errorRate).to.equal( 0.2);
     });
   });
   
@@ -247,30 +250,30 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const criticalChannels = notificationHandler.selectChannels('error', 'critical');
       const infoChannels = notificationHandler.selectChannels('info', 'info');
       
-      assert(Array.isArray(criticalChannels));
-      assert(Array.isArray(infoChannels));
-      assert(criticalChannels.includes('log'));
-      assert(infoChannels.includes('log'));
+      expect(Array.isArray(criticalChannels)).to.be.true;
+      expect(Array.isArray(infoChannels)).to.be.true;
+      expect(criticalChannels.includes('log')).to.be.true;
+      expect(infoChannels.includes('log')).to.be.true;
     });
     
     it('should generate GitHub titles correctly', function() {
       const title1 = notificationHandler.generateGitHubTitle('session_timeout', 'critical');
       const title2 = notificationHandler.generateGitHubTitle('usage_alert', 'warning');
       
-      assert(title1.includes('セッションタイムアウト'));
-      assert(title1.includes('💥'));
-      assert(title2.includes('使用量アラート'));
-      assert(title2.includes('⚠️'));
+      expect(title1.includes('セッションタイムアウト')).to.be.true;
+      expect(title1.includes('💥')).to.be.true;
+      expect(title2.includes('使用量アラート')).to.be.true;
+      expect(title2.includes('⚠️')).to.be.true;
     });
     
     it('should generate appropriate GitHub labels', function() {
       const labels = notificationHandler.generateGitHubLabels('session_timeout', 'critical');
       
-      assert(labels.includes('ccsp'));
-      assert(labels.includes('automated'));
-      assert(labels.includes('urgent'));
-      assert(labels.includes('session-timeout'));
-      assert(labels.includes('requires-manual-action'));
+      expect(labels.includes('ccsp')).to.be.true;
+      expect(labels.includes('automated')).to.be.true;
+      expect(labels.includes('urgent')).to.be.true;
+      expect(labels.includes('session-timeout')).to.be.true;
+      expect(labels.includes('requires-manual-action')).to.be.true;
     });
     
     it('should maintain notification history', async function() {
@@ -283,9 +286,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       });
       
       const history = notificationHandler.getHistory();
-      assert.equal(history.length, 1);
-      assert.equal(history[0].type, 'test');
-      assert.equal(history[0].title, 'Test Notification');
+      expect(history.length).to.equal( 1);
+      expect(history[0].type).to.equal( 'test');
+      expect(history[0].title).to.equal( 'Test Notification');
     });
   });
   
@@ -310,9 +313,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
         rateLimited: false
       });
       
-      assert.equal(prometheusExporter.metrics.requests_total, 1);
-      assert.equal(prometheusExporter.metrics.requests_success_total, 1);
-      assert.equal(prometheusExporter.metrics.requests_error_total, 0);
+      expect(prometheusExporter.metrics.requests_total).to.equal( 1);
+      expect(prometheusExporter.metrics.requests_success_total).to.equal( 1);
+      expect(prometheusExporter.metrics.requests_error_total).to.equal( 0);
     });
     
     it('should update queue size metrics', function() {
@@ -320,8 +323,8 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       prometheusExporter.incrementQueueSize('normal');
       prometheusExporter.decrementQueueSize('urgent');
       
-      assert.equal(prometheusExporter.metrics.queue_size.urgent, 0);
-      assert.equal(prometheusExporter.metrics.queue_size.normal, 1);
+      expect(prometheusExporter.metrics.queue_size.urgent).to.equal( 0);
+      expect(prometheusExporter.metrics.queue_size.normal).to.equal( 1);
     });
     
     it('should generate Prometheus format metrics', async function() {
@@ -333,18 +336,18 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       
       const metrics = await prometheusExporter.getMetrics();
       
-      assert(typeof metrics === 'string');
-      assert(metrics.includes('ccsp_requests_total'));
-      assert(metrics.includes('ccsp_uptime_seconds'));
-      assert(metrics.includes('ccsp_queue_size'));
+      expect(typeof metrics === 'string').to.be.true;
+      expect(metrics.includes('ccsp_requests_total')).to.be.true;
+      expect(metrics.includes('ccsp_uptime_seconds')).to.be.true;
+      expect(metrics.includes('ccsp_queue_size')).to.be.true;
     });
     
     it('should set custom metrics', function() {
       prometheusExporter.setCustomMetric('test_metric', 42, { label: 'value' });
       
-      assert(prometheusExporter.metrics.custom);
+      expect(prometheusExporter.metrics.custom).to.be.true;
       const customKeys = Object.keys(prometheusExporter.metrics.custom);
-      assert(customKeys.length > 0);
+      expect(customKeys.length > 0).to.be.true;
     });
   });
   
@@ -370,33 +373,33 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const result2 = emergencyStop.checkError('Please run /login');
       const result3 = emergencyStop.checkError('Regular error message');
       
-      assert(result1);
-      assert.equal(emergencyStop.stopReason, 'SESSION_TIMEOUT');
-      assert(result2);
-      assert(!result3);
+      expect(result1).to.be.true;
+      expect(emergencyStop.stopReason).to.equal( 'SESSION_TIMEOUT');
+      expect(result2).to.be.true;
+      expect(result3).to.be.false;
     });
     
     it('should detect rate limit errors', function() {
       const result = emergencyStop.checkError('Claude AI usage limit reached|1234567890');
       
-      assert(result);
-      assert.equal(emergencyStop.stopReason, 'RATE_LIMIT');
-      assert(emergencyStop.resumeTime);
+      expect(result).to.be.true;
+      expect(emergencyStop.stopReason).to.equal( 'RATE_LIMIT');
+      expect(emergencyStop.resumeTime).to.be.true;
     });
     
     it('should check resumption conditions', function() {
       // Session timeout requires manual intervention
       emergencyStop.stopReason = 'SESSION_TIMEOUT';
       emergencyStop.stopped = true;
-      assert(!emergencyStop.canResume());
+      expect(emergencyStop.canResume()).to.be.false;
       
       // Rate limit can be resumed after time
       emergencyStop.stopReason = 'RATE_LIMIT';
       emergencyStop.resumeTime = Date.now() - 1000; // Past time
-      assert(emergencyStop.canResume());
+      expect(emergencyStop.canResume()).to.be.true;
       
       emergencyStop.resumeTime = Date.now() + 1000; // Future time
-      assert(!emergencyStop.canResume());
+      expect(emergencyStop.canResume()).to.be.false;
     });
   });
   
@@ -423,12 +426,12 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
     });
     
     it('should initialize all components', function() {
-      assert(ccspAgent.queueManager);
-      assert(ccspAgent.usageMonitor);
-      assert(ccspAgent.claudeExecutor);
-      assert(ccspAgent.notificationHandler);
-      assert(ccspAgent.emergencyStop);
-      assert(ccspAgent.prometheusExporter);
+      expect(ccspAgent.queueManager).to.be.true;
+      expect(ccspAgent.usageMonitor).to.be.true;
+      expect(ccspAgent.claudeExecutor).to.be.true;
+      expect(ccspAgent.notificationHandler).to.be.true;
+      expect(ccspAgent.emergencyStop).to.be.true;
+      expect(ccspAgent.prometheusExporter).to.be.true;
     });
     
     it('should provide API methods', async function() {
@@ -436,12 +439,12 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const healthStatus = await ccspAgent.getHealthStatus();
       const usageStats = await ccspAgent.getUsageStats();
       
-      assert(typeof queueStatus === 'object');
-      assert(typeof healthStatus === 'object');
-      assert(Array.isArray(usageStats));
+      expect(typeof queueStatus === 'object').to.be.true;
+      expect(typeof healthStatus === 'object').to.be.true;
+      expect(Array.isArray(usageStats)).to.be.true;
       
-      assert(queueStatus.hasOwnProperty('isPaused'));
-      assert(healthStatus.hasOwnProperty('status'));
+      expect(queueStatus.hasOwnProperty('isPaused')).to.be.true;
+      expect(healthStatus.hasOwnProperty('status')).to.be.true;
     });
     
     it('should handle throttling configuration', async function() {
@@ -451,24 +454,24 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
         mode: 'adaptive'
       });
       
-      assert(throttleConfig.enabled);
-      assert.equal(throttleConfig.delay, 2000);
-      assert.equal(throttleConfig.mode, 'adaptive');
+      expect(throttleConfig.enabled).to.be.true;
+      expect(throttleConfig.delay).to.equal( 2000);
+      expect(throttleConfig.mode).to.equal( 'adaptive');
     });
     
     it('should set agent priorities', async function() {
       await ccspAgent.setAgentPriority('test-agent', 'high');
       
       const config = await ccspAgent.getConfig();
-      assert(config.agentPriorities);
-      assert.equal(config.agentPriorities['test-agent'], 'high');
+      expect(config.agentPriorities).to.be.true;
+      expect(config.agentPriorities['test-agent']).to.equal( 'high');
     });
     
     it('should generate Prometheus metrics', async function() {
       const metrics = await ccspAgent.getPrometheusMetrics();
       
-      assert(typeof metrics === 'string');
-      assert(metrics.includes('ccsp_'));
+      expect(typeof metrics === 'string').to.be.true;
+      expect(metrics.includes('ccsp_')).to.be.true;
     });
   });
   
@@ -495,8 +498,8 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
     
     it('should provide Express router', function() {
       const router = managementAPI.getRouter();
-      assert(router);
-      assert(typeof router === 'function');
+      expect(router).to.be.true;
+      expect(typeof router === 'function').to.be.true;
     });
     
     it('should handle errors gracefully', function() {
@@ -514,9 +517,9 @@ describe('CCSP Phase 4 - Advanced Control and Monitoring', () => {
       const error = new Error('Test error');
       managementAPI.handleError(mockRes, error, 'Test message');
       
-      assert.equal(mockRes.statusCode, 500);
-      assert(mockRes.jsonData.success === false);
-      assert.equal(mockRes.jsonData.error, 'Test message');
+      expect(mockRes.statusCode).to.equal( 500);
+      expect(mockRes.jsonData.success === false).to.be.true;
+      expect(mockRes.jsonData.error).to.equal( 'Test message');
     });
   });
 });

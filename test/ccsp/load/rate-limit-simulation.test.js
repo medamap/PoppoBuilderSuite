@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('CCSP Rate Limit Simulation Tests', () => {
   let helpers;
   let mockRedis;
+  let sandbox;
   let ccspAgent;
   let config;
 

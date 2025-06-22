@@ -14,6 +14,7 @@ describe('Daemon Integration Tests', function() {
   
   let daemonManager;
   let apiClient;
+  let sandbox;
   
   before(async () => {
     // テスト用の設定を作成
@@ -39,6 +40,7 @@ describe('Daemon Integration Tests', function() {
   });
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     daemonManager = new DaemonManager();
     apiClient = new DaemonAPIClient({ port: 45679 });
   });

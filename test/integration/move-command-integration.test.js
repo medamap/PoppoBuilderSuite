@@ -13,6 +13,7 @@ const { getInstance: getProjectRegistry } = require('../../lib/core/project-regi
 describe('Move Command Integration Tests', () => {
   let tempDir;
   let testProjectPath;
+  let sandbox;
   let moveCommand;
   let registry;
   

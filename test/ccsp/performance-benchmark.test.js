@@ -68,8 +68,13 @@ describe('CCSP パフォーマンスベンチマーク', function() {
   let mockClient;
   
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     mockClient = new MockCCSPClient();
-  });
+  })
+
+  afterEach(() => {
+    sandbox.restore();
+  });;
   
   describe('1. 基本性能ベンチマーク', () => {
     it('単一リクエストの応答時間が許容範囲内であること', async () => {

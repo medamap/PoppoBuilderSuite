@@ -84,7 +84,7 @@ class AdvancedQueueManager extends EventEmitter {
    * @param {Date} scheduleAt - スケジュール実行時刻（オプション）
    */
   async enqueue(task, priority = 'normal', scheduleAt = null) {
-    if (\!task || \!task.id) {
+    if (!task || !task.id) {
       throw new Error('Invalid task: id is required');
     }
     
@@ -109,7 +109,7 @@ class AdvancedQueueManager extends EventEmitter {
       this.queues.scheduled.push(enrichedTask);
       this.emit('task:scheduled', enrichedTask);
     } else {
-      if (\!this.queues[priority]) {
+      if (!this.queues[priority]) {
         throw new Error(`Invalid priority: ${priority}`);
       }
       this.queues[priority].push(enrichedTask);
@@ -172,7 +172,7 @@ class AdvancedQueueManager extends EventEmitter {
     }
     
     // 優先度別の統計
-    if (result.priority && this.stats.byPriority[result.priority] \!== undefined) {
+    if (result.priority && this.stats.byPriority[result.priority] !== undefined) {
       this.stats.byPriority[result.priority]++;
     }
     
@@ -303,7 +303,7 @@ class AdvancedQueueManager extends EventEmitter {
    */
   async clearQueue(priority = null) {
     if (priority) {
-      if (\!this.queues[priority]) {
+      if (!this.queues[priority]) {
         throw new Error(`Invalid priority: ${priority}`);
       }
       const count = this.queues[priority].length;
@@ -383,7 +383,7 @@ class AdvancedQueueManager extends EventEmitter {
       const data = await fs.readFile(filePath, 'utf8');
       this.queues = JSON.parse(data);
     } catch (error) {
-      if (error.code \!== 'ENOENT') {
+      if (error.code !== 'ENOENT') {
         this.emit('error', { type: 'load:queues', error });
       }
     }
@@ -425,4 +425,3 @@ class AdvancedQueueManager extends EventEmitter {
 }
 
 module.exports = AdvancedQueueManager;
-EOF < /dev/null

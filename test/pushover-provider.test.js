@@ -1,3 +1,5 @@
+const { expect } = require('chai');
+const sinon = require('sinon');
 /**
  * PushoverProviderの単体テスト
  */
@@ -6,14 +8,14 @@ const PushoverProvider = require('../src/providers/pushover-provider')
 const axios = require('axios')
 
 // axiosのモック
-jest.mock('axios')
+// Mock: axios (manually stub in beforeEach)
 
 // モックロガー
 const createMockLogger = () => ({
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn()
+  info: sandbox.stub(),
+  warn: sandbox.stub(),
+  error: sandbox.stub(),
+  debug: sandbox.stub()
 })
 
 describe('PushoverProvider', () => {
@@ -22,7 +24,7 @@ describe('PushoverProvider', () => {
   let mockConfig
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    // Mocks cleared by sandbox.restore()
     mockLogger = createMockLogger()
     mockConfig = {
       enabled: true,
@@ -36,12 +38,12 @@ describe('PushoverProvider', () => {
 
   describe('初期化と検証', () => {
     it('正しい設定で初期化', () => {
-      expect(provider.getName()).toBe('Pushover')
-      expect(provider.appToken).toBe('test-app-token')
-      expect(provider.userKey).toBe('test-user-key')
-      expect(provider.priority).toBe(0)
-      expect(provider.sound).toBe('pushover')
-      expect(provider.apiUrl).toBe('https://api.pushover.net/1/messages.json')
+      expect(provider.getName()).to.equal('Pushover')
+      expect(provider.appToken).to.equal('test-app-token')
+      expect(provider.userKey).to.equal('test-user-key')
+      expect(provider.priority).to.equal(0)
+      expect(provider.sound).to.equal('pushover')
+      expect(provider.apiUrl).to.equal('https://api.pushover.net/1/messages.json')
     })
 
     it('環境変数から認証情報を解決', () => {
@@ -54,8 +56,8 @@ describe('PushoverProvider', () => {
       }
       const provider = new PushoverProvider(config, mockLogger)
       
-      expect(provider.appToken).toBe('env-app-token')
-      expect(provider.userKey).toBe('env-user-key')
+      expect(provider.appToken).to.equal('env-app-token')
+      expect(provider.userKey).to.equal('env-user-key')
       delete process.env.PUSHOVER_APP
       delete process.env.PUSHOVER_USER
     })
@@ -88,7 +90,7 @@ describe('PushoverProvider', () => {
 
   describe('メッセージ送信', () => {
     it('基本的な通知を送信', async () => {
-      axios.post.mockResolvedValue({ 
+      axios.post.resolves({ 
         status: 200,
         data: { status: 1 }
       })
@@ -106,9 +108,9 @@ describe('PushoverProvider', () => {
       
       await provider.send(notification)
       
-      expect(axios.post).toHaveBeenCalledWith(
+      expect(axios.post).to.have.been.calledWith(
         'https://api.pushover.net/1/messages.json',
-        expect.objectContaining({
+        sinon.match({
           token: 'test-app-token',
           user: 'test-user-key',
           message: 'テスト完了メッセージ',
@@ -117,9 +119,9 @@ describe('PushoverProvider', () => {
           sound: 'pushover',
           url: 'https://github.com/test/repo/issues/123',
           url_title: 'Issue #123を開く',
-          timestamp: expect.any(Number)
+          timestamp: sinon.match.number
         }),
-        expect.objectContaining({
+        sinon.match({
           headers: { 'Content-Type': 'application/json' },
           timeout: 5000
         })
@@ -127,7 +129,7 @@ describe('PushoverProvider', () => {
     })
 
     it('エラー通知は高優先度', async () => {
-      axios.post.mockResolvedValue({ 
+      axios.post.resolves({ 
         status: 200,
         data: { status: 1 }
       })
@@ -144,14 +146,14 @@ describe('PushoverProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.title).toBe('PoppoBuilder - エラー発生')
-      expect(payload.priority).toBe(1) // エラー時は最低でも1
-      expect(payload.sound).toBe('siren') // エラー時の特別な音
+      expect(payload.title).to.equal('PoppoBuilder - エラー発生')
+      expect(payload.priority).to.equal(1) // エラー時は最低でも1
+      expect(payload.sound).to.equal('siren') // エラー時の特別な音
     })
 
     it('高優先度メッセージには再通知設定', async () => {
       provider.priority = 2 // 緊急
-      axios.post.mockResolvedValue({ 
+      axios.post.resolves({ 
         status: 200,
         data: { status: 1 }
       })
@@ -165,13 +167,13 @@ describe('PushoverProvider', () => {
       await provider.send(notification)
       
       const payload = axios.post.mock.calls[0][1]
-      expect(payload.priority).toBe(2)
-      expect(payload.retry).toBe(60) // 1分ごとに再通知
-      expect(payload.expire).toBe(3600) // 1時間後に期限切れ
+      expect(payload.priority).to.equal(2)
+      expect(payload.retry).to.equal(60) // 1分ごとに再通知
+      expect(payload.expire).to.equal(3600) // 1時間後に期限切れ
     })
 
     it('長いメッセージは切り詰め', async () => {
-      axios.post.mockResolvedValue({ 
+      axios.post.resolves({ 
         status: 200,
         data: { status: 1 }
       })
@@ -191,7 +193,7 @@ describe('PushoverProvider', () => {
     })
 
     it('APIエラーの場合例外をスロー', async () => {
-      axios.post.mockResolvedValue({
+      axios.post.resolves({
         status: 200,
         data: { 
           status: 0,
@@ -212,7 +214,7 @@ describe('PushoverProvider', () => {
       axios.post
         .mockRejectedValueOnce(new Error('一時的なエラー'))
         .mockRejectedValueOnce(new Error('一時的なエラー'))
-        .mockResolvedValue({ 
+        .resolves({ 
           status: 200,
           data: { status: 1 }
         })
@@ -225,42 +227,42 @@ describe('PushoverProvider', () => {
       
       await provider.send(notification)
       
-      expect(axios.post).toHaveBeenCalledTimes(3)
-      expect(mockLogger.warn).toHaveBeenCalledTimes(2)
+      expect(axios.post).to.have.callCount(3)
+      expect(mockLogger.warn).to.have.callCount(2)
     })
   })
 
   describe('タイトル取得', () => {
     it('各イベントタイプに対応するタイトル', () => {
-      expect(provider.getTitle('issue.completed')).toBe('PoppoBuilder - 処理完了')
-      expect(provider.getTitle('issue.error')).toBe('PoppoBuilder - エラー発生')
-      expect(provider.getTitle('issue.timeout')).toBe('PoppoBuilder - タイムアウト')
-      expect(provider.getTitle('dogfooding.restart')).toBe('PoppoBuilder - 再起動')
-      expect(provider.getTitle('unknown.event')).toBe('PoppoBuilder')
+      expect(provider.getTitle('issue.completed')).to.equal('PoppoBuilder - 処理完了')
+      expect(provider.getTitle('issue.error')).to.equal('PoppoBuilder - エラー発生')
+      expect(provider.getTitle('issue.timeout')).to.equal('PoppoBuilder - タイムアウト')
+      expect(provider.getTitle('dogfooding.restart')).to.equal('PoppoBuilder - 再起動')
+      expect(provider.getTitle('unknown.event')).to.equal('PoppoBuilder')
     })
   })
 
   describe('優先度とサウンド', () => {
     it('通常のイベントは設定値を使用', () => {
       provider.priority = -1
-      expect(provider.getPriority('issue.completed')).toBe(-1)
-      expect(provider.getSound('issue.completed')).toBe('pushover')
+      expect(provider.getPriority('issue.completed')).to.equal(-1)
+      expect(provider.getSound('issue.completed')).to.equal('pushover')
     })
 
     it('エラーイベントは特別な設定', () => {
       provider.priority = -1
-      expect(provider.getPriority('issue.error')).toBe(1) // 最低でも1
-      expect(provider.getSound('issue.error')).toBe('siren')
+      expect(provider.getPriority('issue.error')).to.equal(1) // 最低でも1
+      expect(provider.getSound('issue.error')).to.equal('siren')
       
       provider.priority = 2
-      expect(provider.getPriority('issue.error')).toBe(2) // 既に高い場合はそのまま
+      expect(provider.getPriority('issue.error')).to.equal(2) // 既に高い場合はそのまま
     })
   })
 
   describe('メッセージ切り詰め', () => {
     it('短いメッセージはそのまま', () => {
       const message = 'これは短いメッセージです'
-      expect(provider.truncateMessage(message, 100)).toBe(message)
+      expect(provider.truncateMessage(message, 100)).to.equal(message)
     })
 
     it('長いメッセージは切り詰めて省略記号を追加', () => {
@@ -268,19 +270,19 @@ describe('PushoverProvider', () => {
       const truncated = provider.truncateMessage(message, 50)
       expect(truncated).toHaveLength(50)
       expect(truncated).toEndWith('...')
-      expect(truncated).toBe('a'.repeat(47) + '...')
+      expect(truncated).to.equal('a'.repeat(47) + '...')
     })
 
     it('境界値でのテスト', () => {
       const message = 'a'.repeat(50)
-      expect(provider.truncateMessage(message, 50)).toBe(message)
-      expect(provider.truncateMessage(message, 49)).toBe('a'.repeat(46) + '...')
+      expect(provider.truncateMessage(message, 50)).to.equal(message)
+      expect(provider.truncateMessage(message, 49)).to.equal('a'.repeat(46) + '...')
     })
   })
 
   describe('エラーハンドリング', () => {
     it('不正なデータでもクラッシュしない', async () => {
-      axios.post.mockResolvedValue({ 
+      axios.post.resolves({ 
         status: 200,
         data: { status: 1 }
       })
@@ -292,7 +294,7 @@ describe('PushoverProvider', () => {
         data: null
       })
       
-      expect(axios.post).toHaveBeenCalled()
+      expect(axios.post).to.have.been.called
       
       // データが空
       await provider.send({
@@ -301,7 +303,7 @@ describe('PushoverProvider', () => {
         data: {}
       })
       
-      expect(axios.post).toHaveBeenCalledTimes(2)
+      expect(axios.post).to.have.callCount(2)
     })
 
     it('環境変数が設定されていない場合のエラー', () => {
@@ -317,7 +319,7 @@ describe('PushoverProvider', () => {
     it('ネットワークエラーの詳細をログ出力', async () => {
       const networkError = new Error('ECONNREFUSED')
       networkError.code = 'ECONNREFUSED'
-      axios.post.mockRejectedValue(networkError)
+      axios.post.rejects(networkError)
       
       const notification = {
         eventType: 'issue.completed',
@@ -326,7 +328,7 @@ describe('PushoverProvider', () => {
       }
       
       await expect(provider.send(notification)).rejects.toThrow('ECONNREFUSED')
-      expect(mockLogger.warn).toHaveBeenCalled()
+      expect(mockLogger.warn).to.have.been.called
     })
   })
 })

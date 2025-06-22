@@ -1,9 +1,8 @@
 /**
- * Jestテストのセットアップファイル
+ * Mochaテストのセットアップファイル
  */
 
-// グローバルなタイムアウト設定
-jest.setTimeout(10000)
+const sinon = require('sinon');
 
 // 環境変数のモック
 process.env.NODE_ENV = 'test'
@@ -12,24 +11,25 @@ process.env.NODE_ENV = 'test'
 if (process.env.SUPPRESS_CONSOLE) {
   global.console = {
     ...console,
-    log: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
+    log: sinon.stub(),
+    info: sinon.stub(),
+    warn: sinon.stub(),
+    error: sinon.stub(),
+    debug: sinon.stub()
   }
 }
 
 // グローバルなモック設定
 beforeEach(() => {
   // 各テストの前にモックをリセット
-  jest.clearAllMocks()
+  // Mochaではsinon.restoreAll()を使用
+  sinon.restore()
 })
 
 // テスト後のクリーンアップ
 afterEach(() => {
-  // タイマーのクリア
-  jest.clearAllTimers()
+  // Mochaでは特別なタイマークリアは不要
+  // 必要に応じてsinon.restoreClocks()を使用
 })
 
 // グローバルなエラーハンドリング

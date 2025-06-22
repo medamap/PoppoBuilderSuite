@@ -1,1 +1,51 @@
-[]
+[
+  {
+    "type": "issue",
+    "issue": {
+      "number": 1002,
+      "title": "Test Issue 2 (Dogfooding)"
+    },
+    "issueNumber": 1002,
+    "labels": [
+      "task:dogfooding"
+    ],
+    "id": "task-1750589493569-g55zu99nl",
+    "priority": 100,
+    "enqueuedAt": 1750589493569,
+    "attempts": 0
+  },
+  {
+    "type": "issue",
+    "issue": {
+      "number": 1001,
+      "title": "Test Issue 1"
+    },
+    "issueNumber": 1001,
+    "labels": [
+      "task:misc"
+    ],
+    "id": "task-1750589493569-329zzoaox",
+    "priority": 50,
+    "enqueuedAt": 1750589493569,
+    "attempts": 0
+  },
+  {
+    "type": "comment",
+    "issue": {
+      "number": 1003,
+      "title": "Test Issue 3"
+    },
+    "comment": {
+      "id": "comment-1",
+      "body": "Test comment"
+    },
+    "issueNumber": 1003,
+    "labels": [
+      "awaiting-response"
+    ],
+    "id": "task-1750589493569-wve640llm",
+    "priority": 50,
+    "enqueuedAt": 1750589493569,
+    "attempts": 0
+  }
+]

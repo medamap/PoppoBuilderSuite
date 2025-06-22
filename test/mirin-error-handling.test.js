@@ -10,6 +10,7 @@ const MirinOrphanManager = require('../src/mirin-orphan-manager');
 describe('MirinOrphanManager - エラーハンドリング', function() {
   let mirinManager;
   let testDir;
+  let sandbox;
   let mockGithubClient;
   let mockStatusManager;
   let mockLogger;

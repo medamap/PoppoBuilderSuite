@@ -7,6 +7,7 @@ const path = require('path');
 describe('CCSP Emergency Stop Unit Tests', () => {
   let helpers;
   let EmergencyStop;
+  let sandbox;
   let emergencyStop;
   let mockRedis;
   let clock;
@@ -16,6 +17,7 @@ describe('CCSP Emergency Stop Unit Tests', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Use fake timers
     clock = sinon.useFakeTimers();
     
@@ -116,6 +118,7 @@ describe('CCSP Emergency Stop Unit Tests', () => {
     let queueManagerMock;
 
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       queueManagerMock = {
         pauseAllQueues: helpers.createSpy(),
         clearAllQueues: helpers.createSpy(),
@@ -189,6 +192,7 @@ describe('CCSP Emergency Stop Unit Tests', () => {
     let queueManagerMock;
 
     beforeEach(() => {
+    sandbox = sinon.createSandbox();
       queueManagerMock = {
         pauseAllQueues: helpers.createSpy(),
         resumeAllQueues: helpers.createSpy(),

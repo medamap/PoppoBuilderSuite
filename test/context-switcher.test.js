@@ -12,6 +12,7 @@ const EnvironmentManager = require('../lib/utils/environment-manager');
 describe('ContextSwitcher', function() {
   let contextSwitcher;
   let testDir;
+  let sandbox;
   let originalCwd;
 
   before(async function() {

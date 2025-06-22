@@ -1,3 +1,5 @@
+const { expect } = require('chai');
+const sinon = require('sinon');
 const TranslationValidator = require('../lib/i18n/translation-validator');
 const TranslationLoader = require('../lib/i18n/translation-loader');
 const fs = require('fs').promises;
@@ -7,24 +9,29 @@ describe('TranslationValidator Tests', () => {
   let validator;
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     validator = new TranslationValidator();
-  });
+  })
+
+  afterEach(() => {
+    sandbox.restore();
+  });;
 
   describe('Basic Validation', () => {
-    test('should validate all translation files successfully', async () => {
+    it('should validate all translation files successfully', async () => {
       const results = await validator.validateAll();
       
       // 現在の翻訳ファイルは有効であるべき
-      expect(results.valid).toBe(true);
+      expect(results.valid).to.equal(true);
       expect(results.errors).toHaveLength(0);
       
       // 基本的な統計を確認
-      expect(results.summary.totalKeys).toBeGreaterThan(0);
-      expect(results.summary.missingKeys).toBe(0);
-      expect(results.summary.invalidInterpolations).toBe(0);
+      expect(results.summary.totalKeys).to.be.greaterThan(0);
+      expect(results.summary.missingKeys).to.equal(0);
+      expect(results.summary.invalidInterpolations).to.equal(0);
     });
 
-    test('should count keys correctly', () => {
+    it('should count keys correctly', () => {
       const testObj = {
         a: 'value',
         b: {
@@ -37,12 +44,12 @@ describe('TranslationValidator Tests', () => {
       };
       
       const count = validator.countKeys(testObj);
-      expect(count).toBe(4); // a, c, e, f
+      expect(count).to.equal(4); // a, c, e, f
     });
   });
 
   describe('Missing Keys Detection', () => {
-    test('should detect missing keys', () => {
+    it('should detect missing keys', () => {
       const base = {
         key1: 'value1',
         nested: {
@@ -60,10 +67,10 @@ describe('TranslationValidator Tests', () => {
       };
       
       const missing = validator.findMissingKeys(base, target);
-      expect(missing).toEqual(['nested.key3']);
+      expect(missing).to.deep.equal(['nested.key3']);
     });
 
-    test('should handle deeply nested missing keys', () => {
+    it('should handle deeply nested missing keys', () => {
       const base = {
         a: {
           b: {
@@ -81,12 +88,12 @@ describe('TranslationValidator Tests', () => {
       };
       
       const missing = validator.findMissingKeys(base, target, 'prefix');
-      expect(missing).toEqual(['prefix.a.b.c']);
+      expect(missing).to.deep.equal(['prefix.a.b.c']);
     });
   });
 
   describe('Extra Keys Detection', () => {
-    test('should detect extra keys', () => {
+    it('should detect extra keys', () => {
       const base = {
         key1: 'value1'
       };
@@ -100,29 +107,29 @@ describe('TranslationValidator Tests', () => {
       };
       
       const extra = validator.findExtraKeys(base, target);
-      expect(extra).toEqual(['key2', 'nested']);
+      expect(extra).to.deep.equal(['key2', 'nested']);
     });
   });
 
   describe('Interpolation Validation', () => {
-    test('should extract interpolations correctly', () => {
+    it('should extract interpolations correctly', () => {
       const text = 'Hello {{name}}, you have {{count}} messages';
       const interpolations = validator.extractInterpolations(text);
       
-      expect(interpolations).toEqual(['name', 'count']);
+      expect(interpolations).to.deep.equal(['name', 'count']);
     });
 
-    test('should validate interpolation variable names', () => {
+    it('should validate interpolation variable names', () => {
       const valid = ['name', 'user_id', 'count123', '_private'];
       const invalid = validator.validateInterpolations(valid);
       expect(invalid).toHaveLength(0);
       
       const invalidVars = ['123start', 'dash-name', 'space name', 'special!char'];
       const invalidResults = validator.validateInterpolations(invalidVars);
-      expect(invalidResults).toEqual(invalidVars);
+      expect(invalidResults).to.deep.equal(invalidVars);
     });
 
-    test('should detect invalid interpolations in translations', async () => {
+    it('should detect invalid interpolations in translations', async () => {
       // 一時的なテスト用翻訳ファイルを作成
       const testLocale = 'test';
       const testDir = path.join(__dirname, '../locales', testLocale);
@@ -147,9 +154,9 @@ describe('TranslationValidator Tests', () => {
         const results = await testValidator.validateLocale(testLocale, baseTranslations);
         
         expect(results.errors).toHaveLength(1);
-        expect(results.errors[0].type).toBe('invalid_interpolation');
-        expect(results.errors[0].invalidVars).toContain('123invalid');
-        expect(results.errors[0].invalidVars).toContain('valid-name');
+        expect(results.errors[0].type).to.equal('invalid_interpolation');
+        expect(results.errors[0].invalidVars).to.include('123invalid');
+        expect(results.errors[0].invalidVars).to.include('valid-name');
       } finally {
         // クリーンアップ
         await fs.rm(testDir, { recursive: true, force: true });
@@ -158,7 +165,7 @@ describe('TranslationValidator Tests', () => {
   });
 
   describe('Empty Values Detection', () => {
-    test('should detect empty values', async () => {
+    it('should detect empty values', async () => {
       // 一時的なテスト用翻訳ファイルを作成
       const testLocale = 'test-empty';
       const testDir = path.join(__dirname, '../locales', testLocale);
@@ -194,7 +201,7 @@ describe('TranslationValidator Tests', () => {
         
         const results = await testValidator.validateLocale(testLocale, baseTranslations);
         
-        expect(results.summary.emptyValues).toBe(3); // empty, whitespace, nested.empty
+        expect(results.summary.emptyValues).to.equal(3); // empty, whitespace, nested.empty
         expect(results.warnings.filter(w => w.type === 'empty_value')).toHaveLength(3);
       } finally {
         // クリーンアップ
@@ -204,7 +211,7 @@ describe('TranslationValidator Tests', () => {
   });
 
   describe('Report Generation', () => {
-    test('should format validation report correctly', () => {
+    it('should format validation report correctly', () => {
       const results = {
         valid: false,
         errors: [
@@ -236,14 +243,14 @@ describe('TranslationValidator Tests', () => {
       
       const report = validator.formatReport(results);
       
-      expect(report).toContain('❌ INVALID');
-      expect(report).toContain('Total keys: 100');
-      expect(report).toContain('Missing keys: 1');
-      expect(report).toContain('Errors (1):');
-      expect(report).toContain('Warnings (1):');
+      expect(report).to.include('❌ INVALID');
+      expect(report).to.include('Total keys: 100');
+      expect(report).to.include('Missing keys: 1');
+      expect(report).to.include('Errors (1):');
+      expect(report).to.include('Warnings (1):');
     });
 
-    test('should generate fix suggestions', () => {
+    it('should generate fix suggestions', () => {
       const results = {
         errors: [
           {
@@ -272,14 +279,14 @@ describe('TranslationValidator Tests', () => {
       const fixes = validator.generateFixes(results);
       
       expect(fixes.missingKeys).toHaveProperty('ja');
-      expect(fixes.missingKeys.ja.common).toContain('test.key');
-      expect(fixes.emptyValues.ja.common).toContain('common.empty');
-      expect(fixes.suggestions).toContain('Run translation sync to copy missing keys from the base locale');
+      expect(fixes.missingKeys.ja.common).to.include('test.key');
+      expect(fixes.emptyValues.ja.common).to.include('common.empty');
+      expect(fixes.suggestions).to.include('Run translation sync to copy missing keys from the base locale');
     });
   });
 
   describe('URL Validation', () => {
-    test('should check URL consistency', () => {
+    it('should check URL consistency', () => {
       const results = {
         warnings: [],
         summary: {}
@@ -305,33 +312,33 @@ describe('TranslationValidator Tests', () => {
       );
       // 無効なURLとして警告が生成される
       expect(results.warnings).toHaveLength(1);
-      expect(results.warnings[0].type).toBe('invalid_url');
-      expect(results.warnings[0].value).toBe('https://[invalid]');
+      expect(results.warnings[0].type).to.equal('invalid_url');
+      expect(results.warnings[0].value).to.equal('https://[invalid]');
     });
   });
 
   describe('Integration with Current Files', () => {
-    test('should validate actual translation files', async () => {
+    it('should validate actual translation files', async () => {
       const results = await validator.validateAll();
       
       // レポートを生成
       const report = validator.formatReport(results);
       
       // 現在のファイルは有効であるべき
-      expect(results.valid).toBe(true);
-      expect(report).toContain('✅ VALID');
+      expect(results.valid).to.equal(true);
+      expect(report).to.include('✅ VALID');
       
       // 各名前空間が存在することを確認
       const loader = new TranslationLoader();
       const enTranslations = await loader.loadLocale('en');
       const jaTranslations = await loader.loadLocale('ja');
       
-      expect(Object.keys(enTranslations)).toContain('common');
-      expect(Object.keys(enTranslations)).toContain('commands');
-      expect(Object.keys(enTranslations)).toContain('errors');
-      expect(Object.keys(enTranslations)).toContain('messages');
+      expect(Object.keys(enTranslations)).to.include('common');
+      expect(Object.keys(enTranslations)).to.include('commands');
+      expect(Object.keys(enTranslations)).to.include('errors');
+      expect(Object.keys(enTranslations)).to.include('messages');
       
-      expect(Object.keys(jaTranslations)).toEqual(Object.keys(enTranslations));
+      expect(Object.keys(jaTranslations)).to.deep.equal(Object.keys(enTranslations));
     });
   });
 });

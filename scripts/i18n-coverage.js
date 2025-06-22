@@ -7,9 +7,7 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const glob = require('glob');
-const { promisify } = require('util');
-const globAsync = promisify(glob);
+const { glob } = require('glob');
 const chalk = require('chalk');
 
 class TranslationCoverageChecker {
@@ -25,7 +23,7 @@ class TranslationCoverageChecker {
     const baseDir = path.join(this.localesDir, this.baseLocale);
     
     try {
-      const files = await globAsync('**/*.json', { cwd: baseDir });
+      const files = await glob('**/*.json', { cwd: baseDir });
       
       for (const file of files) {
         const filePath = path.join(baseDir, file);
@@ -61,7 +59,7 @@ class TranslationCoverageChecker {
     const localeDir = path.join(this.localesDir, locale);
     
     try {
-      const files = await globAsync('**/*.json', { cwd: localeDir });
+      const files = await glob('**/*.json', { cwd: localeDir });
       
       for (const file of files) {
         const filePath = path.join(localeDir, file);
@@ -181,7 +179,7 @@ class TranslationCoverageChecker {
     ];
     
     for (const pattern of sourcePatterns) {
-      const files = await globAsync(pattern, { cwd: path.join(__dirname, '..') });
+      const files = await glob(pattern, { cwd: path.join(__dirname, '..') });
       
       for (const file of files) {
         const content = await fs.readFile(path.join(__dirname, '..', file), 'utf8');

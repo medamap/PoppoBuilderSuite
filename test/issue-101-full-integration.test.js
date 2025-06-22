@@ -51,7 +51,7 @@ async function waitForPattern(logs, pattern, timeout = 10000) {
   
   while (Date.now() - startTime < timeout) {
     const allLogs = logs.join('\n');
-    if (pattern.test(allLogs)) {
+    if (pattern.it(allLogs)) {
       return true;
     }
     await new Promise(resolve => setTimeout(resolve, 100));

@@ -176,10 +176,10 @@ async function runTests() {
       await lockManager.acquireLockWithTimeout(4, { pid: 1002, taskId: 'process-b' });
       
       // プロセスAがIssue 4を待機（プロセスBが保持）
-      lockManager._lockDependencies.set(1001, new Set([4]));
+      lockManager.lockDependencies.set(1001, new Set([4]));
       
       // プロセスBがIssue 3を待機（プロセスAが保持）
-      lockManager._lockDependencies.set(1002, new Set([3]));
+      lockManager.lockDependencies.set(1002, new Set([3]));
       
       // デッドロック検出を実行
       await lockManager.detectDeadlocks();

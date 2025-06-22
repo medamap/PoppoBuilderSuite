@@ -5,6 +5,7 @@ const TestHelpers = require('../helpers/test-helpers');
 describe('CCSP Communication Layer Unit Tests', () => {
   let helpers;
   let CCSPClient;
+  let sandbox;
   let ccspClient;
   let mockRedis;
   let clock;
@@ -14,6 +15,7 @@ describe('CCSP Communication Layer Unit Tests', () => {
   });
 
   beforeEach(() => {
+    sandbox = sinon.createSandbox();
     // Use fake timers
     clock = sinon.useFakeTimers();
     
