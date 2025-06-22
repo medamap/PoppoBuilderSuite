@@ -1,0 +1,320 @@
+{
+  "37": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:41:00.918Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:40:42.334Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:41:00.918Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "68": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:40:38.116Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:40:22.923Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:40:38.116Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "72": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:50:34.205Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:50:20.041Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:50:34.205Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "75": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:40:21.237Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:40:12.264Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:40:21.237Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "76": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:35:20.513Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:35:16.601Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:35:20.513Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "78": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:35:16.597Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:35:15.714Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:35:16.597Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "81": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:35:14.777Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:35:10.772Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:35:14.777Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "82": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:35:10.768Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:35:09.817Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:35:10.768Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "83": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-19T15:35:09.813Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-19T15:35:08.954Z",
+    "lastHeartbeat": null,
+    "taskType": "comment-response",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-19T15:35:09.813Z",
+    "result": {
+      "error": "Cannot read properties of null (reading 'number')",
+      "taskType": "comment-response"
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "89": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.512Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.512Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.512Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "90": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.514Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.514Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.514Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "91": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.513Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.513Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.513Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "92": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.514Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.514Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.514Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "94": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.513Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.513Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.513Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "96": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.513Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.513Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.513Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "98": {
+    "status": "awaiting-response",
+    "lastUpdated": "2025-06-20T05:22:31.514Z",
+    "processId": null,
+    "pid": null,
+    "startTime": "2025-06-20T05:22:31.514Z",
+    "lastHeartbeat": null,
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "endTime": "2025-06-20T05:22:31.514Z",
+    "result": {
+      "taskType": "claude-cli",
+      "fixedByScript": true
+    },
+    "migratedFrom": "issue-status.json"
+  },
+  "102": {
+    "status": "processing",
+    "lastUpdated": "2025-06-20T05:50:55.359Z",
+    "processId": "issue-102",
+    "pid": 82078,
+    "startTime": "2025-06-20T05:50:53.683Z",
+    "lastHeartbeat": "2025-06-20T05:50:53.683Z",
+    "taskType": "claude-cli",
+    "metadata": {
+      "retryCount": 0,
+      "errorCount": 0
+    },
+    "migratedFrom": "issue-status.json"
+  }
+}

@@ -1,0 +1,54 @@
+[Unit]
+Description=CCSP (Claude Code Service Provider) Agent
+Documentation=https://github.com/medamap/PoppoBuilderSuite/blob/main/docs/agents/ccsp-agent.md
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+Type=simple
+User=poppo
+Group=poppo
+WorkingDirectory=/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite
+
+# 環境変数
+Environment="NODE_ENV=production"
+Environment="NODE_OPTIONS=--max-old-space-size=2048"
+EnvironmentFile=-/etc/poppo/ccsp.env
+
+# 実行コマンド
+ExecStart=/usr/bin/node agents/ccsp/index.js
+ExecReload=/bin/kill -USR2 $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+
+# 自動再起動設定
+Restart=on-failure
+RestartSec=30
+StartLimitBurst=5
+StartLimitInterval=300
+
+# リソース制限
+MemoryLimit=3G
+CPUQuota=200%
+TasksMax=100
+
+# セキュリティ設定
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/logs
+ReadWritePaths=/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/state
+ReadWritePaths=/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/data
+ReadWritePaths=/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite/.poppo
+
+# ログ設定
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ccsp-agent
+
+# タイムアウト設定
+TimeoutStartSec=60
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

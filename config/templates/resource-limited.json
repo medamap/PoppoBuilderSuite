@@ -1,0 +1,178 @@
+{
+  "name": "Resource Limited Configuration",
+  "description": "Optimized for environments with limited CPU, memory, or bandwidth",
+  "service": {
+    "name": "PoppoBuilder Lite",
+    "version": "1.0.0",
+    "environment": "production",
+    "optimization": "resource-efficiency"
+  },
+  "github": {
+    "owner": "",
+    "repo": "",
+    "token": "",
+    "rateLimitBuffer": 30,
+    "pollInterval": 300000,
+    "maxIssuesPerRun": 2,
+    "cacheDuration": 600000,
+    "labels": {
+      "processed": "poppo-processed",
+      "processing": "poppo-processing",
+      "failed": "poppo-failed"
+    },
+    "requestTimeout": 30000,
+    "minimizeApiCalls": true
+  },
+  "claude": {
+    "apiKey": "",
+    "model": "claude-3-haiku-20240307",
+    "maxTokens": 4096,
+    "temperature": 0.3,
+    "maxRetries": 2,
+    "retryDelay": 30000,
+    "maxConcurrent": 1,
+    "timeout": {
+      "dynamic": false,
+      "base": 300000,
+      "perToken": 0,
+      "max": 300000
+    },
+    "streaming": false,
+    "rateLimit": {
+      "requestsPerMinute": 5,
+      "tokensPerMinute": 20000
+    }
+  },
+  "language": {
+    "primary": "en",
+    "supported": ["en"],
+    "autoDetect": false
+  },
+  "logging": {
+    "level": "error",
+    "format": "simple",
+    "maxFiles": 3,
+    "maxSize": "5m",
+    "compress": true,
+    "datePattern": "YYYY-MM-DD",
+    "console": {
+      "enabled": false
+    }
+  },
+  "tasks": {
+    "maxRetries": 1,
+    "retryDelay": 60000,
+    "timeout": 600000,
+    "maxConcurrent": 1,
+    "queueSize": 10,
+    "priorityLevels": ["high", "low"],
+    "sequential": true
+  },
+  "monitoring": {
+    "enabled": false,
+    "healthCheckInterval": 3600000,
+    "metricsRetention": 3600000,
+    "lightweight": true,
+    "alerting": {
+      "enabled": false
+    }
+  },
+  "agents": {
+    "enabled": false,
+    "ccla": {
+      "enabled": false
+    },
+    "ccag": {
+      "enabled": false
+    },
+    "ccpm": {
+      "enabled": false
+    },
+    "ccqa": {
+      "enabled": false
+    }
+  },
+  "dashboard": {
+    "enabled": false,
+    "port": 3001,
+    "host": "localhost"
+  },
+  "database": {
+    "path": "data/poppo-lite.db",
+    "wal": false,
+    "journalMode": "DELETE",
+    "synchronous": "NORMAL",
+    "cache": {
+      "size": 2000,
+      "enabled": false
+    },
+    "backup": {
+      "enabled": false
+    },
+    "vacuum": {
+      "enabled": true,
+      "interval": 604800000,
+      "incremental": true
+    }
+  },
+  "healthCheck": {
+    "enabled": false
+  },
+  "twoStageProcessing": {
+    "enabled": false
+  },
+  "archiving": {
+    "enabled": true,
+    "retentionDays": 7,
+    "compressionLevel": 9,
+    "autoCleanup": true,
+    "immediateCompression": true,
+    "deleteOriginal": true
+  },
+  "resourceLimits": {
+    "memory": {
+      "max": 256,
+      "warningThreshold": 200,
+      "gcInterval": 60000
+    },
+    "cpu": {
+      "maxUsage": 50,
+      "throttle": true
+    },
+    "disk": {
+      "maxLogSize": "100m",
+      "maxDatabaseSize": "500m",
+      "cleanupThreshold": 0.9
+    },
+    "network": {
+      "maxBandwidth": "1mbps",
+      "requestDelay": 1000
+    }
+  },
+  "optimization": {
+    "disableFeatures": [
+      "dashboard",
+      "agents",
+      "monitoring",
+      "healthCheck",
+      "twoStageProcessing",
+      "webhooks",
+      "remoteLogging",
+      "backup",
+      "replication"
+    ],
+    "caching": {
+      "aggressive": true,
+      "ttl": 3600000
+    },
+    "compression": {
+      "requests": true,
+      "responses": true,
+      "logs": true
+    },
+    "lazy": {
+      "loadModules": true,
+      "initializeServices": true
+    }
+  }
+}

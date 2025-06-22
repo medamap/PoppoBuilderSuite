@@ -209,6 +209,67 @@ class AgentIntegration {
           language: 'ja'
         };
         
+      case 'quality-assurance':
+        // 品質保証用の情報
+        return {
+          issueNumber: number,
+          repository: issue.repository || 'medamap/PoppoBuilderSuite',
+          changes: this.extractFilePaths(body),
+          pullRequest: this.extractPullRequestNumber(body)
+        };
+        
+      case 'pr-review':
+        // PRレビュー用の情報
+        return {
+          issueNumber: number,
+          repository: issue.repository || 'medamap/PoppoBuilderSuite',
+          pullRequest: this.extractPullRequestNumber(body) || number,
+          reviewType: 'comprehensive',
+          additionalContext: `Issue: ${title}\n${body}`
+        };
+        
+      case 'code-quality-check':
+        // コード品質チェック用の情報
+        return {
+          issueNumber: number,
+          targetFiles: this.extractFilePaths(body),
+          qualityMetrics: ['complexity', 'duplication', 'style', 'best-practices']
+        };
+        
+      case 'test-execution':
+        // テスト実行
+        return {
+          issueNumber: number,
+          type: 'full_test',
+          coverage: true
+        };
+        
+      case 'coverage-report':
+        // カバレッジレポート
+        return {
+          issueNumber: number,
+          type: 'coverage_check',
+          targetBranch: 'main',
+          detailed: true
+        };
+        
+      case 'performance-test':
+        // パフォーマンステスト
+        return {
+          issueNumber: number,
+          type: 'performance_test',
+          scenarios: ['default'],
+          iterations: 3
+        };
+        
+      case 'test-analysis':
+        // テスト分析
+        return {
+          issueNumber: number,
+          type: 'pr_test',
+          prNumber: this.extractPullRequestNumber(body) || number
+        };
+        
       default:
         return {
           issueNumber: number,
@@ -231,6 +292,20 @@ class AgentIntegration {
     }
     
     return matches.length > 0 ? matches : ['src/minimal-poppo.js']; // デフォルト
+  }
+  
+  /**
+   * Pull Request番号の抽出
+   */
+  extractPullRequestNumber(text) {
+    const prRegex = /#(\d+)|PR\s*#?(\d+)|pull request\s*#?(\d+)/gi;
+    const match = prRegex.exec(text);
+    
+    if (match) {
+      return parseInt(match[1] || match[2] || match[3]);
+    }
+    
+    return null;
   }
   
   /**
@@ -346,21 +421,39 @@ class AgentIntegration {
   getDefaultTaskMapping() {
     return {
       labels: {
-        'review': ['code-review'],
+        'review': ['code-review', 'pr-review'],
         'documentation': ['generate-docs', 'update-readme'],
         'security': ['security-audit'],
         'refactor': ['refactoring-suggestion'],
-        'dogfooding': ['code-review', 'generate-docs']
+        'dogfooding': ['code-review', 'generate-docs'],
+        'quality': ['quality-assurance', 'code-quality-check'],
+        'test': ['test-execution', 'coverage-report'],
+        'qa': ['quality-assurance'],
+        'pr': ['pr-review'],
+        'pull-request': ['pr-review'],
+        'coverage': ['coverage-report'],
+        'performance': ['performance-test']
       },
       keywords: {
-        'レビュー': ['code-review'],
-        'review': ['code-review'],
+        'レビュー': ['code-review', 'pr-review'],
+        'review': ['code-review', 'pr-review'],
         'ドキュメント': ['generate-docs'],
         'document': ['generate-docs'],
         'セキュリティ': ['security-audit'],
         'security': ['security-audit'],
         'リファクタリング': ['refactoring-suggestion'],
-        'refactor': ['refactoring-suggestion']
+        'refactor': ['refactoring-suggestion'],
+        '品質': ['quality-assurance', 'code-quality-check'],
+        'quality': ['quality-assurance', 'code-quality-check'],
+        'テスト': ['test-execution', 'coverage-report'],
+        'test': ['test-execution', 'coverage-report'],
+        'カバレッジ': ['coverage-report'],
+        'coverage': ['coverage-report'],
+        'パフォーマンス': ['performance-test'],
+        'performance': ['performance-test'],
+        'PR': ['pr-review'],
+        'プルリクエスト': ['pr-review'],
+        'pull request': ['pr-review']
       }
     };
   }

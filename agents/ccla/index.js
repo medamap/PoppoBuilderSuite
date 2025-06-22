@@ -6,21 +6,19 @@ const AutoRepairEngine = require('./repairer');
 const AdvancedAnalyzer = require('./advanced-analyzer');
 const ErrorGrouper = require('./error-grouper');
 const ErrorStatistics = require('./statistics');
-const ErrorPatternLearner = require('./learner');
-const RepairHistoryManager = require('./repair-history');
-const AdvancedRepairPatterns = require('./patterns-advanced');
+const LogArchiver = require('./log-archiver');
 
 /**
- * CCLA (Code Change Log Analyzer) Agent
- * Collects and analyzes error logs, registers them as GitHub Issues
+ * CCLA (Code Change Log Analyzer) エージェント
+ * エラーログを収集・分析し、GitHub Issueとして登録する
  */
 class CCLAAgent extends AgentBase {
   constructor(config = {}) {
     super('CCLA', config);
     
-    // Error log collection configuration
+    // エラーログ収集の設定
     this.errorLogConfig = {
-      pollingInterval: config.errorLogCollection?.pollingInterval || 300000, // 5 minutes
+      pollingInterval: config.errorLogCollection?.pollingInterval || 300000, // 5分
       logSources: config.errorLogCollection?.logSources || ['poppo-*.log'],
       errorLevels: config.errorLogCollection?.errorLevels || ['ERROR', 'FATAL'],
       labels: config.errorLogCollection?.labels || {
@@ -158,18 +156,10 @@ class CCLAAgent extends AgentBase {
       this.errorStatistics = new ErrorStatistics(this.logger);
     }
     
-    // Phase 3拡張: 学習機能と履歴管理
-    this.errorPatternLearner = null;
-    this.repairHistoryManager = null;
-    this.advancedRepairPatterns = null;
-    
-    if (config.errorLogCollection?.autoRepair?.learningEnabled) {
-      this.errorPatternLearner = new ErrorPatternLearner({
-        minSampleSize: config.errorLogCollection.thresholds?.minOccurrencesForLearning || 3,
-        successRateThreshold: config.errorLogCollection.thresholds?.autoRepairConfidence || 0.9
-      });
-      this.repairHistoryManager = new RepairHistoryManager();
-      this.advancedRepairPatterns = new AdvancedRepairPatterns();
+    // ログアーカイバーの初期化
+    if (config.errorLogCollection?.archiving?.enabled !== false) {
+      this.logArchiver = new LogArchiver(config, this.logger);
+      this.archiveRotationInterval = config.errorLogCollection?.archiving?.rotationInterval || 86400000; // 24時間
     }
   }
   
@@ -190,17 +180,6 @@ class CCLAAgent extends AgentBase {
       this.logger.info('自動修復エンジンを有効化しました');
     }
     
-    // Phase 3拡張の初期化
-    if (this.errorPatternLearner) {
-      await this.errorPatternLearner.initialize();
-      this.logger.info('エラーパターン学習機能を有効化しました');
-    }
-    
-    if (this.repairHistoryManager) {
-      await this.repairHistoryManager.initialize();
-      this.logger.info('修復履歴管理機能を有効化しました');
-    }
-    
     // Phase 2: 高度な分析機能の初期化
     if (this.advancedAnalyzer) {
       await this.advancedAnalyzer.initialize();
@@ -215,6 +194,15 @@ class CCLAAgent extends AgentBase {
     if (this.errorStatistics) {
       await this.errorStatistics.initialize();
       this.logger.info('統計分析機能を有効化しました');
+    }
+    
+    // ログアーカイバーの初期化
+    if (this.logArchiver) {
+      await this.logArchiver.initialize();
+      this.logger.info('ログアーカイブ機能を有効化しました');
+      
+      // アーカイブローテーションの開始
+      this.startArchiveRotation();
     }
     
     // ログ監視の開始
@@ -262,6 +250,19 @@ class CCLAAgent extends AgentBase {
     this.logMonitorTimer = setInterval(() => {
       this.checkLogs();
     }, this.errorLogConfig.pollingInterval);
+  }
+  
+  /**
+   * アーカイブローテーションの開始
+   */
+  startArchiveRotation() {
+    // 即座に最初のローテーション
+    this.rotateProcessedLogs();
+    
+    // 定期的なローテーション
+    this.archiveRotationTimer = setInterval(() => {
+      this.rotateProcessedLogs();
+    }, this.archiveRotationInterval);
   }
   
   /**
@@ -442,54 +443,10 @@ class CCLAAgent extends AgentBase {
           stackTrace: error.stackTrace
         };
         
-        // 高度なパターンも確認
-        let repairResult;
-        if (this.advancedRepairPatterns && this.advancedRepairPatterns.patterns.has(analysis.pattern)) {
-          // 高度な修復パターンを使用
-          const advancedPattern = this.advancedRepairPatterns.patterns.get(analysis.pattern);
-          repairResult = await advancedPattern.repair(repairContext);
-        } else {
-          // 通常の修復パターンを使用
-          repairResult = await this.autoRepairEngine.attemptAutoRepair(repairContext, {
-            skipTest: false,
-            enableRollback: true
-          });
-        }
-        
-        // 修復履歴の記録
-        if (this.repairHistoryManager) {
-          const repairId = await this.repairHistoryManager.recordRepair({
-            pattern: repairResult.pattern || analysis.pattern,
-            errorHash,
-            file: errorInfo.file,
-            success: repairResult.success,
-            repairTime: repairResult.duration,
-            changes: repairResult.changes,
-            testResults: repairResult.testResults,
-            rollbackInfo: repairResult.rollbackInfo,
-            errorMessage: error.message,
-            errorStack: error.stackTrace,
-            errorCategory: analysis.category,
-            repairMethod: repairResult.method,
-            confidence: repairResult.confidence,
-            backupFile: repairResult.backupFile
-          });
-          
-          this.logger.debug(`修復履歴を記録しました: ${repairId}`);
-        }
-        
-        // 学習機能での結果記録
-        if (this.errorPatternLearner) {
-          await this.errorPatternLearner.recordRepairResult(
-            repairResult.pattern || analysis.pattern,
-            repairResult.success,
-            {
-              repairTime: repairResult.duration,
-              errorHash,
-              file: errorInfo.file
-            }
-          );
-        }
+        const repairResult = await this.autoRepairEngine.attemptAutoRepair(repairContext, {
+          skipTest: false,
+          enableRollback: true
+        });
         
         if (repairResult.success) {
           this.logger.info(`自動修復に成功しました: ${repairResult.pattern}`);
@@ -727,81 +684,6 @@ class CCLAAgent extends AgentBase {
           };
         }
         
-      // Phase 3拡張: 学習機能と修復履歴のAPI
-      case 'get-learning-statistics':
-        // 学習統計の取得
-        if (this.errorPatternLearner) {
-          return {
-            success: true,
-            statistics: this.errorPatternLearner.getStatistics()
-          };
-        } else {
-          return {
-            success: false,
-            message: '学習機能が無効です'
-          };
-        }
-        
-      case 'get-repair-history':
-        // 修復履歴の検索
-        if (this.repairHistoryManager) {
-          const history = await this.repairHistoryManager.searchHistory(data.criteria || {});
-          return {
-            success: true,
-            history
-          };
-        } else {
-          return {
-            success: false,
-            message: '修復履歴管理が無効です'
-          };
-        }
-        
-      case 'get-pattern-statistics':
-        // パターン別統計の取得
-        if (this.repairHistoryManager) {
-          const stats = await this.repairHistoryManager.getPatternStatistics();
-          return {
-            success: true,
-            statistics: stats
-          };
-        } else {
-          return {
-            success: false,
-            message: '修復履歴管理が無効です'
-          };
-        }
-        
-      case 'suggest-new-patterns':
-        // 新しいパターンの提案
-        if (this.errorPatternLearner) {
-          const suggestions = await this.errorPatternLearner.suggestNewPatterns();
-          return {
-            success: true,
-            suggestions
-          };
-        } else {
-          return {
-            success: false,
-            message: '学習機能が無効です'
-          };
-        }
-        
-      case 'export-learning-data':
-        // 学習データのエクスポート
-        if (this.errorPatternLearner) {
-          const exportData = await this.errorPatternLearner.exportLearningData(data.format || 'json');
-          return {
-            success: true,
-            data: exportData
-          };
-        } else {
-          return {
-            success: false,
-            message: '学習機能が無効です'
-          };
-        }
-        
       case 'analyze-error':
         // エラーを分析（手動トリガー）
         if (this.advancedAnalyzer && data.errorInfo) {
@@ -935,11 +817,56 @@ ${this.advancedAnalyzer.generateAnalysisSummary(advancedAnalysis)}`;
   }
   
   /**
-   * ログローテーション（将来実装）
+   * ログローテーション
    */
   async rotateProcessedLogs() {
-    // TODO: 処理済みログの移動と圧縮
-    this.logger.info('ログローテーション機能は将来実装予定です');
+    if (!this.logArchiver) {
+      this.logger.debug('ログアーカイブ機能が無効です');
+      return;
+    }
+    
+    try {
+      this.logger.info('処理済みログのアーカイブを開始します...');
+      
+      // 処理済みエラー記録ファイルを処理済みディレクトリに移動
+      const processedErrors = await this.getProcessedErrorFiles();
+      for (const file of processedErrors) {
+        const sourcePath = path.join(this.logsDir, file);
+        const destPath = path.join(this.logArchiver.processedPath, file);
+        
+        try {
+          await fs.rename(sourcePath, destPath);
+          this.logger.debug(`処理済みファイルを移動: ${file}`);
+        } catch (error) {
+          if (error.code !== 'ENOENT') {
+            this.logger.error(`ファイル移動エラー: ${file}`, error);
+          }
+        }
+      }
+      
+      // アーカイブ処理を実行
+      await this.logArchiver.archiveProcessedLogs();
+      
+      this.logger.info('処理済みログのアーカイブが完了しました');
+    } catch (error) {
+      this.logger.error('ログローテーションエラー:', error);
+    }
+  }
+  
+  /**
+   * 処理済みエラーファイルの取得
+   */
+  async getProcessedErrorFiles() {
+    try {
+      const files = await fs.readdir(this.logsDir);
+      return files.filter(file => 
+        file.startsWith('processed-') && 
+        (file.endsWith('.json') || file.endsWith('.log'))
+      );
+    } catch (error) {
+      this.logger.error('処理済みファイル取得エラー:', error);
+      return [];
+    }
   }
   
   /**
@@ -949,6 +876,20 @@ ${this.advancedAnalyzer.generateAnalysisSummary(advancedAnalysis)}`;
     // ログ監視タイマーの停止
     if (this.logMonitorTimer) {
       clearInterval(this.logMonitorTimer);
+    }
+    
+    // アーカイブローテーションタイマーの停止
+    if (this.archiveRotationTimer) {
+      clearInterval(this.archiveRotationTimer);
+    }
+    
+    // 最後のアーカイブ処理を実行
+    if (this.logArchiver) {
+      try {
+        await this.rotateProcessedLogs();
+      } catch (error) {
+        this.logger.error('最終アーカイブ処理エラー:', error);
+      }
     }
     
     // 処理済みエラーの最終保存

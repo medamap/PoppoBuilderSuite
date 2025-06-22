@@ -1,514 +1,254 @@
 /**
- * CCSP通知ハンドラー
+ * 通知処理モジュール
  * 
- * Issue #142: CCSPの高度な制御機能とモニタリング実装
- * システムイベントの通知機能を提供
+ * セッションタイムアウト時のGitHub Issue作成と管理を担当
  */
 
 const { spawn } = require('child_process');
-const Logger = require('../../src/logger');
-const fs = require('fs').promises;
-const path = require('path');
 
 class NotificationHandler {
-  constructor(options = {}) {
-    this.logger = new Logger('NotificationHandler');
-    this.config = {
-      enableGitHub: options.enableGitHub !== false,
-      enableSlack: options.enableSlack || false,
-      enableEmail: options.enableEmail || false,
-      githubRepo: options.githubRepo || 'medamap/PoppoBuilderSuite',
-      slackWebhook: options.slackWebhook,
-      emailConfig: options.emailConfig,
-      ...options
+  constructor(redis, logger) {
+    this.redis = redis;
+    this.logger = logger;
+    
+    // セッションタイムアウト用のIssue情報
+    this.sessionTimeoutIssue = {
+      number: null,
+      title: '🚨 [緊急] Claude ログインセッションタイムアウト',
+      labels: ['urgent', 'session-timeout', 'requires-manual-action']
     };
     
-    // 通知統計
-    this.stats = {
-      totalNotifications: 0,
-      successCount: 0,
-      errorCount: 0,
-      byType: {},
-      byChannel: {}
-    };
-    
-    // 通知履歴（最近100件）
-    this.notificationHistory = [];
-    this.maxHistorySize = 100;
-    
-    this.logger.info('Notification Handler initialized', {
-      enableGitHub: this.config.enableGitHub,
-      enableSlack: this.config.enableSlack,
-      enableEmail: this.config.enableEmail
-    });
+    // 通知キュー
+    this.notificationQueue = 'ccsp:notifications';
+    this.processing = false;
   }
   
-  /**
-   * 通知の送信
-   * @param {Object} notification - 通知内容
-   */
-  async notify(notification) {
-    const {
-      type,
-      title,
-      message,
-      severity = 'info',
-      data = {},
-      channels = []
-    } = notification;
+  async startProcessing() {
+    if (this.processing) return;
     
-    this.stats.totalNotifications++;
-    if (!this.stats.byType[type]) {
-      this.stats.byType[type] = 0;
-    }
-    this.stats.byType[type]++;
+    this.processing = true;
+    this.logger.info('[NotificationHandler] Started processing notifications');
     
-    const notificationId = `notify-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    this.logger.info('Sending notification', {
-      notificationId,
-      type,
-      severity,
-      channels: channels.length > 0 ? channels : 'auto'
-    });
-    
-    // 通知履歴に追加
-    this.addToHistory({
-      id: notificationId,
-      type,
-      title,
-      message,
-      severity,
-      data,
-      timestamp: new Date().toISOString(),
-      status: 'pending'
-    });
-    
-    const results = [];
-    
-    try {
-      // チャンネルが指定されていない場合、自動選択
-      const targetChannels = channels.length > 0 ? channels : this.selectChannels(type, severity);
-      
-      // 各チャンネルに送信
-      for (const channel of targetChannels) {
-        try {
-          const result = await this.sendToChannel(channel, {
-            ...notification,
-            notificationId
-          });
-          
-          results.push({ channel, success: true, result });
-          
-          if (!this.stats.byChannel[channel]) {
-            this.stats.byChannel[channel] = { success: 0, error: 0 };
-          }
-          this.stats.byChannel[channel].success++;
-          
-        } catch (error) {
-          this.logger.error(`Failed to send notification to ${channel}`, {
-            notificationId,
-            error: error.message
-          });
-          
-          results.push({ channel, success: false, error: error.message });
-          
-          if (!this.stats.byChannel[channel]) {
-            this.stats.byChannel[channel] = { success: 0, error: 0 };
-          }
-          this.stats.byChannel[channel].error++;
+    while (this.processing) {
+      try {
+        // ブロッキングでキューから取得（1秒タイムアウト）
+        const result = await this.redis.blpop(this.notificationQueue, 1);
+        
+        if (result) {
+          const [, data] = result;
+          const notification = JSON.parse(data);
+          await this.handleNotification(notification);
         }
+      } catch (error) {
+        this.logger.error('[NotificationHandler] Error processing notification:', error);
       }
+    }
+  }
+  
+  async handleNotification(notification) {
+    this.logger.info('[NotificationHandler] Processing notification:', notification.type);
+    
+    switch (notification.type) {
+      case 'session-timeout':
+        await this.handleSessionTimeout(notification);
+        break;
+        
+      case 'check-issue':
+        await this.checkIssueStatus(notification);
+        break;
+        
+      case 'update-issue':
+        await this.updateIssue(notification);
+        break;
+        
+      case 'reopen-issue':
+        await this.reopenIssue(notification);
+        break;
+        
+      default:
+        this.logger.warn('[NotificationHandler] Unknown notification type:', notification.type);
+    }
+  }
+  
+  async handleSessionTimeout(notification) {
+    try {
+      // 既存のIssueを確認
+      const existingIssue = await this.findExistingIssue();
       
-      // 成功した送信があるかチェック
-      const hasSuccess = results.some(r => r.success);
-      
-      if (hasSuccess) {
-        this.stats.successCount++;
-        this.updateHistoryStatus(notificationId, 'sent');
+      if (existingIssue && existingIssue.state === 'open') {
+        // 既存のオープンIssueにコメントを追加
+        this.sessionTimeoutIssue.number = existingIssue.number;
+        await this.addCommentToIssue(existingIssue.number, 
+          '## 🔄 セッションタイムアウトが再度発生しました\n\n' + notification.message);
+      } else if (existingIssue && existingIssue.state === 'closed') {
+        // クローズされたIssueを再オープン
+        this.sessionTimeoutIssue.number = existingIssue.number;
+        await this.reopenIssue({ issueNumber: existingIssue.number });
       } else {
-        this.stats.errorCount++;
-        this.updateHistoryStatus(notificationId, 'failed');
+        // 新規Issue作成
+        await this.createNewIssue(notification);
       }
       
-      this.logger.info('Notification sending completed', {
-        notificationId,
-        results: results.map(r => ({ channel: r.channel, success: r.success }))
-      });
-      
-      return {
-        notificationId,
-        success: hasSuccess,
-        results
-      };
+      // Issue情報を保存
+      await this.redis.set('ccsp:session:issue', JSON.stringify({
+        number: this.sessionTimeoutIssue.number,
+        createdAt: new Date().toISOString()
+      }));
       
     } catch (error) {
-      this.stats.errorCount++;
-      this.updateHistoryStatus(notificationId, 'error');
-      
-      this.logger.error('Notification sending failed', {
-        notificationId,
-        error: error.message
-      });
-      
-      throw error;
+      this.logger.error('[NotificationHandler] Failed to handle session timeout:', error);
     }
   }
   
-  /**
-   * チャンネルの自動選択
-   */
-  selectChannels(type, severity) {
-    const channels = [];
-    
-    // 重要度に基づいてチャンネルを選択
-    switch (severity) {
-      case 'critical':
-      case 'emergency':
-        if (this.config.enableGitHub) channels.push('github');
-        if (this.config.enableSlack) channels.push('slack');
-        if (this.config.enableEmail) channels.push('email');
-        break;
-        
-      case 'error':
-      case 'warning':
-        if (this.config.enableGitHub) channels.push('github');
-        if (this.config.enableSlack) channels.push('slack');
-        break;
-        
-      default:
-        if (this.config.enableGitHub) channels.push('github');
-        break;
-    }
-    
-    // 通知タイプに基づく調整
-    if (type === 'session_timeout' || type === 'emergency_stop') {
-      if (this.config.enableGitHub && !channels.includes('github')) {
-        channels.push('github');
+  async findExistingIssue() {
+    try {
+      // ghコマンドで既存のIssueを検索
+      const result = await this.executeGhCommand([
+        'issue', 'list',
+        '--repo', 'medamap/PoppoBuilderSuite',
+        '--label', 'session-timeout',
+        '--json', 'number,title,state',
+        '--limit', '1'
+      ]);
+      
+      if (result.success && result.output) {
+        const issues = JSON.parse(result.output);
+        return issues.length > 0 ? issues[0] : null;
       }
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to find existing issue:', error);
     }
     
-    return channels.length > 0 ? channels : ['log']; // 最低限ログには出力
+    return null;
   }
   
-  /**
-   * 特定チャンネルへの送信
-   */
-  async sendToChannel(channel, notification) {
-    switch (channel) {
-      case 'github':
-        return await this.sendToGitHub(notification);
-      case 'slack':
-        return await this.sendToSlack(notification);
-      case 'email':
-        return await this.sendToEmail(notification);
-      case 'log':
-        return this.sendToLog(notification);
-      default:
-        throw new Error(`Unknown notification channel: ${channel}`);
-    }
-  }
-  
-  /**
-   * GitHub Issue作成
-   */
-  async sendToGitHub(notification) {
-    const {
-      type,
-      title,
-      message,
-      severity,
-      data,
-      notificationId
-    } = notification;
-    
-    // GitHub Issue のタイトルと本文を構築
-    const issueTitle = title || this.generateGitHubTitle(type, severity);
-    const issueBody = this.generateGitHubBody(message, data, notificationId);
-    const labels = this.generateGitHubLabels(type, severity);
-    
-    return new Promise((resolve, reject) => {
-      // gh CLI を使用してIssueを作成
-      const args = [
+  async createNewIssue(notification) {
+    try {
+      const result = await this.executeGhCommand([
         'issue', 'create',
-        '--repo', this.config.githubRepo,
-        '--title', issueTitle,
-        '--body', issueBody,
-        '--label', labels.join(',')
-      ];
+        '--repo', 'medamap/PoppoBuilderSuite',
+        '--title', this.sessionTimeoutIssue.title,
+        '--body', notification.message,
+        '--label', this.sessionTimeoutIssue.labels.join(',')
+      ]);
       
-      this.logger.debug('Creating GitHub issue', {
-        notificationId,
-        title: issueTitle,
-        labels
-      });
+      if (result.success && result.output) {
+        // Issue番号を抽出（通常は URL が返される）
+        const match = result.output.match(/\/(\d+)$/);
+        if (match) {
+          this.sessionTimeoutIssue.number = parseInt(match[1]);
+          this.logger.info('[NotificationHandler] Created new issue #' + this.sessionTimeoutIssue.number);
+        }
+      }
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to create issue:', error);
+    }
+  }
+  
+  async checkIssueStatus(notification) {
+    try {
+      const result = await this.executeGhCommand([
+        'issue', 'view',
+        notification.issueNumber,
+        '--repo', 'medamap/PoppoBuilderSuite',
+        '--json', 'state,closed'
+      ]);
       
-      const gh = spawn('gh', args, {
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      if (result.success && result.output) {
+        const issue = JSON.parse(result.output);
+        const response = {
+          closed: issue.state === 'closed' || issue.closed,
+          state: issue.state
+        };
+        
+        // レスポンスを保存
+        await this.redis.set(
+          `ccsp:response:${notification.requestId}`,
+          JSON.stringify(response),
+          'EX', 60  // 1分で期限切れ
+        );
+      }
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to check issue status:', error);
+    }
+  }
+  
+  async updateIssue(notification) {
+    try {
+      await this.addCommentToIssue(notification.issueNumber, notification.message);
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to update issue:', error);
+    }
+  }
+  
+  async reopenIssue(notification) {
+    try {
+      const result = await this.executeGhCommand([
+        'issue', 'reopen',
+        notification.issueNumber,
+        '--repo', 'medamap/PoppoBuilderSuite'
+      ]);
       
+      if (result.success) {
+        this.logger.info('[NotificationHandler] Reopened issue #' + notification.issueNumber);
+        
+        if (notification.message) {
+          await this.addCommentToIssue(notification.issueNumber, notification.message);
+        }
+      }
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to reopen issue:', error);
+    }
+  }
+  
+  async addCommentToIssue(issueNumber, message) {
+    try {
+      const result = await this.executeGhCommand([
+        'issue', 'comment',
+        issueNumber,
+        '--repo', 'medamap/PoppoBuilderSuite',
+        '--body', message
+      ]);
+      
+      if (result.success) {
+        this.logger.info('[NotificationHandler] Added comment to issue #' + issueNumber);
+      }
+    } catch (error) {
+      this.logger.error('[NotificationHandler] Failed to add comment:', error);
+    }
+  }
+  
+  async executeGhCommand(args) {
+    return new Promise((resolve) => {
+      const process = spawn('gh', args);
       let stdout = '';
       let stderr = '';
       
-      gh.stdout.on('data', (data) => {
+      process.stdout.on('data', (data) => {
         stdout += data.toString();
       });
       
-      gh.stderr.on('data', (data) => {
+      process.stderr.on('data', (data) => {
         stderr += data.toString();
       });
       
-      gh.on('close', (code) => {
+      process.on('exit', (code) => {
         if (code === 0) {
-          const issueUrl = stdout.trim();
-          this.logger.info('GitHub issue created', {
-            notificationId,
-            issueUrl
-          });
-          resolve({ issueUrl });
+          resolve({ success: true, output: stdout.trim() });
         } else {
-          const error = stderr || `GitHub CLI exited with code ${code}`;
-          reject(new Error(error));
+          resolve({ success: false, error: stderr || stdout });
         }
       });
       
-      gh.on('error', (error) => {
-        reject(new Error(`Failed to start gh CLI: ${error.message}`));
+      process.on('error', (error) => {
+        resolve({ success: false, error: error.message });
       });
     });
   }
   
-  /**
-   * GitHub Issue タイトル生成
-   */
-  generateGitHubTitle(type, severity) {
-    const severityEmoji = {
-      emergency: '🚨',
-      critical: '💥', 
-      error: '❌',
-      warning: '⚠️',
-      info: 'ℹ️'
-    };
-    
-    const typeLabels = {
-      session_timeout: 'セッションタイムアウト',
-      emergency_stop: '緊急停止',
-      rate_limit: 'レート制限',
-      usage_alert: '使用量アラート',
-      error_threshold: 'エラー閾値超過',
-      queue_overflow: 'キューオーバーフロー'
-    };
-    
-    const emoji = severityEmoji[severity] || 'ℹ️';
-    const typeLabel = typeLabels[type] || type;
-    
-    return `${emoji} [CCSP] ${typeLabel}`;
-  }
-  
-  /**
-   * GitHub Issue 本文生成
-   */
-  generateGitHubBody(message, data, notificationId) {
-    const timestamp = new Date().toISOString();
-    
-    let body = `## 通知内容\n\n${message}\n\n`;
-    
-    body += `## 詳細情報\n\n`;
-    body += `- **通知ID**: ${notificationId}\n`;
-    body += `- **発生時刻**: ${timestamp}\n`;
-    
-    if (data && Object.keys(data).length > 0) {
-      body += `\n## 追加データ\n\n`;
-      body += '```json\n';
-      body += JSON.stringify(data, null, 2);
-      body += '\n```\n';
-    }
-    
-    body += `\n## 対応方法\n\n`;
-    body += this.generateRecommendations(data.type || 'unknown');
-    
-    body += `\n---\n*この通知はCCSPエージェントにより自動生成されました*`;
-    
-    return body;
-  }
-  
-  /**
-   * GitHub ラベル生成
-   */
-  generateGitHubLabels(type, severity) {
-    const labels = ['ccsp', 'automated'];
-    
-    // 重要度ラベル
-    switch (severity) {
-      case 'emergency':
-      case 'critical':
-        labels.push('urgent');
-        break;
-      case 'error':
-        labels.push('bug');
-        break;
-      case 'warning':
-        labels.push('enhancement');
-        break;
-    }
-    
-    // タイプ別ラベル
-    switch (type) {
-      case 'session_timeout':
-        labels.push('session-timeout', 'requires-manual-action');
-        break;
-      case 'emergency_stop':
-        labels.push('emergency-stop', 'requires-manual-action');
-        break;
-      case 'rate_limit':
-        labels.push('rate-limit');
-        break;
-      case 'usage_alert':
-        labels.push('monitoring');
-        break;
-    }
-    
-    return labels;
-  }
-  
-  /**
-   * 推奨対応方法の生成
-   */
-  generateRecommendations(type) {
-    switch (type) {
-      case 'session_timeout':
-        return `1. \`claude login\`を実行してセッションを再開してください\n2. このIssueをクローズしてください\n3. CCSPが自動的に処理を再開します`;
-      
-      case 'emergency_stop':
-        return `1. 原因を調査してください\n2. 必要に応じて設定を調整してください\n3. CCSPエージェントを再起動してください`;
-      
-      case 'rate_limit':
-        return `1. レート制限が解除されるまで待機してください\n2. 必要に応じてスロットリング設定を調整してください`;
-      
-      case 'usage_alert':
-        return `1. 使用量パターンを確認してください\n2. 必要に応じて処理頻度を調整してください`;
-      
-      default:
-        return `1. ログを確認して詳細を調査してください\n2. 必要に応じてCCSPの設定を調整してください`;
-    }
-  }
-  
-  /**
-   * Slack通知（将来の実装用）
-   */
-  async sendToSlack(notification) {
-    // TODO: Slack Webhook実装
-    throw new Error('Slack notifications not implemented yet');
-  }
-  
-  /**
-   * Email通知（将来の実装用）
-   */
-  async sendToEmail(notification) {
-    // TODO: Email実装
-    throw new Error('Email notifications not implemented yet');
-  }
-  
-  /**
-   * ログ出力
-   */
-  sendToLog(notification) {
-    const {
-      type,
-      title,
-      message,
-      severity,
-      notificationId
-    } = notification;
-    
-    const logLevel = severity === 'error' || severity === 'critical' ? 'error' : 
-                    severity === 'warning' ? 'warn' : 'info';
-    
-    this.logger[logLevel]('Notification sent to log', {
-      notificationId,
-      type,
-      title,
-      message
-    });
-    
-    return { logged: true };
-  }
-  
-  /**
-   * 通知履歴への追加
-   */
-  addToHistory(notification) {
-    this.notificationHistory.unshift(notification);
-    
-    // 履歴サイズの制限
-    if (this.notificationHistory.length > this.maxHistorySize) {
-      this.notificationHistory = this.notificationHistory.slice(0, this.maxHistorySize);
-    }
-  }
-  
-  /**
-   * 通知状態の更新
-   */
-  updateHistoryStatus(notificationId, status) {
-    const notification = this.notificationHistory.find(n => n.id === notificationId);
-    if (notification) {
-      notification.status = status;
-      notification.updatedAt = new Date().toISOString();
-    }
-  }
-  
-  /**
-   * 通知履歴の取得
-   */
-  getHistory(limit = 50) {
-    return this.notificationHistory.slice(0, limit);
-  }
-  
-  /**
-   * 統計情報の取得
-   */
-  getStats() {
-    return {
-      ...this.stats,
-      successRate: this.stats.totalNotifications > 0 ? 
-        (this.stats.successCount / this.stats.totalNotifications) : 0,
-      errorRate: this.stats.totalNotifications > 0 ? 
-        (this.stats.errorCount / this.stats.totalNotifications) : 0
-    };
-  }
-  
-  /**
-   * 統計情報のリセット
-   */
-  resetStats() {
-    this.stats = {
-      totalNotifications: 0,
-      successCount: 0,
-      errorCount: 0,
-      byType: {},
-      byChannel: {}
-    };
-    
-    this.logger.info('Notification statistics reset');
-  }
-  
-  /**
-   * 設定の更新
-   */
-  updateConfig(newConfig) {
-    this.config = {
-      ...this.config,
-      ...newConfig
-    };
-    
-    this.logger.info('Notification config updated', newConfig);
-  }
-  
-  /**
-   * クリーンアップ
-   */
-  async shutdown() {
-    this.logger.info('Notification Handler shutting down', this.getStats());
+  stopProcessing() {
+    this.processing = false;
+    this.logger.info('[NotificationHandler] Stopped processing notifications');
   }
 }
 

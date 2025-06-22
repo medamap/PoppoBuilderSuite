@@ -1,14 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const zlib = require('zlib');
+const { promisify } = require('util');
+
+const readdir = promisify(fs.readdir);
+const stat = promisify(fs.stat);
 
 /**
- * ログ検索・フィルタAPI
+ * ログ検索・フィルタAPI（アーカイブ対応）
  */
 class LogSearchAPI {
   constructor(logger) {
     this.logger = logger;
     this.logsDir = path.join(__dirname, '../../../logs');
+    this.archiveDir = path.join(this.logsDir, 'archive');
   }
 
   /**
@@ -48,9 +54,9 @@ class LogSearchAPI {
     });
 
     // ログファイル一覧API
-    app.get('/api/logs/files', (req, res) => {
+    app.get('/api/logs/files', async (req, res) => {
       try {
-        const files = this.getLogFiles();
+        const files = await this.getLogFiles();
         res.json({ files });
       } catch (error) {
         this.logger?.error('ログファイル一覧取得エラー:', error);
@@ -114,21 +120,49 @@ class LogSearchAPI {
   }
 
   /**
-   * ログファイル一覧を取得
+   * ログファイル一覧を取得（アーカイブ含む）
    */
-  getLogFiles() {
-    const files = fs.readdirSync(this.logsDir)
-      .filter(file => file.endsWith('.log'))
-      .map(file => {
-        const stats = fs.statSync(path.join(this.logsDir, file));
-        return {
+  async getLogFiles() {
+    const files = [];
+    
+    // 通常のログファイル
+    const logFiles = await readdir(this.logsDir);
+    for (const file of logFiles) {
+      if (file.endsWith('.log')) {
+        const filePath = path.join(this.logsDir, file);
+        const stats = await stat(filePath);
+        files.push({
           name: file,
+          path: filePath,
           size: stats.size,
-          modified: stats.mtime
-        };
-      })
-      .sort((a, b) => b.modified - a.modified);
-
+          modified: stats.mtime,
+          archived: false
+        });
+      }
+    }
+    
+    // アーカイブファイル
+    if (fs.existsSync(this.archiveDir)) {
+      const archiveFiles = await readdir(this.archiveDir);
+      for (const file of archiveFiles) {
+        if (file.endsWith('.log') || file.endsWith('.log.gz')) {
+          const filePath = path.join(this.archiveDir, file);
+          const stats = await stat(filePath);
+          files.push({
+            name: file,
+            path: filePath,
+            size: stats.size,
+            modified: stats.mtime,
+            archived: true,
+            compressed: file.endsWith('.gz')
+          });
+        }
+      }
+    }
+    
+    // 修正日時で降順ソート
+    files.sort((a, b) => b.modified - a.modified);
+    
     return files;
   }
 
@@ -148,14 +182,13 @@ class LogSearchAPI {
     } = options;
 
     const results = [];
-    const files = this.getLogFiles();
+    const files = await this.getLogFiles();
     let totalMatches = 0;
     let currentOffset = 0;
 
     // 各ログファイルを検索
     for (const file of files) {
-      const filePath = path.join(this.logsDir, file.name);
-      const fileResults = await this.searchInFile(filePath, {
+      const fileResults = await this.searchInFile(file, {
         keyword,
         startDate,
         endDate,
@@ -193,13 +226,22 @@ class LogSearchAPI {
   }
 
   /**
-   * 特定のファイル内を検索
+   * 特定のファイル内を検索（圧縮ファイル対応）
    */
-  async searchInFile(filePath, filters) {
+  async searchInFile(fileInfo, filters) {
     return new Promise((resolve, reject) => {
       const results = [];
+      let inputStream;
+      
+      // 圧縮ファイルの場合は解凍ストリームを作成
+      if (fileInfo.compressed) {
+        inputStream = fs.createReadStream(fileInfo.path).pipe(zlib.createGunzip());
+      } else {
+        inputStream = fs.createReadStream(fileInfo.path);
+      }
+      
       const rl = readline.createInterface({
-        input: fs.createReadStream(filePath),
+        input: inputStream,
         crlfDelay: Infinity
       });
 
@@ -297,11 +339,10 @@ class LogSearchAPI {
       timeline: []
     };
 
-    const files = this.getLogFiles();
+    const files = await this.getLogFiles();
     
     for (const file of files) {
-      const filePath = path.join(this.logsDir, file.name);
-      const fileResults = await this.searchInFile(filePath, {
+      const fileResults = await this.searchInFile(file, {
         startDate,
         endDate
       });

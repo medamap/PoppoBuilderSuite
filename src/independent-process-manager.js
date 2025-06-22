@@ -8,57 +8,61 @@ const i18n = require('../lib/i18n');
  * PoppoBuilder再起動時もタスクが継続実行される
  */
 class IndependentProcessManager {
-  constructor(config, rateLimiter, logger) {
+  constructor(config, rateLimiter, logger, stateManager, lockManager = null) {
     this.config = config;
     this.rateLimiter = rateLimiter;
     this.logger = logger;
+    this.stateManager = stateManager; // FileStateManagerを直接受け取る
+    this.lockManager = lockManager; // IssueLockManager（オプショナル）
     this.tempDir = path.join(__dirname, '../temp');
-    this.runningTasksFile = path.join(__dirname, '../logs/running-tasks.json');
-    this.stateManager = null; // プロセス状態マネージャー（既存のものを流用予定）
     
     // ディレクトリ作成
     this.ensureDirectories();
     
-    // 起動時に既存タスクを検出
-    this.recoverExistingTasks();
+    // 起動時に既存タスクを検出（非同期実行）
+    this.recoverExistingTasks().catch(error => {
+      console.error('既存タスクの回復に失敗:', error);
+    });
   }
 
   /**
    * 必要なディレクトリを作成
    */
   ensureDirectories() {
-    const dirs = [this.tempDir, path.dirname(this.runningTasksFile)];
-    dirs.forEach(dir => {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    });
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
   }
 
   /**
    * PoppoBuilder起動時に既存の実行中タスクを検出・回復
    */
-  recoverExistingTasks() {
+  async recoverExistingTasks() {
     try {
-      if (fs.existsSync(this.runningTasksFile)) {
-        const runningTasks = JSON.parse(fs.readFileSync(this.runningTasksFile, 'utf8'));
-        console.log(`🔄 既存の実行中タスクを検出: ${Object.keys(runningTasks).length}件`);
-        
-        for (const [taskId, taskInfo] of Object.entries(runningTasks)) {
-          this.verifyTaskStatus(taskId, taskInfo);
-        }
+      if (!this.stateManager) {
+        console.warn('StateManagerが設定されていません');
+        return;
+      }
+      
+      const runningTasks = await this.stateManager.loadRunningTasks();
+      console.log(`🔄 既存の実行中タスクを検出: ${Object.keys(runningTasks).length}件`);
+      
+      for (const [taskId, taskInfo] of Object.entries(runningTasks)) {
+        await this.verifyTaskStatus(taskId, taskInfo);
       }
     } catch (error) {
       console.error('既存タスク回復エラー:', error.message);
       // エラー時は空のタスクリストで開始
-      this.saveRunningTasks({});
+      if (this.stateManager) {
+        await this.stateManager.saveRunningTasks({});
+      }
     }
   }
 
   /**
    * タスクの実際の状況を確認
    */
-  verifyTaskStatus(taskId, taskInfo) {
+  async verifyTaskStatus(taskId, taskInfo) {
     const pidFile = path.join(this.tempDir, `task-${taskId}.pid`);
     const statusFile = path.join(this.tempDir, `task-${taskId}.status`);
     
@@ -74,15 +78,15 @@ class IndependentProcessManager {
           this.updateTaskStatus(taskId, 'running', '継続実行中（PoppoBuilder再起動後に検出）');
         } else {
           console.log(`⚠️  タスク ${taskId} のプロセスが見つかりません (PID: ${pid})`);
-          this.handleOrphanedTask(taskId, taskInfo);
+          await this.handleOrphanedTask(taskId, taskInfo);
         }
       } else {
         console.log(`⚠️  タスク ${taskId} のPIDファイルが見つかりません`);
-        this.handleOrphanedTask(taskId, taskInfo);
+        await this.handleOrphanedTask(taskId, taskInfo);
       }
     } catch (error) {
       console.error(`タスク ${taskId} の状況確認エラー:`, error.message);
-      this.handleOrphanedTask(taskId, taskInfo);
+      await this.handleOrphanedTask(taskId, taskInfo);
     }
   }
 
@@ -101,18 +105,18 @@ class IndependentProcessManager {
   /**
    * 孤児となったタスクの処理
    */
-  handleOrphanedTask(taskId, taskInfo) {
+  async handleOrphanedTask(taskId, taskInfo) {
     console.log(`🧹 孤児タスク ${taskId} をクリーンアップ`);
     
     // 結果ファイルがあるかチェック
     const resultFile = path.join(this.tempDir, `task-${taskId}.result`);
     if (fs.existsSync(resultFile)) {
       console.log(`📋 タスク ${taskId} の結果ファイルを発見、回収処理を実行`);
-      this.processCompletedTask(taskId, taskInfo);
+      await this.processCompletedTask(taskId, taskInfo);
     } else {
       // 未完了のタスクとして処理
       this.updateTaskStatus(taskId, 'failed', 'PoppoBuilder再起動により中断された可能性');
-      this.removeTask(taskId);
+      await this.removeTask(taskId);
     }
   }
 
@@ -122,6 +126,21 @@ class IndependentProcessManager {
   async execute(taskId, instruction) {
     if (!await this.canExecute()) {
       throw new Error(i18n.t('errors.process.cannotExecute'));
+    }
+
+    // IssueLockManagerが設定されている場合、ロックを取得
+    const issueNumber = instruction.issue?.number;
+    if (this.lockManager && issueNumber) {
+      const lockAcquired = await this.lockManager.acquireLock(issueNumber, {
+        pid: process.pid,
+        sessionId: process.env.CLAUDE_SESSION_ID,
+        taskId: taskId,
+        type: 'issue_processing'
+      });
+      
+      if (!lockAcquired) {
+        throw new Error(`Failed to acquire lock for Issue #${issueNumber} - already being processed`);
+      }
     }
 
     console.log(`🚀 独立プロセスでタスク ${taskId} を開始`);
@@ -142,10 +161,12 @@ class IndependentProcessManager {
     fs.writeFileSync(wrapperFile, wrapperScript, 'utf8');
 
     // 独立プロセスとして起動
+    // 現在の作業ディレクトリを事前に取得（Node.js v23での問題回避）
+    const currentWorkingDir = process.cwd();
     const childProcess = spawn('node', [wrapperFile], {
       detached: true,  // 親プロセスから独立
       stdio: 'ignore', // 標準入出力を切り離し
-      cwd: process.cwd()
+      cwd: currentWorkingDir
     });
 
     // プロセス情報を記録
@@ -153,7 +174,7 @@ class IndependentProcessManager {
     this.updateTaskStatus(taskId, 'running', 'Claude CLI実行中');
     
     // 実行中タスクリストに追加
-    this.addRunningTask(taskId, {
+    await this.addRunningTask(taskId, {
       issueNumber: instruction.issue?.number || 0,
       title: instruction.issue?.title || 'Unknown Task',
       startTime: new Date().toISOString(),
@@ -175,7 +196,7 @@ class IndependentProcessManager {
 
     return {
       taskId: taskId,
-      pid: process.pid,
+      pid: childProcess.pid,
       status: 'started'
     };
   }
@@ -187,76 +208,126 @@ class IndependentProcessManager {
     return `
 const { spawn } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+const RateLimitHandler = require('${path.join(__dirname, 'rate-limit-handler.js').replace(/\\/g, '\\\\')}');
 
 // タスク${taskId}のラッパースクリプト
 console.log('独立プロセス ${taskId} 開始');
 
-const prompt = '${instructionFile} の指示に従ってください。';
-const args = ['--dangerously-skip-permissions', '--print'];
+const rateLimitHandler = new RateLimitHandler('${this.tempDir}');
 
-const claude = spawn('claude', args, {
-  stdio: ['pipe', 'pipe', 'pipe']
-});
+async function executeClaudeTask() {
+  const prompt = '${instructionFile} の指示に従ってください。';
+  const args = ['--dangerously-skip-permissions', '--print'];
 
-// プロンプトを送信
-claude.stdin.write(prompt);
-claude.stdin.end();
+  const claude = spawn('claude', args, {
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
 
-let stdout = '';
-let stderr = '';
+  // プロンプトを送信
+  claude.stdin.write(prompt);
+  claude.stdin.end();
 
-claude.stdout.on('data', (data) => {
-  const chunk = data.toString();
-  stdout += chunk;
-  
-  // リアルタイムで出力ファイルに書き込み
-  fs.appendFileSync('${outputFile}', chunk, 'utf8');
-});
+  let stdout = '';
+  let stderr = '';
 
-claude.stderr.on('data', (data) => {
-  stderr += data.toString();
-});
+  claude.stdout.on('data', (data) => {
+    const chunk = data.toString();
+    stdout += chunk;
+    
+    // リアルタイムで出力ファイルに書き込み
+    fs.appendFileSync('${outputFile}', chunk, 'utf8');
+  });
 
-claude.on('exit', (code) => {
-  console.log('Claude CLI終了 (code: ' + code + ')');
-  
-  // 結果ファイルに保存
-  const result = {
-    taskId: '${taskId}',
-    exitCode: code,
-    output: stdout,
-    error: stderr,
-    completedAt: new Date().toISOString(),
-    success: code === 0
-  };
-  
-  fs.writeFileSync('${resultFile}', JSON.stringify(result, null, 2), 'utf8');
-  
-  // クリーンアップ
-  try {
-    fs.unlinkSync('${instructionFile}');
-    fs.unlinkSync(__filename); // このラッパースクリプト自体を削除
-  } catch (e) {
-    // エラーは無視
-  }
-  
-  console.log('タスク${taskId}完了');
-  process.exit(code);
-});
+  claude.stderr.on('data', (data) => {
+    stderr += data.toString();
+  });
 
-claude.on('error', (error) => {
-  console.error('Claude CLI エラー:', error.message);
-  
-  const result = {
-    taskId: '${taskId}',
-    exitCode: -1,
-    output: stdout,
-    error: error.message,
-    completedAt: new Date().toISOString(),
-    success: false
-  };
-  
-  fs.writeFileSync('${resultFile}', JSON.stringify(result, null, 2), 'utf8');
+  claude.on('exit', async (code) => {
+    console.log('Claude CLI終了 (code: ' + code + ')');
+    
+    // レート制限エラーをチェック
+    const resetTime = rateLimitHandler.parseRateLimitError(stderr);
+    if (resetTime) {
+      console.log('レート制限エラーを検出');
+      
+      // 一時的な結果を保存
+      const tempResult = {
+        taskId: '${taskId}',
+        exitCode: code,
+        output: stdout,
+        error: stderr,
+        completedAt: new Date().toISOString(),
+        success: false,
+        rateLimited: true,
+        resetTime: resetTime
+      };
+      fs.writeFileSync('${resultFile}', JSON.stringify(tempResult, null, 2), 'utf8');
+      
+      // レート制限解除まで待機して再開
+      try {
+        const resumeResult = await rateLimitHandler.waitAndResume('${taskId}', resetTime, '${outputFile}', '${resultFile}');
+        console.log('タスク${taskId}再開完了');
+        
+        // クリーンアップ
+        try {
+          fs.unlinkSync('${instructionFile}');
+          fs.unlinkSync(__filename); // このラッパースクリプト自体を削除
+        } catch (e) {
+          // エラーは無視
+        }
+        
+        process.exit(resumeResult.success ? 0 : 1);
+      } catch (error) {
+        console.error('再開エラー:', error.message);
+        process.exit(1);
+      }
+    } else {
+      // 通常の終了処理
+      const result = {
+        taskId: '${taskId}',
+        exitCode: code,
+        output: stdout,
+        error: stderr,
+        completedAt: new Date().toISOString(),
+        success: code === 0
+      };
+      
+      fs.writeFileSync('${resultFile}', JSON.stringify(result, null, 2), 'utf8');
+      
+      // クリーンアップ
+      try {
+        fs.unlinkSync('${instructionFile}');
+        fs.unlinkSync(__filename); // このラッパースクリプト自体を削除
+      } catch (e) {
+        // エラーは無視
+      }
+      
+      console.log('タスク${taskId}完了');
+      process.exit(code);
+    }
+  });
+
+  claude.on('error', (error) => {
+    console.error('Claude CLI エラー:', error.message);
+    
+    const result = {
+      taskId: '${taskId}',
+      exitCode: -1,
+      output: stdout,
+      error: error.message,
+      completedAt: new Date().toISOString(),
+      success: false
+    };
+    
+    fs.writeFileSync('${resultFile}', JSON.stringify(result, null, 2), 'utf8');
+    process.exit(1);
+  });
+}
+
+// 実行開始
+executeClaudeTask().catch(error => {
+  console.error('タスク実行エラー:', error);
   process.exit(1);
 });
 `;
@@ -280,16 +351,32 @@ claude.on('error', (error) => {
   /**
    * 実行中タスクリストを管理
    */
-  addRunningTask(taskId, taskInfo) {
-    const runningTasks = this.getRunningTasks();
+  async addRunningTask(taskId, taskInfo) {
+    if (!this.stateManager) return;
+    
+    const runningTasks = await this.stateManager.loadRunningTasks();
     runningTasks[taskId] = taskInfo;
-    this.saveRunningTasks(runningTasks);
+    await this.stateManager.saveRunningTasks(runningTasks);
   }
 
-  removeTask(taskId) {
-    const runningTasks = this.getRunningTasks();
-    delete runningTasks[taskId];
-    this.saveRunningTasks(runningTasks);
+  async removeTask(taskId) {
+    if (this.stateManager) {
+      const runningTasks = await this.stateManager.loadRunningTasks();
+      const taskInfo = runningTasks[taskId];
+      
+      // IssueLockManagerが設定されている場合、ロックを解放
+      if (this.lockManager && taskInfo && taskInfo.issueNumber) {
+        try {
+          await this.lockManager.releaseLock(taskInfo.issueNumber, taskInfo.pid || process.pid);
+          console.log(`🔓 Issue #${taskInfo.issueNumber} のロックを解放しました`);
+        } catch (error) {
+          console.error(`Failed to release lock for Issue #${taskInfo.issueNumber}:`, error);
+        }
+      }
+      
+      delete runningTasks[taskId];
+      await this.stateManager.saveRunningTasks(runningTasks);
+    }
     
     // 関連ファイルもクリーンアップ
     const files = [
@@ -311,10 +398,10 @@ claude.on('error', (error) => {
     });
   }
 
-  getRunningTasks() {
+  async getRunningTasks() {
     try {
-      if (fs.existsSync(this.runningTasksFile)) {
-        return JSON.parse(fs.readFileSync(this.runningTasksFile, 'utf8'));
+      if (this.stateManager) {
+        return await this.stateManager.loadRunningTasks();
       }
     } catch (error) {
       console.error('実行中タスクリスト読み込みエラー:', error.message);
@@ -322,8 +409,10 @@ claude.on('error', (error) => {
     return {};
   }
 
-  saveRunningTasks(tasks) {
-    fs.writeFileSync(this.runningTasksFile, JSON.stringify(tasks, null, 2), 'utf8');
+  async saveRunningTasks(tasks) {
+    if (this.stateManager) {
+      await this.stateManager.saveRunningTasks(tasks);
+    }
   }
 
   /**
@@ -331,7 +420,8 @@ claude.on('error', (error) => {
    */
   async canExecute() {
     const rateLimitStatus = await this.rateLimiter.isRateLimited();
-    const runningCount = Object.keys(this.getRunningTasks()).length;
+    const runningTasks = await this.getRunningTasks();
+    const runningCount = Object.keys(runningTasks).length;
     
     return !rateLimitStatus.limited && runningCount < this.config.maxConcurrent;
   }
@@ -340,7 +430,7 @@ claude.on('error', (error) => {
    * ポーリング: 完了したタスクをチェック
    */
   async pollCompletedTasks() {
-    const runningTasks = this.getRunningTasks();
+    const runningTasks = await this.getRunningTasks();
     const completedResults = [];
     
     for (const [taskId, taskInfo] of Object.entries(runningTasks)) {
@@ -396,15 +486,15 @@ claude.on('error', (error) => {
       };
     } finally {
       // タスクを実行中リストから削除
-      this.removeTask(taskId);
+      await this.removeTask(taskId);
     }
   }
 
   /**
    * すべての実行中タスクを強制終了
    */
-  killAll() {
-    const runningTasks = this.getRunningTasks();
+  async killAll() {
+    const runningTasks = await this.getRunningTasks();
     
     for (const [taskId, taskInfo] of Object.entries(runningTasks)) {
       console.log(`🛑 タスク ${taskId} を強制終了 (PID: ${taskInfo.pid})`);
@@ -421,14 +511,14 @@ claude.on('error', (error) => {
     }
     
     // 実行中タスクリストをクリア
-    this.saveRunningTasks({});
+    await this.saveRunningTasks({});
   }
 
   /**
    * タスクの実行状況を取得
    */
-  getTaskStatus() {
-    const runningTasks = this.getRunningTasks();
+  async getTaskStatus() {
+    const runningTasks = await this.getRunningTasks();
     const status = {
       running: Object.keys(runningTasks).length,
       tasks: {}
@@ -464,11 +554,32 @@ claude.on('error', (error) => {
   }
 
   /**
-   * プロセス状態マネージャーを設定
+   * 実行中のプロセス一覧を取得（ApplicationMonitor用）
    */
-  setStateManager(stateManager) {
-    this.stateManager = stateManager;
+  async getRunningProcesses() {
+    try {
+      const runningTasks = await this.stateManager.loadRunningTasks();
+      return Object.entries(runningTasks).map(([taskId, taskInfo]) => ({
+        taskId,
+        pid: taskInfo.pid,
+        startTime: taskInfo.startTime,
+        status: 'running',
+        issueNumber: taskInfo.issueNumber
+      }));
+    } catch (error) {
+      console.error('実行中プロセス取得エラー:', error);
+      return [];
+    }
   }
+
+  /**
+   * 全プロセス一覧を取得（ApplicationMonitor用）
+   */
+  async getAllProcesses() {
+    // 実装を簡単にするため、現在は実行中プロセスのみ返す
+    return await this.getRunningProcesses();
+  }
+
 }
 
 module.exports = IndependentProcessManager;

@@ -1,0 +1,2 @@
+# This file ensures the test-state directory is kept in version control
+# All other files in this directory are ignored by git

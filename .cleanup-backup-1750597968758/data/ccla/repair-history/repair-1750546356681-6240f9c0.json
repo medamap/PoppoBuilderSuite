@@ -1,0 +1,21 @@
+{
+  "id": "repair-1750546356681-6240f9c0",
+  "timestamp": "2025-06-21T22:52:36.681Z",
+  "pattern": "EP005",
+  "errorHash": "hash4",
+  "file": "src/module4.js",
+  "success": true,
+  "repairTime": 300,
+  "changes": [],
+  "testResults": null,
+  "rollbackInfo": null,
+  "errorDetails": {
+    "message": "Error in module 4",
+    "category": "Type Error"
+  },
+  "repairDetails": {
+    "method": "Auto-fix",
+    "confidence": 0.88,
+    "backupFile": null
+  }
+}

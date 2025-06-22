@@ -1,720 +1,1014 @@
 #!/usr/bin/env node
-/**
- * Issue #98: State management integration and double startup prevention enhancement for minimal-poppo-cron.js
- * 
- * PoppoBuilder main file for cron execution
- * - Integration of FileStateManager and IndependentProcessManager
- * - Enhanced double startup prevention
- * - Improved error handling
- * - Task queue persistence
- */
 
-// Set process name
+// cron実行用のPoppoBuilder
+// プロセス名を設定（psコマンドで識別しやすくするため）
 process.title = 'PoppoBuilder-Cron';
 
 const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
+const ProcessManager = require('./process-manager');
 const IndependentProcessManager = require('./independent-process-manager');
 const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
-const i18n = require('../lib/i18n');
+const TwoStageProcessor = require('./two-stage-processor');
+const FileStateManager = require('./file-state-manager');
+const StatusManager = require('./status-manager');
+const MirinOrphanManager = require('./mirin-orphan-manager');
 
-// Load FileStateManager (if exists)
-let FileStateManager;
-try {
-  FileStateManager = require('./file-state-manager');
-} catch (error) {
-  console.error('❌ FileStateManager not found. Using basic state management functions only.');
-  // Define basic state management class
-  FileStateManager = class BasicStateManager {
-    constructor() {
-      this.stateDir = path.join(__dirname, '../state');
-      this.lockDir = path.join(this.stateDir, '.locks');
-      this.ensureDirectories();
-    }
-    
-    ensureDirectories() {
-      [this.stateDir, this.lockDir].forEach(dir => {
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-      });
-    }
-    
-    async acquireProcessLock() {
-      const lockFile = path.join(this.lockDir, 'cron-process.lock');
-      const lockInfo = {
-        pid: process.pid,
-        startTime: new Date().toISOString(),
-        hostname: require('os').hostname()
-      };
-      
-      try {
-        // Check existing lock
-        if (fs.existsSync(lockFile)) {
-          const existingLock = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
-          
-          // Check if process is alive
-          try {
-            process.kill(existingLock.pid, 0);
-            return false; // Process is alive = lock acquisition failed
-          } catch (err) {
-            // Process is dead = old lock file
-            fs.unlinkSync(lockFile);
-          }
-        }
-        
-        // Create new lock
-        fs.writeFileSync(lockFile, JSON.stringify(lockInfo, null, 2));
-        return true;
-      } catch (error) {
-        console.error('Lock acquisition error:', error);
-        return false;
-      }
-    }
-    
-    async releaseProcessLock() {
-      const lockFile = path.join(this.lockDir, 'cron-process.lock');
-      try {
-        if (fs.existsSync(lockFile)) {
-          fs.unlinkSync(lockFile);
-        }
-      } catch (error) {
-        console.error('Lock release error:', error);
-      }
-    }
-    
-    async loadRunningTasks() {
-      const tasksFile = path.join(this.stateDir, 'running-tasks.json');
-      try {
-        if (fs.existsSync(tasksFile)) {
-          return JSON.parse(fs.readFileSync(tasksFile, 'utf8'));
-        }
-      } catch (error) {
-        console.error('Running tasks loading error:', error);
-      }
-      return {};
-    }
-    
-    async saveRunningTasks(tasks) {
-      const tasksFile = path.join(this.stateDir, 'running-tasks.json');
-      try {
-        fs.writeFileSync(tasksFile, JSON.stringify(tasks, null, 2));
-      } catch (error) {
-        console.error('Running tasks saving error:', error);
-      }
-    }
-    
-    async loadPendingTasks() {
-      const tasksFile = path.join(this.stateDir, 'pending-tasks.json');
-      try {
-        if (fs.existsSync(tasksFile)) {
-          return JSON.parse(fs.readFileSync(tasksFile, 'utf8'));
-        }
-      } catch (error) {
-        console.error('Pending tasks loading error:', error);
-      }
-      return [];
-    }
-    
-    async savePendingTasks(tasks) {
-      const tasksFile = path.join(this.stateDir, 'pending-tasks.json');
-      const backupFile = path.join(this.stateDir, 'pending-tasks.json.backup-' + Date.now());
-      
-      try {
-        // Create backup
-        if (fs.existsSync(tasksFile)) {
-          fs.copyFileSync(tasksFile, backupFile);
-        }
-        
-        // Save new data
-        fs.writeFileSync(tasksFile, JSON.stringify(tasks, null, 2));
-      } catch (error) {
-        console.error('Pending tasks saving error:', error);
-      }
-    }
-    
-    async removeRunningTask(taskId) {
-      const tasks = await this.loadRunningTasks();
-      delete tasks[taskId];
-      await this.saveRunningTasks(tasks);
-    }
-  };
-}
+// ConfigLoaderで階層的に設定を読み込み
+const configLoader = new ConfigLoader();
+const poppoConfig = configLoader.loadConfig();
+
+// メイン設定ファイルも読み込み（後方互換性のため）
+const mainConfig = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf-8')
+);
+
+// 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
+const config = {
+  ...mainConfig,
+  language: poppoConfig.language || mainConfig.language,
+  systemPrompt: poppoConfig.systemPrompt || mainConfig.systemPrompt,
+  // 環境変数やプロジェクト設定で上書き可能な項目
+  github: {
+    ...mainConfig.github,
+    ...(poppoConfig.github || {})
+  },
+  claude: {
+    ...mainConfig.claude,
+    ...(poppoConfig.claude || {})
+  },
+  rateLimiting: {
+    ...mainConfig.rateLimiting,
+    ...(poppoConfig.rateLimit || {})
+  },
+  taskQueue: {
+    ...mainConfig.taskQueue,
+    ...(poppoConfig.queue || {})
+  },
+  logging: {
+    ...mainConfig.logging,
+    ...(poppoConfig.logging || {})
+  },
+  dynamicTimeout: {
+    ...mainConfig.dynamicTimeout,
+    ...(poppoConfig.dynamicTimeout || {})
+  },
+  errorCollection: {
+    ...mainConfig.errorCollection,
+    ...(poppoConfig.errorCollection || {})
+  }
+};
+
+// インスタンス作成
+const logger = new Logger(
+  path.join(__dirname, '../logs'),
+  config.logRotation || {}
+);
+
+// GitHub設定を確実に取得
+const githubConfig = config.github || {
+  owner: 'medamap',
+  repo: 'PoppoBuilderSuite'
+};
+console.log('使用するGitHub設定:', githubConfig);
+const github = new GitHubClient(githubConfig);
+const rateLimiter = new EnhancedRateLimiter(config.rateLimiting || {});
+const taskQueue = new TaskQueue({ 
+  maxConcurrent: config.claude.maxConcurrent,
+  maxQueueSize: config.taskQueue?.maxQueueSize || 100 
+});
+// ファイルベースの状態管理
+const stateManager = new FileStateManager();
+
+// 独立プロセス方式を使用（FileStateManagerを渡す）
+const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger, stateManager);
+
+// 2段階処理システムの初期化
+const twoStageProcessor = new TwoStageProcessor(config, null, logger);
+
+// StatusManagerの初期化
+const statusManager = new StatusManager('state/issue-status.json', logger);
+
+// MirinOrphanManagerの初期化
+const mirinManager = new MirinOrphanManager(github, statusManager, {
+  checkInterval: 30 * 60 * 1000, // 30分
+  heartbeatTimeout: 5 * 60 * 1000, // 5分
+  requestsDir: 'state/requests',
+  requestCheckInterval: 5000 // 5秒
+}, logger);
+
+// 処理済みIssueとコメント（メモリ内キャッシュ）
+let processedIssues = new Set();
+let processedComments = new Map();
 
 /**
- * PoppoBuilderCron - Class dedicated to cron execution
+ * Issueが処理対象かチェック
  */
-class PoppoBuilderCron {
-  constructor() {
-    this.isShuttingDown = false;
-    this.processStartTime = Date.now();
-    this.config = null;
-    this.logger = null;
-    this.github = null;
-    this.rateLimiter = null;
-    this.processManager = null;
-    this.taskQueue = null;
-    this.stateManager = null;
-    this.processedIssues = new Set();
-    this.processedComments = new Map();
-  }
-
-  /**
-   * Initialize
-   */
-  async initialize() {
-    try {
-      console.log('🚀 PoppoBuilder Cron initialization starting...');
-      
-      // テストモード判定
-      const testMode = process.env.TEST_MODE;
-      if (testMode) {
-        console.log(`📋 テストモード: ${testMode}`);
-      }
-      
-      // 設定読み込み
-      await this.loadConfiguration();
-      
-      // ロガー初期化
-      this.logger = new Logger('PoppoBuilderCron');
-      this.logger.info('Cron実行開始');
-      
-      // 状態管理初期化
-      this.stateManager = new FileStateManager();
-      
-      // プロセスロック取得
-      const lockAcquired = await this.stateManager.acquireProcessLock();
-      if (!lockAcquired) {
-        this.logger.warn('他のcronプロセスが実行中です。終了します。');
-        console.log('他のcronプロセスが実行中です。終了します。');
-        process.exit(0);
-      } else {
-        console.log('プロセスロック取得成功');
-        this.logger.info('プロセスロック取得成功');
-      }
-      
-      // I18n初期化
-      await i18n.init({ language: this.config.language?.primary || 'en' });
-      
-      // テストモードの場合は短縮実行
-      if (testMode) {
-        console.log('テストモード: 初期化完了');
-        
-        if (testMode === 'true' || testMode === 'quick' || testMode === 'cleanup_test') {
-          // シグナルハンドラー設定（テスト用）
-          this.setupSignalHandlers();
-          this.logger.info('PoppoBuilder Cron 初期化完了（テストモード）');
-          return;
-        }
-        
-        if (testMode === 'error_test' || testMode === 'missing_config') {
-          // 意図的にエラーを発生させる
-          throw new Error('テスト用エラー: 設定ファイルが見つかりません');
-        }
-      }
-      
-      // GitHubクライアント初期化
-      this.github = new GitHubClient(this.config.github);
-      
-      // レート制限初期化
-      this.rateLimiter = new EnhancedRateLimiter(this.config.rateLimiting || {});
-      
-      // IndependentProcessManagerにStateManagerを設定
-      this.processManager = new IndependentProcessManager(
-        this.config.claude,
-        this.rateLimiter,
-        this.logger,
-        this.stateManager  // FileStateManagerを渡す
-      );
-      
-      // タスクキュー初期化
-      this.taskQueue = new TaskQueue({
-        maxConcurrentTasks: this.config.maxConcurrentTasks || 3,
-        taskTimeout: this.config.taskTimeout || 300000, // 5分
-        logger: this.logger
-      });
-      
-      // 保留中タスクの復元
-      await this.restorePendingTasks();
-      
-      // シグナルハンドラー設定
-      this.setupSignalHandlers();
-      
-      this.logger.info('PoppoBuilder Cron 初期化完了');
-      
-    } catch (error) {
-      console.error('❌ 初期化エラー:', error);
-      await this.cleanup();
-      process.exit(1);
-    }
-  }
-
-  /**
-   * 設定読み込み
-   */
-  async loadConfiguration() {
-    const configLoader = new ConfigLoader();
-    const poppoConfig = configLoader.loadConfig();
-    
-    // メイン設定ファイルも読み込み
-    const mainConfig = JSON.parse(
-      fs.readFileSync(path.join(__dirname, '../config/config.json'), 'utf-8')
-    );
-    
-    // 設定をマージ
-    this.config = {
-      ...mainConfig,
-      language: poppoConfig.language || mainConfig.language,
-      systemPrompt: poppoConfig.systemPrompt || mainConfig.systemPrompt,
-      github: {
-        ...mainConfig.github,
-        ...(poppoConfig.github || {})
-      },
-      claude: {
-        ...mainConfig.claude,
-        ...(poppoConfig.claude || {})
-      },
-      rateLimiting: {
-        ...mainConfig.rateLimiting,
-        ...(poppoConfig.rateLimit || {})
-      }
-    };
-  }
-
-  /**
-   * メイン処理実行
-   */
-  async run() {
-    try {
-      this.logger.info('=== PoppoBuilder Cron 実行開始 ===');
-      
-      const testMode = process.env.TEST_MODE;
-      
-      // テストモードの場合は短縮実行
-      if (testMode === 'true' || testMode === 'quick' || testMode === 'cleanup_test') {
-        this.logger.info('テストモード: 短縮実行');
-        
-        // 二重起動防止テスト用により長く待機
-        if (testMode === 'true') {
-          await this.sleep(10000); // 10秒待機（二重起動テスト用）
-        } else {
-          await this.sleep(1000); // 1秒待機（その他のテスト用）
-        }
-        
-        this.logger.info('=== PoppoBuilder Cron 実行完了（テスト） ===');
-        return;
-      }
-      
-      // 通常の実行
-      // 実行前の状態確認
-      await this.verifyState();
-      
-      // Issue処理
-      await this.processIssues();
-      
-      // タスクキューの処理
-      await this.processTaskQueue();
-      
-      this.logger.info('=== PoppoBuilder Cron 実行完了 ===');
-      
-    } catch (error) {
-      this.logger.error('メイン処理エラー:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 実行前の状態確認
-   */
-  async verifyState() {
-    // 実行中タスクの再確認
-    const currentRunningTasks = await this.stateManager.loadRunningTasks();
-    const taskIds = Object.keys(currentRunningTasks);
-    
-    if (taskIds.length > 0) {
-      this.logger.info(`実行中タスク確認: ${taskIds.length}件`);
-      
-      // 各タスクの状態を確認
-      for (const taskId of taskIds) {
-        const taskInfo = currentRunningTasks[taskId];
-        
-        // プロセスが生きているかチェック
-        try {
-          if (taskInfo.pid && !this.isProcessAlive(taskInfo.pid)) {
-            this.logger.warn(`デッドプロセス検出: ${taskId} (PID: ${taskInfo.pid})`);
-            await this.stateManager.removeRunningTask(taskId);
-          }
-        } catch (error) {
-          this.logger.error(`タスク状態確認エラー ${taskId}:`, error);
-        }
-      }
-    }
-  }
-
-  /**
-   * プロセス生存確認
-   */
-  isProcessAlive(pid) {
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * Issue処理
-   */
-  async processIssues() {
-    try {
-      this.logger.info('Issue処理開始');
-      
-      // オープンなIssueを取得（優先度順）
-      const issues = await this.github.getOpenIssues();
-      const prioritizedIssues = this.prioritizeIssues(issues);
-      
-      this.logger.info(`処理対象Issue: ${prioritizedIssues.length}件`);
-      
-      for (const issue of prioritizedIssues) {
-        if (this.isShuttingDown) {
-          this.logger.info('シャットダウン中のため処理中断');
-          break;
-        }
-        
-        try {
-          // 重複処理チェック（強化版）
-          if (await this.isDuplicateProcessing(issue.number)) {
-            this.logger.info(`Issue #${issue.number} は既に処理中またはスキップ`);
-            continue;
-          }
-          
-          // Issue処理の実行
-          await this.processIssue(issue);
-          
-          // 処理間隔（レート制限対策）
-          await this.sleep(2000);
-          
-        } catch (error) {
-          this.logger.error(`Issue #${issue.number} 処理エラー:`, error);
-          
-          // エラー時の状態クリーンアップ
-          await this.cleanupIssueState(issue.number);
-        }
-      }
-      
-    } catch (error) {
-      this.logger.error('Issue処理エラー:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 重複処理チェック（強化版）
-   */
-  async isDuplicateProcessing(issueNumber) {
-    // 1. 実行中タスクをチェック
-    const runningTasks = await this.stateManager.loadRunningTasks();
-    const taskId = `issue-${issueNumber}`;
-    
-    if (runningTasks[taskId]) {
-      // プロセスが生きているかダブルチェック
-      const taskInfo = runningTasks[taskId];
-      if (taskInfo.pid && this.isProcessAlive(taskInfo.pid)) {
-        return true; // 実際に処理中
-      } else {
-        // デッドプロセスの場合はクリーンアップ
-        await this.stateManager.removeRunningTask(taskId);
-      }
-    }
-    
-    // 2. メモリ内のProcessedチェック（セッション内重複防止）
-    if (this.processedIssues.has(issueNumber)) {
-      return true;
-    }
-    
-    // 3. ファイルベースのProcessedチェック（他のプロセスとの重複防止）
-    if (this.stateManager.isIssueProcessed && await this.stateManager.isIssueProcessed(issueNumber)) {
-      return true;
-    }
-    
+function shouldProcessIssue(issue) {
+  const debugPrefix = `  Issue #${issue.number}:`;
+  
+  // すでに処理済み
+  if (processedIssues.has(issue.number)) {
+    console.log(`${debugPrefix} ⏭️  既に処理済み`);
     return false;
   }
 
-  /**
-   * Issue優先度付け
-   */
-  prioritizeIssues(issues) {
-    return issues.sort((a, b) => {
-      // Dogfoodingを最優先
-      const aDogfooding = a.labels.some(label => label.name === 'task:dogfooding');
-      const bDogfooding = b.labels.some(label => label.name === 'task:dogfooding');
-      
-      if (aDogfooding && !bDogfooding) return -1;
-      if (!aDogfooding && bDogfooding) return 1;
-      
-      // 次にBug
-      const aBug = a.labels.some(label => label.name === 'task:bug');
-      const bBug = b.labels.some(label => label.name === 'task:bug');
-      
-      if (aBug && !bBug) return -1;
-      if (!aBug && bBug) return 1;
-      
-      // 最後に作成日時（古い順）
-      return new Date(a.created_at) - new Date(b.created_at);
-    });
+  // 作者のIssueかチェック
+  if (issue.author.login !== config.github.owner) {
+    console.log(`${debugPrefix} ⏭️  作者が異なる (${issue.author.login} !== ${config.github.owner})`);
+    return false;
   }
 
-  /**
-   * 個別Issue処理
-   */
-  async processIssue(issue) {
-    const issueNumber = issue.number;
-    const taskId = `issue-${issueNumber}`;
+  // ラベルチェック
+  const labels = issue.labels.map(l => l.name);
+  console.log(`${debugPrefix} ラベル: [${labels.join(', ')}]`);
+  
+  // task:misc, task:dogfooding, task:quality, task:docs, task:feature のいずれかのラベルが必要
+  const taskLabels = ['task:misc', 'task:dogfooding', 'task:quality', 'task:docs', 'task:feature'];
+  if (!labels.some(label => taskLabels.includes(label))) {
+    console.log(`${debugPrefix} ⏭️  必要なタスクラベルがない`);
+    return false;
+  }
+
+  // completed, processing, awaiting-responseラベルがあればスキップ
+  if (labels.includes('completed') || labels.includes('processing') || labels.includes('awaiting-response')) {
+    console.log(`${debugPrefix} ⏭️  スキップラベルあり (completed/processing/awaiting-response)`);
+    return false;
+  }
+
+  console.log(`${debugPrefix} ✅ 処理対象`);
+  return true;
+}
+
+/**
+ * Issueを処理
+ */
+async function processIssue(issue) {
+  const issueNumber = issue.number;
+  logger.logIssue(issueNumber, 'START', { title: issue.title, labels: issue.labels });
+  console.log(`\nIssue #${issueNumber} の処理開始: ${issue.title}`);
+
+  // 処理開始前に再度実行中タスクを確認（二重処理防止）
+  const currentRunningTasks = await stateManager.loadRunningTasks();
+  if (currentRunningTasks[`issue-${issueNumber}`]) {
+    console.log(`⚠️  Issue #${issueNumber} は既に処理中です`);
+    logger.logIssue(issueNumber, 'ALREADY_RUNNING', { 
+      existingTask: currentRunningTasks[`issue-${issueNumber}`] 
+    });
+    return;
+  }
+
+  // 処理開始前に処理済みとして記録（二重起動防止）
+  processedIssues.add(issueNumber);
+  try {
+    await stateManager.saveProcessedIssues(processedIssues);
+  } catch (error) {
+    logger.error(`Issue #${issueNumber} の状態保存エラー:`, error);
+    // 状態保存に失敗してもプロセスは継続
+  }
+
+  try {
+    // StatusManagerでチェックアウト（processingラベルの追加はMirinOrphanManager経由で行われる）
+    await statusManager.checkout(issueNumber, `issue-${issueNumber}`, 'claude-cli');
+    logger.logIssue(issueNumber, 'CHECKED_OUT', { status: 'processing' });
+
+    // ラベル取得
+    const labels = issue.labels.map(l => l.name);
     
-    this.logger.info(`Issue #${issueNumber} 処理開始: ${issue.title}`);
+    // 言語設定読み込み
+    const poppoConfig = configLoader.loadConfig();
     
-    try {
-      // 処理中状態をマーク
-      this.processedIssues.add(issueNumber);
-      
-      // 独立プロセスでの実行
-      const result = await this.processManager.processIssue(issueNumber, {
-        issueData: issue,
-        priority: this.getIssuePriority(issue),
-        timeout: this.config.claude.timeout || 120000
+    // 2段階処理を試みる
+    const instructionText = `${issue.title}\n\n${issue.body}`;
+    const twoStageResult = await twoStageProcessor.processInstruction(instructionText, {
+      issueNumber: issueNumber,
+      labels: labels
+    });
+
+    // 2段階処理が成功し、Issue作成アクションの場合
+    if (twoStageResult.executed && twoStageResult.action === 'create_issue') {
+      logger.logIssue(issueNumber, 'TWO_STAGE_ISSUE_CREATED', { 
+        newIssue: twoStageResult.executionResult.issue 
       });
       
-      if (result.success) {
-        this.logger.info(`Issue #${issueNumber} 処理成功`);
-        
-        // 成功時は処理済みとしてマーク
-        if (this.stateManager.addProcessedIssue) {
-          await this.stateManager.addProcessedIssue(issueNumber);
-        }
-      } else {
-        this.logger.error(`Issue #${issueNumber} 処理失敗:`, result.error);
-        
-        // 失敗時は処理済みマークから削除（再試行可能にする）
-        this.processedIssues.delete(issueNumber);
-      }
+      // StatusManagerでチェックイン（completedステータスへ）
+      await statusManager.checkin(issueNumber, 'completed', {
+        taskType: 'two-stage-issue-creation',
+        newIssueNumber: twoStageResult.executionResult.issue.number
+      });
       
-    } catch (error) {
-      this.logger.error(`Issue #${issueNumber} 処理例外:`, error);
-      
-      // エラー時の状態回復
-      this.processedIssues.delete(issueNumber);
-      await this.cleanupIssueState(issueNumber);
-      
-      throw error;
+      console.log(`Issue #${issueNumber} の処理完了（2段階処理でIssue作成）`);
+      return;
     }
-  }
 
-  /**
-   * Issue優先度取得
-   */
-  getIssuePriority(issue) {
-    if (issue.labels.some(label => label.name === 'task:dogfooding')) return 'high';
-    if (issue.labels.some(label => label.name === 'task:bug')) return 'medium';
-    return 'normal';
-  }
+    // 通常のClaude実行に進む
+    const instruction = {
+      task: 'execute',
+      issue: {
+        number: issueNumber,
+        title: issue.title,
+        body: issue.body
+      },
+      context: {
+        repository: `${config.github.owner}/${config.github.repo}`,
+        workingDirectory: process.cwd(),
+        defaultBranch: 'work/poppo-builder',
+        systemPrompt: configLoader.generateSystemPrompt(poppoConfig, issueNumber, labels)
+      }
+    };
 
-  /**
-   * Issue状態クリーンアップ
-   */
-  async cleanupIssueState(issueNumber) {
-    const taskId = `issue-${issueNumber}`;
+    // Claudeで実行（独立プロセス方式）
+    logger.logIssue(issueNumber, 'EXECUTE_START', { instruction });
     
-    try {
-      // 実行中タスクから削除
-      await this.stateManager.removeRunningTask(taskId);
-      
-      // メモリからも削除
-      this.processedIssues.delete(issueNumber);
-      
-      this.logger.info(`Issue #${issueNumber} の状態をクリーンアップしました`);
-      
-    } catch (error) {
-      this.logger.error(`Issue #${issueNumber} クリーンアップエラー:`, error);
-    }
-  }
+    // dogfoodingかどうかを判定
+    const isDogfooding = labels.includes('task:dogfooding');
+    instruction.issue.type = isDogfooding ? 'dogfooding' : 'normal';
+    
+    const result = await processManager.execute(`issue-${issueNumber}`, instruction);
+    logger.logIssue(issueNumber, 'INDEPENDENT_STARTED', { 
+      taskId: result.taskId,
+      pid: result.pid 
+    });
 
-  /**
-   * タスクキュー処理
-   */
-  async processTaskQueue() {
+    // 実行中タスクとして記録
     try {
-      // キューにタスクがあるか確認
-      if (this.taskQueue && this.taskQueue.size() > 0) {
-        this.logger.info(`タスクキュー処理: ${this.taskQueue.size()}件`);
-        
-        // タスクキューの処理ロジックをここに実装
-        // 現在の実装では基本的なログ出力のみ
-        
+      await stateManager.addRunningTask(result.taskId, {
+        issueNumber,
+        title: issue.title,
+        pid: result.pid,
+        type: instruction.issue.type
+      });
+    } catch (error) {
+      logger.error(`タスク ${result.taskId} の状態記録エラー:`, error);
+    }
+
+    console.log(`Issue #${issueNumber} を独立プロセス (${result.taskId}) として開始`);
+    console.log(`PID: ${result.pid}`);
+
+  } catch (error) {
+    logger.logIssue(issueNumber, 'ERROR', { 
+      message: error.message, 
+      stack: error.stack,
+      stdout: error.stdout,
+      stderr: error.stderr 
+    });
+    console.error(`Issue #${issueNumber} の処理エラー:`, error.message);
+    
+    // エラー時の状態クリーンアップ
+    const taskId = `issue-${issueNumber}`;
+    try {
+      await stateManager.removeRunningTask(taskId);
+    } catch (cleanupError) {
+      logger.error(`タスク ${taskId} のクリーンアップエラー:`, cleanupError);
+    }
+    
+    // 独立プロセスの停止確認
+    if (error.result && error.result.pid) {
+      try {
+        process.kill(error.result.pid, 'SIGTERM');
+        console.log(`🛑 PID ${error.result.pid} のプロセスを停止しました`);
+      } catch (killError) {
+        // プロセスが既に終了している場合は無視
       }
-    } catch (error) {
-      this.logger.error('タスクキュー処理エラー:', error);
+    }
+    
+    // エラー時の処理
+    const errorDetails = [
+      `## エラーが発生しました`,
+      ``,
+      `### エラーメッセージ`,
+      `\`\`\``,
+      error.message || '(エラーメッセージなし)',
+      `\`\`\``,
+      error.stderr ? `\n### エラー出力\n\`\`\`\n${error.stderr}\n\`\`\`` : '',
+      error.stdout ? `\n### 標準出力\n\`\`\`\n${error.stdout}\n\`\`\`` : '',
+      ``,
+      `詳細なログは \`logs/issue-${issueNumber}-*.log\` を確認してください。`
+    ].filter(Boolean).join('\n');
+    
+    await github.addComment(issueNumber, errorDetails);
+    
+    // StatusManagerの状態をリセット（エラー時は処理済みリストから削除して再試行可能に）
+    await statusManager.resetIssueStatus(issueNumber);
+    processedIssues.delete(issueNumber);
+    try {
+      await stateManager.saveProcessedIssues(processedIssues);
+    } catch (saveError) {
+      logger.error(`Issue #${issueNumber} の状態削除エラー:`, saveError);
     }
   }
+}
 
-  /**
-   * 保留中タスクの復元
-   */
-  async restorePendingTasks() {
+/**
+ * コメントが処理対象かチェック
+ */
+function shouldProcessComment(issue, comment) {
+  const labels = issue.labels.map(l => l.name);
+  
+  // awaiting-responseラベルが必須
+  if (!labels.includes('awaiting-response')) {
+    return false;
+  }
+  
+  // 作成者のコメントのみ
+  if (comment.author.login !== config.github.owner) {
+    return false;
+  }
+  
+  // PoppoBuilder自身のコメントは無視
+  if (comment.body.includes('## 実行完了') || 
+      comment.body.includes('## エラーが発生しました')) {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * コメントが完了を示しているか判定
+ */
+function isCompletionComment(comment) {
+  if (!config.commentHandling || !config.commentHandling.completionKeywords) {
+    return false;
+  }
+  
+  const lowerBody = comment.body.toLowerCase();
+  return config.commentHandling.completionKeywords.some(keyword => 
+    lowerBody.includes(keyword.toLowerCase())
+  );
+}
+
+/**
+ * コンテキストを構築
+ */
+async function buildContext(issueNumber) {
+  const issue = await github.getIssue(issueNumber);
+  const comments = await github.listComments(issueNumber);
+  
+  // 会話履歴を構築
+  const conversation = [];
+  
+  // 初回のIssue本文
+  conversation.push({
+    role: 'user',
+    content: `Issue #${issue.number}: ${issue.title}\n\n${issue.body}`
+  });
+  
+  // コメント履歴を時系列で追加
+  for (const comment of comments) {
+    if (comment.author.login === config.github.owner) {
+      conversation.push({
+        role: 'user',
+        content: comment.body
+      });
+    } else if (comment.body.includes('## 実行完了')) {
+      // PoppoBuilderの応答から"## 実行完了"を除去
+      const content = comment.body.replace(/^## 実行完了\n\n/, '');
+      conversation.push({
+        role: 'assistant',
+        content: content
+      });
+    }
+  }
+  
+  return conversation;
+}
+
+/**
+ * コメントを処理
+ */
+async function processComment(issue, comment) {
+  const issueNumber = issue.number;
+  logger.logIssue(issueNumber, 'COMMENT_START', { 
+    commentId: comment.id,
+    commentAuthor: comment.author.login 
+  });
+  console.log(`\nIssue #${issueNumber} のコメント処理開始`);
+
+  try {
+    // StatusManagerでコメント処理を開始（awaiting-response→processingの変更もMirinOrphanManager経由）
+    await statusManager.checkout(issueNumber, `comment-${issueNumber}-${comment.id}`, 'comment-response');
+    logger.logIssue(issueNumber, 'COMMENT_CHECKOUT', { 
+      status: 'processing',
+      commentId: comment.id
+    });
+
+    // コンテキストを構築
+    const conversation = await buildContext(issueNumber);
+    
+    // ラベル取得
+    const labels = issue.labels.map(l => l.name);
+    
+    // 言語設定読み込み
+    const poppoConfig = configLoader.loadConfig();
+    
+    // Claude用の指示を作成（コンテキスト付き）
+    const instruction = {
+      task: 'execute_with_context',
+      issue: {
+        number: issueNumber,
+        title: issue.title,
+        conversation: conversation
+      },
+      context: {
+        repository: `${config.github.owner}/${config.github.repo}`,
+        workingDirectory: process.cwd(),
+        defaultBranch: 'work/poppo-builder',
+        systemPrompt: configLoader.generateSystemPrompt(poppoConfig, issueNumber, labels),
+        isFollowUp: true
+      }
+    };
+
+    // Claudeで実行（独立プロセス方式）
+    logger.logIssue(issueNumber, 'COMMENT_EXECUTE_START', { 
+      commentId: comment.id,
+      conversationLength: conversation.length 
+    });
+    
+    instruction.issue.type = 'comment';
+    instruction.issue.isCompletion = isCompletionComment(comment);
+    
+    const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction);
+    logger.logIssue(issueNumber, 'COMMENT_INDEPENDENT_STARTED', { 
+      taskId: result.taskId,
+      pid: result.pid 
+    });
+
+    // 実行中タスクとして記録
     try {
-      const pendingTasks = await this.stateManager.loadPendingTasks();
+      await stateManager.addRunningTask(result.taskId, {
+        issueNumber,
+        title: issue.title,
+        pid: result.pid,
+        type: 'comment',
+        isCompletion: instruction.issue.isCompletion
+      });
+    } catch (error) {
+      logger.error(`コメントタスク ${result.taskId} の状態記録エラー:`, error);
+    }
+
+    console.log(`Issue #${issueNumber} のコメントを独立プロセス (${result.taskId}) として開始`);
+    console.log(`PID: ${result.pid}`);
+
+  } catch (error) {
+    logger.logIssue(issueNumber, 'COMMENT_ERROR', { 
+      commentId: comment.id,
+      message: error.message, 
+      stack: error.stack 
+    });
+    console.error(`Issue #${issueNumber} のコメント処理エラー:`, error.message);
+    
+    // エラー時の状態クリーンアップ
+    const taskId = `issue-${issueNumber}-comment-${comment.id}`;
+    try {
+      await stateManager.removeRunningTask(taskId);
+    } catch (cleanupError) {
+      logger.error(`コメントタスク ${taskId} のクリーンアップエラー:`, cleanupError);
+    }
+    
+    // 独立プロセスの停止確認
+    if (error.result && error.result.pid) {
+      try {
+        process.kill(error.result.pid, 'SIGTERM');
+        console.log(`🛑 PID ${error.result.pid} のプロセスを停止しました`);
+      } catch (killError) {
+        // プロセスが既に終了している場合は無視
+      }
+    }
+    
+    // エラー時はawaiting-responseに戻す
+    await statusManager.checkin(issueNumber, 'awaiting-response', {
+      error: error.message,
+      taskType: 'comment-response'
+    });
+  }
+}
+
+/**
+ * コメントをチェック
+ */
+async function checkComments() {
+  if (!config.commentHandling || !config.commentHandling.enabled) {
+    return;
+  }
+
+  try {
+    // awaiting-responseラベル付きのIssueを取得
+    const issues = await github.listIssues({ 
+      state: 'open', 
+      labels: ['awaiting-response'] 
+    });
+    
+    for (const issue of issues) {
+      const comments = await github.listComments(issue.number);
+      const processed = processedComments.get(issue.number) || new Set();
       
-      if (pendingTasks.length > 0) {
-        this.logger.info(`保留中タスク復元: ${pendingTasks.length}件`);
+      // 新規コメントをチェック
+      for (const comment of comments) {
+        // IDフィールドがない場合はcreatedAtとauthorでユニークIDを生成
+        const commentId = comment.id || `${comment.createdAt}-${comment.author.login}`;
         
-        // 優先度順にソート
-        const sortedTasks = pendingTasks.sort((a, b) => {
-          const priorityOrder = { high: 3, medium: 2, normal: 1 };
-          return (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
-        });
-        
-        // タスクキューに追加
-        for (const task of sortedTasks) {
-          if (this.taskQueue && this.taskQueue.add) {
-            this.taskQueue.add(task);
+        if (!processed.has(commentId) && shouldProcessComment(issue, comment)) {
+          // 処理対象のコメントを発見
+          console.log(`新規コメントを検出: Issue #${issue.number}, Comment: ${commentId}`);
+          
+          // 処理済みとして記録
+          if (!processedComments.has(issue.number)) {
+            processedComments.set(issue.number, new Set());
+          }
+          processedComments.get(issue.number).add(commentId);
+          try {
+            await stateManager.saveProcessedComments(processedComments);
+          } catch (error) {
+            logger.error(`Issue #${issue.number} のコメント状態保存エラー:`, error);
+          }
+          
+          // コメントをタスクキューに追加
+          try {
+            const taskId = taskQueue.enqueue({
+              type: 'comment',
+              issue: issue,
+              comment: { ...comment, id: commentId },
+              issueNumber: issue.number,
+              labels: issue.labels.map(l => l.name)
+            });
+            console.log(`💬 Issue #${issue.number} のコメントをキューに追加 (タスクID: ${taskId})`);
+          } catch (error) {
+            console.error(`コメントのキュー追加エラー:`, error.message);
           }
         }
-        
-        // 復元後はファイルをクリア
-        await this.stateManager.savePendingTasks([]);
       }
-      
-    } catch (error) {
-      this.logger.error('保留中タスク復元エラー:', error);
     }
-  }
-
-  /**
-   * シグナルハンドラー設定
-   */
-  setupSignalHandlers() {
-    const handleShutdown = async (signal) => {
-      if (this.isShuttingDown) return;
-      
-      this.isShuttingDown = true;
-      
-      const testMode = process.env.TEST_MODE;
-      if (testMode === 'cleanup_test') {
-        console.log('クリーンアップ処理開始');
-        this.logger?.info('クリーンアップ処理開始');
-      }
-      
-      this.logger?.info(`シャットダウンシグナル受信: ${signal}`);
-      
-      await this.cleanup();
-      process.exit(0);
-    };
-    
-    // 予期しないエラーのハンドリング
-    process.on('uncaughtException', async (error) => {
-      this.logger?.error('予期しないエラー:', error);
-      await this.cleanup();
-      process.exit(1);
-    });
-    
-    process.on('unhandledRejection', async (reason, promise) => {
-      this.logger?.error('未処理のPromise拒否:', reason);
-      await this.cleanup();
-      process.exit(1);
-    });
-    
-    // シャットダウンシグナル
-    process.on('SIGINT', () => handleShutdown('SIGINT'));
-    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-    process.on('SIGHUP', () => handleShutdown('SIGHUP'));
-  }
-
-  /**
-   * クリーンアップ処理
-   */
-  async cleanup() {
-    try {
-      const testMode = process.env.TEST_MODE;
-      
-      // テストモード用の出力
-      if (testMode === 'cleanup_test') {
-        console.log('クリーンアップ処理開始');
-      }
-      
-      this.logger?.info('クリーンアップ処理開始');
-      
-      // 1. タスクキューの永続化
-      if (this.taskQueue && this.stateManager) {
-        const pendingTasks = this.taskQueue.getAllPendingTasks ? 
-          this.taskQueue.getAllPendingTasks() : [];
-        
-        if (pendingTasks.length > 0) {
-          await this.stateManager.savePendingTasks(pendingTasks);
-          this.logger?.info(`保留中タスクを保存: ${pendingTasks.length}件`);
-        }
-      }
-      
-      // 2. 独立プロセスの停止確認とクリーンアップ
-      if (this.processManager && this.processManager.shutdown) {
-        await this.processManager.shutdown();
-      }
-      
-      // 3. プロセスロックの解放
-      if (this.stateManager && this.stateManager.releaseProcessLock) {
-        await this.stateManager.releaseProcessLock();
-      }
-      
-      // 4. リソースのクリーンアップ
-      if (this.rateLimiter && this.rateLimiter.cleanup) {
-        this.rateLimiter.cleanup();
-      }
-      
-      this.logger?.info('クリーンアップ処理完了');
-      
-      // テストモード用の出力
-      if (testMode === 'cleanup_test') {
-        console.log('クリーンアップ処理完了');
-      }
-      
-    } catch (error) {
-      console.error('クリーンアップエラー:', error);
-    }
-  }
-
-  /**
-   * ユーティリティ: スリープ
-   */
-  async sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  } catch (error) {
+    console.error('コメントチェックエラー:', error.message);
   }
 }
 
-// メイン実行
-async function main() {
-  const cron = new PoppoBuilderCron();
+/**
+ * タスクキューからタスクを処理
+ */
+async function processQueuedTasks() {
+  // 最大1つの新規Issueのみ処理（既存の制限を維持）
+  let newIssueProcessed = false;
+  
+  while (taskQueue.canExecute() && taskQueue.getQueueSize() > 0) {
+    const task = taskQueue.dequeue();
+    if (!task) break;
+    
+    // 新規Issueの場合は1つまで
+    if (task.type === 'issue' && newIssueProcessed) {
+      // キューに戻す
+      taskQueue.enqueue(task);
+      break;
+    }
+    
+    // レート制限チェック
+    const rateLimitStatus = await rateLimiter.isRateLimited();
+    if (rateLimitStatus.limited) {
+      // レート制限中はタスクをキューに戻す
+      taskQueue.enqueue(task);
+      console.log(`⏸️  レート制限中: ${rateLimitStatus.api} API`);
+      break;
+    }
+    
+    // タスク実行開始
+    taskQueue.startTask(task.id, { type: task.type, issueNumber: task.issueNumber });
+    
+    try {
+      if (task.type === 'issue') {
+        await processIssue(task.issue);
+        newIssueProcessed = true;
+        taskQueue.completeTask(task.id, true);
+        rateLimiter.resetRetryState(task.id);
+      } else if (task.type === 'comment') {
+        await processComment(task.issue, task.comment);
+        taskQueue.completeTask(task.id, true);
+        rateLimiter.resetRetryState(task.id);
+      }
+    } catch (error) {
+      console.error(`タスク ${task.id} エラー:`, error.message);
+      taskQueue.completeTask(task.id, false);
+      
+      // リトライ判定
+      await handleTaskError(task, error);
+    }
+  }
+}
+
+/**
+ * タスクエラーのハンドリング
+ */
+async function handleTaskError(task, error) {
+  // レート制限エラーの場合
+  if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
+    try {
+      await rateLimiter.waitWithBackoff(task.id, 'rate limit error');
+      // リトライのためタスクを再キュー
+      task.attempts = (task.attempts || 0) + 1;
+      if (task.attempts <= 5) {
+        taskQueue.enqueue(task);
+      }
+    } catch (retryError) {
+      console.error(`タスク ${task.id} の最大リトライ回数に到達`);
+    }
+  }
+}
+
+/**
+ * 完了したタスクをチェック
+ */
+async function checkCompletedTasks() {
+  try {
+    const completedResults = await processManager.pollCompletedTasks();
+    
+    for (const result of completedResults || []) {
+      console.log(`🎯 完了タスク ${result.taskId} の後処理開始`);
+      
+      // 実行中タスクから削除
+      try {
+        await stateManager.removeRunningTask(result.taskId);
+      } catch (error) {
+        logger.error(`タスク ${result.taskId} の削除エラー:`, error);
+      }
+      
+      // GitHubコメント投稿
+      const issueNumber = result.taskInfo.issueNumber;
+      if (issueNumber && result.success) {
+        const comment = `## 実行完了\n\n${result.output}`;
+        await github.addComment(issueNumber, comment);
+        
+        // StatusManagerで完了状態に更新
+        const finalStatus = (config.commentHandling && config.commentHandling.enabled) 
+          ? 'awaiting-response' 
+          : 'completed';
+        
+        await statusManager.checkin(issueNumber, finalStatus, {
+          taskId: result.taskId,
+          duration: result.duration,
+          taskType: result.taskInfo.type
+        });
+        logger.logIssue(issueNumber, 'TASK_COMPLETED', { status: finalStatus });
+        
+        console.log(`✅ Issue #${issueNumber} の後処理完了`);
+        
+        // タスクタイプに応じた後処理
+        if (result.taskInfo.type === 'comment') {
+          // コメント処理の場合は完了判定を行う
+          const isCompletion = result.taskInfo.isCompletion || false;
+          
+          if (isCompletion) {
+            // 完了キーワードが含まれている場合
+            await statusManager.updateStatus(issueNumber, 'completed', {
+              reason: 'completion_keyword',
+              taskId: result.taskId
+            });
+            logger.logIssue(issueNumber, 'COMMENT_COMPLETED', { 
+              reason: 'completion_keyword' 
+            });
+            console.log(`Issue #${issueNumber} のコメント処理完了（完了キーワード検出）`);
+          } else {
+            // 続けて対話する場合（すでにawaiting-responseステータスで更新されているはず）
+            logger.logIssue(issueNumber, 'COMMENT_AWAITING', { 
+              commentCount: 1 
+            });
+            console.log(`Issue #${issueNumber} のコメント処理完了（応答待ち）`);
+          }
+        }
+      } else if (issueNumber && !result.success) {
+        // エラー時の処理
+        const errorComment = `## エラーが発生しました\n\n\`\`\`\n${result.error}\n\`\`\`\n\n詳細なログは確認してください。`;
+        await github.addComment(issueNumber, errorComment);
+        await statusManager.resetIssueStatus(issueNumber);
+        
+        console.log(`❌ Issue #${issueNumber} でエラーが発生`);
+      }
+    }
+  } catch (error) {
+    console.error('完了タスクチェックエラー:', error.message);
+  }
+}
+
+/**
+ * 既存のrunning-tasksファイルをマイグレート
+ */
+async function migrateRunningTasks() {
+  const oldPath = path.join(__dirname, '../logs/running-tasks.json');
+  const newPath = path.join(__dirname, '../state/running-tasks.json');
   
   try {
-    await cron.initialize();
-    await cron.run();
-    await cron.cleanup();
-    
-    console.log('✅ PoppoBuilder Cron 正常終了');
-    process.exit(0);
-    
+    // 古いファイルが存在し、新しいファイルが存在しない場合のみマイグレート
+    if (fs.existsSync(oldPath)) {
+      const oldData = fs.readFileSync(oldPath, 'utf8');
+      const tasks = JSON.parse(oldData);
+      
+      // 新しいファイルが存在しない場合のみマイグレート
+      if (!fs.existsSync(newPath)) {
+        console.log('📦 既存のrunning-tasksをstate/ディレクトリにマイグレート中...');
+        await stateManager.saveRunningTasks(tasks);
+        console.log('✅ マイグレーション完了');
+      }
+      
+      // 古いファイルをリネーム（バックアップとして保持）
+      const backupPath = oldPath + '.migrated-' + new Date().toISOString().replace(/:/g, '-');
+      fs.renameSync(oldPath, backupPath);
+      console.log(`📁 古いファイルを ${path.basename(backupPath)} として保存`);
+    }
   } catch (error) {
-    console.error('❌ PoppoBuilder Cron エラー終了:', error);
-    await cron.cleanup();
-    process.exit(1);
+    console.error('マイグレーションエラー:', error.message);
+    // マイグレーションエラーは致命的ではないので続行
   }
 }
 
-// スクリプトとして実行された場合
-if (require.main === module) {
-  main();
+/**
+ * クリーンアップ処理
+ */
+async function cleanup() {
+  try {
+    // タスクキューの永続化
+    const pendingTasks = taskQueue.getAllPendingTasks();
+    if (pendingTasks.length > 0) {
+      console.log(`📦 ${pendingTasks.length}個の保留中タスクを保存中...`);
+      await stateManager.savePendingTasks(pendingTasks);
+    }
+    
+    // MirinOrphanManagerを停止
+    mirinManager.stop();
+    
+    // プロセスロックの解放
+    await stateManager.releaseProcessLock();
+    console.log('🔓 プロセスロックを解放しました');
+  } catch (error) {
+    console.error('クリーンアップエラー:', error.message);
+  }
 }
 
-module.exports = PoppoBuilderCron;
+/**
+ * シグナルハンドラー設定
+ */
+function setupSignalHandlers() {
+  const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  
+  signals.forEach(signal => {
+    process.on(signal, async () => {
+      console.log(`\n${signal}を受信しました。クリーンアップ中...`);
+      await cleanup();
+      process.exit(signal === 'SIGINT' ? 130 : 143);
+    });
+  });
+  
+  process.on('uncaughtException', async (error) => {
+    console.error('予期しないエラー:', error);
+    logger.error('uncaughtException', error);
+    await cleanup();
+    process.exit(1);
+  });
+  
+  process.on('unhandledRejection', async (reason, promise) => {
+    console.error('未処理のPromise拒否:', reason);
+    logger.error('unhandledRejection', { reason, promise });
+    await cleanup();
+    process.exit(1);
+  });
+}
+
+/**
+ * すべての永続化ファイルをリセット
+ */
+async function resetAllStateFiles() {
+  console.log('📄 永続化ファイルをリセット中...');
+  
+  try {
+    // 処理済みIssueをリセット
+    await stateManager.saveProcessedIssues(new Set());
+    console.log('  ✅ processed-issues.json をリセット');
+    
+    // 処理済みコメントをリセット（必要に応じて）
+    await stateManager.saveProcessedComments(new Map());
+    console.log('  ✅ processed-comments.json をリセット');
+    
+    // Issue状態をリセット（StatusManager経由）
+    if (statusManager && statusManager.state && statusManager.state.issues) {
+      const issueNumbers = Object.keys(statusManager.state.issues);
+      for (const issueNumber of issueNumbers) {
+        await statusManager.resetIssueStatus(parseInt(issueNumber));
+      }
+      console.log(`  ✅ issue-status.json をリセット (${issueNumbers.length}件のIssue)`);
+    }
+    
+    // 保留中タスクをリセット
+    await stateManager.savePendingTasks([]);
+    console.log('  ✅ pending-tasks.json をリセット');
+    
+    // 実行中タスクをリセット（注意: 実行中のプロセスがある場合は問題が起きる可能性）
+    const runningTasks = await stateManager.loadRunningTasks();
+    if (Object.keys(runningTasks).length > 0) {
+      console.log('  ⚠️  実行中のタスクが存在します。リセットによりこれらのタスクの状態が不整合になる可能性があります。');
+      console.log('  実行中のタスク:', Object.keys(runningTasks));
+    }
+    // 注意: running-tasks.json はプロセスマネージャが管理しているため、ここではリセットしない
+    
+    console.log('\n📊 リセット結果:');
+    console.log('  - processed-issues.json: 空の配列 []');
+    console.log('  - processed-comments.json: 空のオブジェクト {}');
+    console.log('  - issue-status.json: すべてのIssueステータスをクリア');
+    console.log('  - pending-tasks.json: 空の配列 []');
+    console.log('  - running-tasks.json: 変更なし（実行中のプロセスを保護）');
+    
+  } catch (error) {
+    console.error('❌ リセット中にエラーが発生しました:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * メイン処理（1回実行）
+ */
+async function main() {
+  console.log('PoppoBuilder Cron実行開始');
+  
+  // コマンドラインオプションの処理
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`
+PoppoBuilder Cron - 使用方法
+
+オプション:
+  --reset-state       すべての永続化情報をリセット
+  --reset-processed   processed-issues.jsonのみリセット
+  --sync-github       GitHubのラベル状態と同期（未実装）
+  --help, -h          このヘルプを表示
+
+例:
+  node minimal-poppo-cron.js --reset-state
+  node minimal-poppo-cron.js --reset-processed
+`);
+    process.exit(0);
+  }
+
+  // シグナルハンドラーの設定
+  setupSignalHandlers();
+  
+  try {
+    // 状態管理の初期化
+    console.log('📋 状態管理システムを初期化中...');
+    try {
+      await stateManager.init();
+      await statusManager.initialize();
+      await mirinManager.initialize();
+      console.log('✅ 初期化完了');
+    } catch (error) {
+      console.error('初期化エラー:', error.message);
+      logger.error('初期化に失敗しました', error);
+      process.exit(1);
+    }
+
+    // リセットオプションの処理
+    if (process.argv.includes('--reset-state')) {
+      console.log('🔄 すべての永続化情報をリセット中...');
+      await resetAllStateFiles();
+      console.log('✅ リセット完了');
+      process.exit(0);
+    } else if (process.argv.includes('--reset-processed')) {
+      console.log('🔄 処理済みIssue情報をリセット中...');
+      await stateManager.saveProcessedIssues(new Set());
+      console.log('✅ processed-issues.jsonをリセットしました');
+      process.exit(0);
+    } else if (process.argv.includes('--sync-github')) {
+      console.log('⚠️  --sync-githubオプションは未実装です');
+      console.log('   将来的にGitHubラベルとの同期機能を実装予定です');
+      process.exit(1);
+    }
+    
+    // MirinOrphanManagerを開始
+    mirinManager.start();
+    logger.info('MirinOrphanManagerの監視を開始しました');
+    
+    // プロセスレベルのロック取得
+    console.log('🔒 プロセスロックを取得中...');
+    const lockAcquired = await stateManager.acquireProcessLock();
+    if (!lockAcquired) {
+      console.log('⚠️  別のPoppoBuilderプロセスが実行中です');
+      process.exit(0);
+    }
+    console.log('✅ プロセスロックを取得しました');
+    
+    // 既存のrunning-tasksファイルのマイグレーション
+    await migrateRunningTasks();
+    
+    // 状態の読み込み
+    processedIssues = await stateManager.loadProcessedIssues();
+    processedComments = await stateManager.loadProcessedComments();
+    
+    // 保留中タスクの復元
+    const pendingTasks = await stateManager.loadPendingTasks();
+    if (pendingTasks.length > 0) {
+      console.log(`📥 ${pendingTasks.length}個の保留中タスクを復元中...`);
+      taskQueue.restoreTasks(pendingTasks);
+    }
+    
+    // 古い実行中タスクのクリーンアップ
+    await stateManager.cleanupStaleRunningTasks();
+    
+    // 設定階層情報を表示
+    configLoader.displayConfigHierarchy();
+    
+    console.log(`設定: ${JSON.stringify(config, null, 2)}\n`);
+    
+    // 2段階処理システムを初期化
+    if (config.twoStageProcessing?.enabled) {
+      await twoStageProcessor.init();
+      logger.info('2段階処理システムを初期化しました');
+    }
+    
+    // レート制限の初期チェック
+    await rateLimiter.preflightCheck();
+    
+    // レート制限チェック
+    const rateLimitStatus = await rateLimiter.isRateLimited();
+    if (rateLimitStatus.limited) {
+      const waitSeconds = Math.ceil(rateLimitStatus.waitTime / 1000);
+      console.log(`⚠️  ${rateLimitStatus.api.toUpperCase()} APIレート制限中... 残り${waitSeconds}秒`);
+      process.exit(0);
+    }
+
+    // Issue取得
+    console.log('📋 GitHub から Issue を取得中...');
+    const issues = await github.listIssues({ state: 'open' });
+    console.log(`✅ ${issues.length} 件の Open Issue を取得しました`);
+    
+    // 処理対象のIssueを抽出
+    console.log('🔍 処理対象の Issue をフィルタリング中...');
+    const targetIssues = issues.filter(shouldProcessIssue);
+    
+    if (targetIssues.length === 0) {
+      console.log('ℹ️  処理対象のIssueはありません');
+    } else {
+      console.log(`${targetIssues.length}件のIssueが見つかりました`);
+      
+      // 古い順に処理
+      targetIssues.sort((a, b) => 
+        new Date(a.createdAt) - new Date(b.createdAt)
+      );
+
+      // Issueをタスクキューに追加
+      for (const issue of targetIssues) {
+        try {
+          const taskId = taskQueue.enqueue({
+            type: 'issue',
+            issue: issue,
+            issueNumber: issue.number,
+            labels: issue.labels.map(l => l.name)
+          });
+          console.log(`📋 Issue #${issue.number} をキューに追加 (タスクID: ${taskId})`);
+        } catch (error) {
+          console.error(`Issue #${issue.number} のキュー追加エラー:`, error.message);
+        }
+      }
+    }
+
+    // コメント処理（コメント対応機能が有効な場合）
+    await checkComments();
+    
+    // キューからタスクを処理
+    await processQueuedTasks();
+    
+    // 完了したタスクをポーリングチェック
+    await checkCompletedTasks();
+    
+    // キューの状態を表示
+    const queueStatus = taskQueue.getStatus();
+    if (queueStatus.queued > 0 || queueStatus.running > 0) {
+      console.log(`📊 キュー状態: 実行中=${queueStatus.running}, 待機中=${queueStatus.queued}`);
+      console.log(`   優先度別: ${JSON.stringify(queueStatus.queuesByPriority)}`);
+    }
+    
+    // 最終実行情報を保存
+    try {
+      await stateManager.saveLastRun({
+        issuesChecked: issues.length,
+        issuesProcessed: targetIssues.length,
+        queueStatus: queueStatus
+      });
+    } catch (error) {
+      logger.error('最終実行情報の保存エラー:', error);
+    }
+    
+    console.log('\nPoppoBuilder Cron実行完了');
+    
+  } catch (error) {
+    console.error('メイン処理エラー:', error.message);
+    logger.error('Cron実行エラー:', error);
+  } finally {
+    // 必ずクリーンアップを実行
+    await cleanup();
+  }
+  
+  // プロセス終了
+  process.exit(0);
+}
+
+// 開始
+main().catch(console.error);

@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "generatedAt": "2025-06-18T05:49:02.174Z",
+    "version": "0.1.0",
+    "environment": {
+      "platform": "darwin",
+      "arch": "arm64",
+      "nodeVersion": "v23.11.0",
+      "cpus": 8,
+      "totalMemory": 8589934592,
+      "hostname": "JunichiJobinoMacBook-Air.local"
+    }
+  },
+  "results": {
+    "throughput": {
+      "issuesPerHour": 1200,
+      "single": {
+        "timing": {
+          "mean": 150,
+          "p95": 200
+        }
+      }
+    },
+    "responseTime": {
+      "endpoints": {
+        "/api/health": {
+          "statistics": {
+            "timing": {
+              "mean": 50,
+              "p95": 80
+            }
+          }
+        }
+      }
+    }
+  },
+  "baseline": {
+    "hasBaseline": false,
+    "message": "ベースラインとの比較はスキップされました"
+  },
+  "summary": {
+    "throughput": {
+      "issuesPerHour": 1200,
+      "status": "good",
+      "statusText": "目標達成"
+    }
+  },
+  "recommendations": []
+}

@@ -1,0 +1,21 @@
+{
+  "id": "repair-1750546356681-9f348fb7",
+  "timestamp": "2025-06-21T22:52:36.681Z",
+  "pattern": "EP003",
+  "errorHash": "hash2",
+  "file": "src/module2.js",
+  "success": true,
+  "repairTime": 200,
+  "changes": [],
+  "testResults": null,
+  "rollbackInfo": null,
+  "errorDetails": {
+    "message": "Error in module 2",
+    "category": "Type Error"
+  },
+  "repairDetails": {
+    "method": "Auto-fix",
+    "confidence": 0.8400000000000001,
+    "backupFile": null
+  }
+}

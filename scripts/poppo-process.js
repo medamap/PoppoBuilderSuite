@@ -59,21 +59,53 @@ function formatDuration(startTime) {
 // プロセス情報を取得
 function getProcessInfo(pid) {
   try {
-    // macOS/Linux用のコマンド
-    const psOutput = execSync(`ps -p ${pid} -o pid,rss,command`, { encoding: 'utf8' });
-    const lines = psOutput.split('\n').filter(line => line.trim());
-    if (lines.length > 1) {
-      const parts = lines[1].trim().split(/\s+/);
-      return {
-        exists: true,
-        memory: parseInt(parts[1]) * 1024, // RSS in KB to bytes
-        command: parts.slice(2).join(' ')
-      };
+    if (os.platform() === 'darwin' || os.platform() === 'linux') {
+      // macOS/Linux用のコマンド - CPU使用率も取得
+      const psOutput = execSync(`ps -p ${pid} -o pid,%cpu,rss,command`, { encoding: 'utf8' });
+      const lines = psOutput.split('\n').filter(line => line.trim());
+      if (lines.length > 1) {
+        const parts = lines[1].trim().split(/\s+/);
+        return {
+          exists: true,
+          cpu: parseFloat(parts[1]) || 0,
+          memory: parseInt(parts[2]) * 1024, // RSS in KB to bytes
+          command: parts.slice(3).join(' ')
+        };
+      }
+    } else {
+      // Windows用の実装
+      try {
+        // wmicコマンドを使用
+        const wmicOutput = execSync(`wmic process where ProcessId=${pid} get ProcessId,WorkingSetSize,Name /format:csv`, { encoding: 'utf8' });
+        const lines = wmicOutput.split('\n').filter(line => line.trim() && !line.startsWith('Node'));
+        if (lines.length > 0) {
+          const parts = lines[0].split(',');
+          if (parts.length >= 4) {
+            return {
+              exists: true,
+              cpu: 0, // WindowsではCPU使用率の取得が難しいため0に設定
+              memory: parseInt(parts[3]) || 0,
+              command: parts[1] || 'N/A'
+            };
+          }
+        }
+      } catch (e) {
+        // tasklistにフォールバック
+        const tasklistOutput = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV`, { encoding: 'utf8' });
+        if (tasklistOutput.includes(`"${pid}"`)) {
+          return {
+            exists: true,
+            cpu: 0,
+            memory: 0,
+            command: 'N/A (Windows)'
+          };
+        }
+      }
     }
   } catch (error) {
     // プロセスが存在しない
   }
-  return { exists: false, memory: 0, command: '' };
+  return { exists: false, cpu: 0, memory: 0, command: '' };
 }
 
 // 実行中のタスクを取得
@@ -135,13 +167,14 @@ function showStatus(options = {}) {
   if (options.json) {
     // JSON出力
     const output = tasks.map(task => {
-      const processInfo = task.pid ? getProcessInfo(task.pid) : { exists: false, memory: 0 };
+      const processInfo = task.pid ? getProcessInfo(task.pid) : { exists: false, cpu: 0, memory: 0 };
       return {
         taskId: task.taskId,
         issueNumber: task.issueNumber,
         pid: task.pid,
         status: task.status,
         running: processInfo.exists,
+        cpu: processInfo.cpu,
         memory: processInfo.memory,
         startTime: task.startTime,
         duration: task.startTime ? Date.now() - task.startTime : null
@@ -161,16 +194,17 @@ function showStatus(options = {}) {
   }
   
   // ヘッダー
-  console.log(`${colors.bold}TaskID              Issue   PID     状態        実行時間    メモリ${colors.reset}`);
-  console.log(`${colors.gray}${'─'.repeat(70)}${colors.reset}`);
+  console.log(`${colors.bold}TaskID              Issue   PID     状態        実行時間    CPU     メモリ${colors.reset}`);
+  console.log(`${colors.gray}${'─'.repeat(78)}${colors.reset}`);
   
   // タスク一覧
   for (const task of tasks) {
-    const processInfo = task.pid ? getProcessInfo(task.pid) : { exists: false, memory: 0 };
+    const processInfo = task.pid ? getProcessInfo(task.pid) : { exists: false, cpu: 0, memory: 0 };
     const statusColor = task.status === 'running' ? colors.green : 
                        task.status === 'error' ? colors.red : colors.yellow;
     const runningStatus = processInfo.exists ? '●' : '○';
     const duration = task.startTime ? formatDuration(task.startTime) : '-';
+    const cpu = processInfo.exists ? `${processInfo.cpu.toFixed(1)}%` : '-';
     const memory = processInfo.exists ? formatMemory(processInfo.memory) : '-';
     
     console.log(
@@ -179,11 +213,12 @@ function showStatus(options = {}) {
       `${(task.pid || '-').toString().padEnd(8)}` +
       `${statusColor}${runningStatus} ${(task.status || 'unknown').padEnd(10)}${colors.reset}` +
       `${duration.padEnd(12)}` +
+      `${cpu.padEnd(8)}` +
       `${memory}`
     );
   }
   
-  console.log(`${colors.gray}${'─'.repeat(70)}${colors.reset}`);
+  console.log(`${colors.gray}${'─'.repeat(78)}${colors.reset}`);
   console.log(`${colors.gray}合計: ${tasks.length} タスク${colors.reset}`);
 }
 

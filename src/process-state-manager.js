@@ -1,17 +1,25 @@
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
+const os = require('os');
 const DatabaseManager = require('./database-manager');
+const EventEmitter = require('events');
 
 /**
  * プロセス状態管理
  * プロセスの実行状態を記録・管理する
  */
-class ProcessStateManager {
+class ProcessStateManager extends EventEmitter {
   constructor(logger) {
+    super();
     this.logger = logger;
     this.stateFile = path.join(__dirname, '../logs/process-state.json');
     this.states = this.loadStates();
     this.metricsInterval = null;
+    this.cpuUsageCache = {}; // PIDごとのCPU使用量キャッシュ
+    this.lastCpuMeasurement = {}; // 前回のCPU測定値
     
     // データベースマネージャーを初期化
     try {
@@ -60,7 +68,7 @@ class ProcessStateManager {
    * プロセス開始を記録
    */
   recordProcessStart(processId, issueNumber, type = 'claude-cli', title = null) {
-    this.states[processId] = {
+    const processInfo = {
       processId,
       pid: process.pid,
       type,
@@ -77,7 +85,11 @@ class ProcessStateManager {
       lastUpdateTime: new Date().toISOString()
     };
     
+    this.states[processId] = processInfo;
     this.saveStates();
+    
+    // イベントを発行
+    this.emit('process-added', processInfo);
     
     // データベースに記録
     if (this.db) {
@@ -117,6 +129,9 @@ class ProcessStateManager {
       
       this.saveStates();
       
+      // イベントを発行
+      this.emit('process-removed', processId);
+      
       // データベースに記録
       if (this.db) {
         try {
@@ -149,6 +164,9 @@ class ProcessStateManager {
       this.states[processId].lastOutput = output.slice(-500);
       this.states[processId].lastUpdateTime = new Date().toISOString();
       this.saveStates();
+      
+      // イベントを発行（プロセス更新）
+      this.emit('process-updated', this.states[processId]);
     }
   }
 
@@ -163,6 +181,9 @@ class ProcessStateManager {
       };
       this.states[processId].lastUpdateTime = new Date().toISOString();
       this.saveStates();
+      
+      // イベントを発行（プロセス更新）
+      this.emit('process-updated', this.states[processId]);
     }
   }
 
@@ -228,35 +249,48 @@ class ProcessStateManager {
   }
 
   /**
-   * システムメトリクスを収集（簡易版）
+   * システムメトリクスを収集（CPU使用率を含む）
    */
   async collectMetrics() {
     const runningProcesses = this.getRunningProcesses();
     
     for (const process of runningProcesses) {
-      // 経過時間を更新
-      const startTime = new Date(process.startTime);
-      const now = new Date();
-      const elapsedTime = Math.floor((now - startTime) / 1000);
-      
-      // プロセスメモリ使用量を取得（簡易版）
-      const memoryUsage = process.pid ? this.getProcessMemoryUsage(process.pid) : 0;
-      
-      const metrics = {
-        elapsedTime,
-        cpuUsage: 0, // CPU使用量は将来的に実装
-        memoryUsage
-      };
-      
-      this.updateProcessMetrics(process.processId, metrics);
-      
-      // データベースにメトリクスを記録
-      if (this.db && memoryUsage > 0) {
-        try {
-          this.db.recordMetric(process.processId, 'memory_usage', memoryUsage);
-        } catch (error) {
-          // エラーは無視（ログが大量になるのを防ぐ）
+      try {
+        // 経過時間を更新
+        const startTime = new Date(process.startTime);
+        const now = new Date();
+        const elapsedTime = Math.floor((now - startTime) / 1000);
+        
+        // プロセスメモリ使用量を取得
+        const memoryUsage = process.pid ? this.getProcessMemoryUsage(process.pid) : 0;
+        
+        // CPU使用率を取得（非同期）
+        const cpuUsage = process.pid ? await this.getProcessCpuUsage(process.pid) : 0;
+        
+        const metrics = {
+          elapsedTime,
+          cpuUsage,
+          memoryUsage
+        };
+        
+        this.updateProcessMetrics(process.processId, metrics);
+        
+        // データベースにメトリクスを記録
+        if (this.db) {
+          try {
+            if (memoryUsage > 0) {
+              this.db.recordMetric(process.processId, 'memory_usage', memoryUsage);
+            }
+            if (cpuUsage > 0) {
+              this.db.recordMetric(process.processId, 'cpu_usage', cpuUsage);
+            }
+          } catch (error) {
+            // エラーは無視（ログが大量になるのを防ぐ）
+          }
         }
+      } catch (error) {
+        // 個別のプロセスでエラーが発生しても続行
+        this.logger?.debug(`プロセス ${process.processId} のメトリクス収集エラー:`, error);
       }
     }
   }
@@ -275,6 +309,120 @@ class ProcessStateManager {
     } catch (error) {
       return 0;
     }
+  }
+
+  /**
+   * プロセスのCPU使用率を取得
+   * @param {number} pid - プロセスID
+   * @returns {Promise<number>} CPU使用率（%）
+   */
+  async getProcessCpuUsage(pid) {
+    try {
+      // 現在のプロセスの場合
+      if (pid === process.pid) {
+        return await this.getNodeProcessCpuUsage();
+      }
+
+      // 外部プロセスの場合
+      const platform = os.platform();
+      
+      if (platform === 'darwin' || platform === 'linux') {
+        // macOS/Linux: psコマンドを使用
+        const { stdout } = await execAsync(`ps -p ${pid} -o %cpu`);
+        const lines = stdout.trim().split('\n');
+        if (lines.length >= 2) {
+          const cpuUsage = parseFloat(lines[1].trim());
+          return isNaN(cpuUsage) ? 0 : cpuUsage;
+        }
+      } else if (platform === 'win32') {
+        // Windows: wmicコマンドを使用
+        try {
+          const { stdout } = await execAsync(
+            `wmic process where ProcessId=${pid} get PercentProcessorTime /format:value`
+          );
+          const match = stdout.match(/PercentProcessorTime=(\d+)/);
+          if (match) {
+            // Windowsの値は100倍されているので調整
+            return parseInt(match[1]) / 100;
+          }
+        } catch (e) {
+          // PowerShellを試す
+          const { stdout } = await execAsync(
+            `powershell "Get-Process -Id ${pid} | Select-Object -ExpandProperty CPU"`
+          );
+          const cpuTime = parseFloat(stdout.trim());
+          // CPU時間から使用率を推定（簡易的）
+          return Math.min(cpuTime / 10, 100);
+        }
+      }
+      
+      return 0;
+    } catch (error) {
+      // プロセスが存在しない場合など
+      return 0;
+    }
+  }
+
+  /**
+   * Node.jsプロセスのCPU使用率を取得
+   * @returns {Promise<number>} CPU使用率（%）
+   */
+  async getNodeProcessCpuUsage() {
+    const pid = process.pid;
+    const now = Date.now();
+    
+    // 初回測定の場合
+    if (!this.lastCpuMeasurement[pid]) {
+      const cpuUsage = process.cpuUsage();
+      this.lastCpuMeasurement[pid] = {
+        time: now,
+        usage: cpuUsage
+      };
+      // 初回は0を返す（比較対象がないため）
+      return 0;
+    }
+    
+    // 2回目以降の測定
+    const previousMeasurement = this.lastCpuMeasurement[pid];
+    const currentCpuUsage = process.cpuUsage(previousMeasurement.usage);
+    const elapsedTime = now - previousMeasurement.time;
+    
+    // CPU使用率を計算（マイクロ秒をミリ秒に変換）
+    const totalCpuTime = (currentCpuUsage.user + currentCpuUsage.system) / 1000;
+    const cpuPercent = (totalCpuTime / elapsedTime) * 100;
+    
+    // 測定値を更新
+    this.lastCpuMeasurement[pid] = {
+      time: now,
+      usage: process.cpuUsage()
+    };
+    
+    // CPUコア数で正規化（マルチコアの場合100%を超える可能性があるため）
+    const numCpus = os.cpus().length;
+    return Math.min(Math.round(cpuPercent * 10) / 10, numCpus * 100);
+  }
+
+  /**
+   * プロセスの統計情報を取得（getProcessStatsメソッドの実装）
+   * @param {string} processId - プロセスID
+   * @returns {Promise<Object>} プロセス統計情報
+   */
+  async getProcessStats(processId) {
+    const process = this.getProcess(processId);
+    if (!process) {
+      return null;
+    }
+
+    // 最新のCPU使用率を取得
+    const cpuUsage = process.pid ? await this.getProcessCpuUsage(process.pid) : 0;
+    
+    return {
+      ...process,
+      metrics: {
+        ...process.metrics,
+        cpuUsage
+      }
+    };
   }
 
   /**

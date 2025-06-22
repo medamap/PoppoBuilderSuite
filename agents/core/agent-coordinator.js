@@ -4,6 +4,10 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Logger = require('../../src/logger');
 const { spawn } = require('child_process');
+const AutoScaler = require('./auto-scaler');
+const MetricsCollector = require('./metrics-collector');
+const LoadBalancer = require('./load-balancer');
+const LifecycleManager = require('../shared/lifecycle-manager');
 
 /**
  * エージェントコーディネーター
@@ -24,6 +28,12 @@ class AgentCoordinator extends EventEmitter {
     this.activeTasks = new Map();
     this.taskQueue = [];
     
+    // 動的スケーリングコンポーネント
+    this.metricsCollector = new MetricsCollector(this.logger, config.metrics);
+    this.autoScaler = new AutoScaler(this.logger, config.scaling);
+    this.loadBalancer = new LoadBalancer(this.logger, config.loadBalancer);
+    this.lifecycleManager = new LifecycleManager(this.logger, config.lifecycle);
+    
     // メッセージディレクトリ
     this.messageDir = path.join(__dirname, '../../messages/core');
     this.inboxDir = path.join(this.messageDir, 'inbox');
@@ -38,12 +48,37 @@ class AgentCoordinator extends EventEmitter {
       CCPM: {
         script: path.join(__dirname, '../ccpm/index.js'),
         capabilities: ['code-review', 'refactoring-suggestion', 'security-audit'],
-        maxConcurrentTasks: 3
+        maxConcurrentTasks: 3,
+        minInstances: 1,
+        maxInstances: 5
       },
       CCAG: {
         script: path.join(__dirname, '../ccag/index.js'),
         capabilities: ['generate-docs', 'create-comment', 'update-readme', 'translate-docs'],
-        maxConcurrentTasks: 5
+        maxConcurrentTasks: 5,
+        minInstances: 1,
+        maxInstances: 8
+      },
+      CCQA: {
+        script: path.join(__dirname, '../ccqa/index.js'),
+        capabilities: ['quality-assurance', 'test-execution', 'security-scan', 'performance-analysis'],
+        maxConcurrentTasks: 2,
+        minInstances: 1,
+        maxInstances: 3
+      },
+      CCRA: {
+        script: path.join(__dirname, '../ccra/index.js'),
+        capabilities: ['pr-review', 'code-quality-check', 'security-audit', 'review-comment'],
+        maxConcurrentTasks: 4,
+        minInstances: 1,
+        maxInstances: 5
+      },
+      CCTA: {
+        script: path.join(__dirname, '../ccta/index.js'),
+        capabilities: ['test-execution', 'coverage-report', 'performance-test', 'test-analysis'],
+        maxConcurrentTasks: 2,
+        minInstances: 1,
+        maxInstances: 3
       }
     };
     
@@ -65,6 +100,9 @@ class AgentCoordinator extends EventEmitter {
     // メッセージディレクトリの確認
     await this.ensureDirectories();
     
+    // 動的スケーリングコンポーネントの初期化
+    this.initializeDynamicScaling();
+    
     // エージェントの起動
     await this.startAgents();
     
@@ -72,6 +110,31 @@ class AgentCoordinator extends EventEmitter {
     this.startPolling();
     
     this.logger.info('エージェントコーディネーターの初期化完了');
+  }
+  
+  /**
+   * 動的スケーリングコンポーネントの初期化
+   */
+  initializeDynamicScaling() {
+    // MetricsCollectorの開始
+    this.metricsCollector.start();
+    
+    // AutoScalerの設定
+    this.autoScaler.setMetricsCollector(this.metricsCollector);
+    this.autoScaler.on('scale-up', this.handleScaleUp.bind(this));
+    this.autoScaler.on('scale-down', this.handleScaleDown.bind(this));
+    this.autoScaler.start();
+    
+    // LoadBalancerの開始
+    this.loadBalancer.start();
+    
+    // LifecycleManagerの開始
+    this.lifecycleManager.on('agent-spawned', this.handleAgentSpawned.bind(this));
+    this.lifecycleManager.on('agent-exit', this.handleAgentExit.bind(this));
+    this.lifecycleManager.on('agent-failed', this.handleAgentFailed.bind(this));
+    this.lifecycleManager.start();
+    
+    this.logger.info('動的スケーリングコンポーネントを初期化しました');
   }
   
   /**
@@ -86,11 +149,23 @@ class AgentCoordinator extends EventEmitter {
    * エージェントの起動
    */
   async startAgents() {
-    for (const [agentName, config] of Object.entries(this.agentConfigs)) {
-      try {
-        await this.startAgent(agentName, config);
-      } catch (error) {
-        this.logger.error(`エージェント ${agentName} の起動に失敗: ${error.message}`);
+    for (const [agentType, config] of Object.entries(this.agentConfigs)) {
+      // 最小インスタンス数だけ起動
+      for (let i = 0; i < config.minInstances; i++) {
+        const agentId = `${agentType}-${Date.now()}-${i}`;
+        try {
+          await this.lifecycleManager.spawnAgent(agentId, {
+            type: agentType,
+            ...config
+          });
+          this.loadBalancer.registerAgent(agentId, {
+            type: agentType,
+            capabilities: config.capabilities,
+            maxConcurrent: config.maxConcurrentTasks
+          });
+        } catch (error) {
+          this.logger.error(`エージェント ${agentId} の起動に失敗: ${error.message}`);
+        }
       }
     }
   }
@@ -152,6 +227,7 @@ class AgentCoordinator extends EventEmitter {
       await this.checkMessages();
       await this.processTaskQueue();
       await this.checkAgentHealth();
+      await this.updateMetrics();
     }, this.pollingInterval);
     
     // 即座に最初のチェック
@@ -330,10 +406,10 @@ class AgentCoordinator extends EventEmitter {
    * タスクの割り当て
    */
   async assignTask(taskId, taskType, context, payload) {
-    // 適切なエージェントを選択
-    const agent = this.selectAgent(taskType);
+    // LoadBalancerを使用してエージェントを選択
+    const agentId = await this.loadBalancer.selectAgent({ type: taskType }, context.sessionId);
     
-    if (!agent) {
+    if (!agentId) {
       throw new Error(`タスクタイプ ${taskType} に対応するエージェントが見つかりません`);
     }
     
@@ -343,19 +419,22 @@ class AgentCoordinator extends EventEmitter {
       context,
       payload,
       status: 'pending',
-      assignedTo: agent.name,
+      assignedTo: agentId,
       createdAt: new Date()
     };
     
     this.activeTasks.set(taskId, task);
     this.stats.tasksAssigned++;
     
+    // LoadBalancerの負荷を増加
+    this.loadBalancer.incrementLoad(agentId);
+    
     // タスク割り当てメッセージを送信
-    await this.sendMessage(agent.name, {
+    await this.sendMessage(agentId, {
       type: 'TASK_ASSIGNMENT',
       taskId,
       issueNumber: context.issueNumber,
-      assignedTo: agent.name,
+      assignedTo: agentId,
       priority: context.priority || 'normal',
       taskType,
       deadline: new Date(Date.now() + 3600000).toISOString(), // 1時間後
@@ -363,7 +442,7 @@ class AgentCoordinator extends EventEmitter {
       payload
     });
     
-    this.logger.info(`タスク ${taskId} を ${agent.name} に割り当てました`);
+    this.logger.info(`タスク ${taskId} を ${agentId} に割り当てました`);
     
     return task;
   }
@@ -496,6 +575,152 @@ class AgentCoordinator extends EventEmitter {
   }
   
   /**
+   * メトリクスの更新
+   */
+  async updateMetrics() {
+    // タスクキューのメトリクス更新
+    this.metricsCollector.updateTaskQueueMetrics({
+      size: this.taskQueue.length,
+      pending: this.taskQueue.length,
+      processing: this.activeTasks.size,
+      completed: this.stats.tasksCompleted,
+      failed: this.stats.tasksFailed
+    });
+    
+    // エージェントメトリクスの更新
+    for (const [agentId, agentInfo] of this.agents.entries()) {
+      this.metricsCollector.updateAgentMetrics(agentId, {
+        status: agentInfo.status,
+        tasksProcessed: agentInfo.metrics?.tasksProcessed || 0,
+        errors: agentInfo.metrics?.errors || 0,
+        uptime: Date.now() - agentInfo.lastHeartbeat,
+        lastActivity: agentInfo.lastHeartbeat
+      });
+    }
+  }
+  
+  /**
+   * スケールアップハンドラー
+   */
+  async handleScaleUp(event) {
+    const { increment, total, reason } = event;
+    this.logger.info(`スケールアップ: ${increment} エージェント追加 (合計: ${total}), 理由: ${reason}`);
+    
+    // 各タイプのエージェントを比例的に増加
+    for (const [agentType, config] of Object.entries(this.agentConfigs)) {
+      const currentCount = Array.from(this.agents.values())
+        .filter(a => a.type === agentType).length;
+      const maxAllowed = config.maxInstances - currentCount;
+      const toAdd = Math.min(Math.ceil(increment / 3), maxAllowed);
+      
+      for (let i = 0; i < toAdd; i++) {
+        const agentId = `${agentType}-${Date.now()}-${i}`;
+        try {
+          await this.lifecycleManager.spawnAgent(agentId, {
+            type: agentType,
+            ...config
+          });
+        } catch (error) {
+          this.logger.error(`エージェント ${agentId} のスケールアップ失敗: ${error.message}`);
+        }
+      }
+    }
+  }
+  
+  /**
+   * スケールダウンハンドラー
+   */
+  async handleScaleDown(event) {
+    const { decrement, total, reason } = event;
+    this.logger.info(`スケールダウン: ${decrement} エージェント削減 (合計: ${total}), 理由: ${reason}`);
+    
+    // 各タイプのエージェントを比例的に削減
+    const agentsByType = new Map();
+    for (const [agentId, agentInfo] of this.agents.entries()) {
+      const type = agentInfo.type;
+      if (!agentsByType.has(type)) {
+        agentsByType.set(type, []);
+      }
+      agentsByType.get(type).push(agentId);
+    }
+    
+    for (const [agentType, agentIds] of agentsByType.entries()) {
+      const config = this.agentConfigs[agentType];
+      const currentCount = agentIds.length;
+      const minRequired = config.minInstances;
+      const toRemove = Math.min(Math.ceil(decrement / 3), currentCount - minRequired);
+      
+      for (let i = 0; i < toRemove; i++) {
+        const agentId = agentIds[i];
+        try {
+          await this.lifecycleManager.terminateAgent(agentId, false);
+          this.loadBalancer.unregisterAgent(agentId);
+        } catch (error) {
+          this.logger.error(`エージェント ${agentId} のスケールダウン失敗: ${error.message}`);
+        }
+      }
+    }
+  }
+  
+  /**
+   * エージェント生成ハンドラー
+   */
+  handleAgentSpawned(event) {
+    const { agentId, pid } = event;
+    const agentInfo = this.lifecycleManager.getAgentStatus(agentId);
+    
+    if (agentInfo) {
+      this.agents.set(agentId, {
+        id: agentId,
+        type: agentInfo.type,
+        status: 'initializing',
+        pid,
+        activeTasks: 0,
+        lastHeartbeat: new Date()
+      });
+      
+      this.loadBalancer.registerAgent(agentId, {
+        type: agentInfo.type,
+        capabilities: this.agentConfigs[agentInfo.type]?.capabilities || [],
+        maxConcurrent: this.agentConfigs[agentInfo.type]?.maxConcurrentTasks || 5
+      });
+    }
+  }
+  
+  /**
+   * エージェント終了ハンドラー
+   */
+  handleAgentExit(event) {
+    const { agentId, code, signal } = event;
+    
+    this.agents.delete(agentId);
+    this.loadBalancer.unregisterAgent(agentId);
+    
+    // 割り当て済みタスクを再配置
+    for (const [taskId, task] of this.activeTasks.entries()) {
+      if (task.assignedTo === agentId) {
+        this.logger.warn(`エージェント ${agentId} の終了により、タスク ${taskId} を再配置します`);
+        this.taskQueue.push(task);
+        this.activeTasks.delete(taskId);
+      }
+    }
+  }
+  
+  /**
+   * エージェント失敗ハンドラー
+   */
+  handleAgentFailed(event) {
+    const { agentId, error } = event;
+    this.logger.error(`エージェント ${agentId} が失敗しました: ${error?.message || 'Unknown error'}`);
+    
+    // メトリクスにエラーを記録
+    this.metricsCollector.recordError(new Error(`Agent failed: ${agentId}`), {
+      agentId,
+      severity: 'critical'
+    });
+  }
+  
+  /**
    * シャットダウン
    */
   async shutdown() {
@@ -506,7 +731,16 @@ class AgentCoordinator extends EventEmitter {
       clearInterval(this.pollingTimer);
     }
     
+    // 動的スケーリングコンポーネントを停止
+    this.metricsCollector.stop();
+    this.autoScaler.stop();
+    this.loadBalancer.stop();
+    this.lifecycleManager.stop();
+    
     // すべてのエージェントを停止
+    await this.lifecycleManager.terminateAllAgents(false);
+    
+    // すべてのエージェントを停止（レガシー）
     for (const [agentName, process] of this.agentProcesses.entries()) {
       this.logger.info(`エージェント ${agentName} を停止中...`);
       process.kill('SIGINT');

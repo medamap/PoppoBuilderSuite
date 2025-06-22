@@ -1,771 +1,679 @@
 /**
- * CCSP (Claude Code Specialized Processor) Agent - Phase 4 Complete Implementation
+ * CCSPエージェント（パイちゃん） - Claude Code呼び出し専任エージェント
  * 
- * Issue #142: CCSPの高度な制御機能とモニタリング実装
- * 完全なClaude API使用管理とモニタリング機能を提供
+ * PoppoBuilderファミリー全体のClaude Code呼び出しを一元管理
  */
 
-const EventEmitter = require('events');
-const Logger = require('../../src/logger');
+const Redis = require('ioredis');
+const ClaudeExecutor = require('./claude-executor');
+const QueueManager = require('./queue-manager');
 const AdvancedQueueManager = require('./advanced-queue-manager');
 const UsageMonitor = require('./usage-monitor');
-const CCSPManagementAPI = require('./management-api');
+const RateLimiter = require('./rate-limiter');
+const MetricsCollector = require('./metrics-collector');
+const HealthMonitor = require('./health-monitor');
+const InstanceCoordinator = require('./instance-coordinator');
+const SessionMonitor = require('./session-monitor');
+const NotificationHandler = require('./notification-handler');
 const EmergencyStop = require('./emergency-stop');
 const PrometheusExporter = require('./prometheus-exporter');
-const ClaudeExecutor = require('./claude-executor');
-const NotificationHandler = require('./notification-handler');
-const Redis = require('redis');
-const crypto = require('crypto');
+const winston = require('winston');
+const path = require('path');
+const fs = require('fs');
 
-class CCSPAgent extends EventEmitter {
-  constructor(options = {}) {
-    super();
-    
-    this.logger = new Logger('CCSPAgent');
+// ロガー設定
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.File({ 
+      filename: path.join(__dirname, '../../logs/ccsp.log')
+    })
+  ]
+});
+
+class CCSPAgent {
+  constructor(config = {}) {
     this.config = {
-      port: options.port || 3003,
-      redisHost: options.redisHost || 'localhost',
-      redisPort: options.redisPort || 6379,
-      maxConcurrentRequests: options.maxConcurrentRequests || 5,
-      throttleDelay: options.throttleDelay || 1000,
-      enableMetrics: options.enableMetrics !== false,
-      enableDashboard: options.enableDashboard !== false,
-      autoOptimization: options.autoOptimization !== false,
-      ...options
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: process.env.REDIS_PORT || 6379
+      },
+      maxConcurrent: 2,
+      requestQueue: 'ccsp:requests',
+      ...config
     };
     
-    // 内部状態
+    this.logger = logger;
+    this.redis = new Redis(this.config.redis);
+    this.claudeExecutor = new ClaudeExecutor(logger);
+    this.queueManager = new QueueManager(this.redis, logger);
+    this.advancedQueueManager = new AdvancedQueueManager({
+      maxQueueSize: this.config.maxQueueSize || 10000,
+      schedulerInterval: this.config.schedulerInterval || 5000
+    });
+    this.usageMonitor = new UsageMonitor({
+      windowSize: this.config.windowSize || 3600000,
+      alertThreshold: this.config.alertThreshold || 0.8
+    });
+    this.rateLimiter = new RateLimiter(logger);
+    this.metricsCollector = new MetricsCollector(logger);
+    this.healthMonitor = new HealthMonitor(this.redis, logger);
+    this.instanceCoordinator = new InstanceCoordinator(this.redis, logger);
+    this.sessionMonitor = new SessionMonitor(this.redis, logger);
+    this.notificationHandler = new NotificationHandler(this.redis, logger);
+    this.emergencyStop = new EmergencyStop(logger, this.notificationHandler);
+    
     this.isRunning = false;
     this.activeRequests = new Map();
-    this.throttleConfig = {
-      enabled: false,
-      delay: this.config.throttleDelay,
-      mode: 'fixed' // 'fixed', 'adaptive', 'exponential'
-    };
     
-    this.agentPriorities = new Map();
-    this.sessionState = {
-      isValid: true,
-      lastCheck: Date.now(),
-      timeoutWarnings: 0
-    };
+    // Prometheusエクスポーター
+    this.prometheusExporter = new PrometheusExporter(
+      this.metricsCollector,
+      this.queueManager,
+      this.rateLimiter,
+      this.healthMonitor
+    );
     
-    // コアコンポーネントの初期化
-    this.initializeComponents();
+    // エラーハンドラーの設定
+    this.setupErrorHandlers();
+  }
+  
+  setupErrorHandlers() {
+    // Redisエラーハンドラー
+    this.redis.on('error', (error) => {
+      this.logger.error('Redis connection error:', error);
+      // 再接続は ioredis が自動的に行う
+    });
     
-    this.logger.info('CCSP Agent Phase 4 initialized', {
-      version: '4.0.0',
-      maxConcurrent: this.config.maxConcurrentRequests,
-      enableMetrics: this.config.enableMetrics,
-      enableDashboard: this.config.enableDashboard
+    this.redis.on('close', () => {
+      this.logger.warn('Redis connection closed');
+    });
+    
+    this.redis.on('reconnecting', () => {
+      this.logger.info('Redis reconnecting...');
+    });
+    
+    // プロセスエラーハンドラー
+    process.on('uncaughtException', async (error) => {
+      this.logger.error('Uncaught exception:', error);
+      await this.emergencyShutdown();
+    });
+    
+    process.on('unhandledRejection', async (reason, promise) => {
+      this.logger.error('Unhandled rejection at:', promise, 'reason:', reason);
+      // 継続可能なのでシャットダウンはしない
     });
   }
   
-  /**
-   * コンポーネントの初期化
-   */
-  async initializeComponents() {
-    try {
-      // Redis接続
-      this.redis = Redis.createClient({
-        host: this.config.redisHost,
-        port: this.config.redisPort,
-        retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 3
-      });
-      
-      await this.redis.connect();
-      this.logger.info('Redis connection established');
-      
-      // キューマネージャー
-      this.queueManager = new AdvancedQueueManager({
-        maxQueueSize: this.config.maxQueueSize || 10000,
-        schedulerInterval: 5000
-      });
-      
-      // 使用量モニター
-      this.usageMonitor = new UsageMonitor({
-        windowSize: 3600000, // 1時間
-        alertThreshold: 0.8,
-        predictionWindow: 1800000 // 30分
-      });
-      
-      // Claude実行エンジン
-      this.claudeExecutor = new ClaudeExecutor({
-        maxRetries: 3,
-        retryDelay: 5000
-      });
-      
-      // 通知ハンドラー
-      this.notificationHandler = new NotificationHandler({
-        enableGitHub: true,
-        enableSlack: false
-      });
-      
-      // 緊急停止機能
-      this.emergencyStop = new EmergencyStop(
-        this.logger,
-        this.notificationHandler
-      );
-      
-      // Prometheusメトリクス（オプション）
-      if (this.config.enableMetrics) {
-        this.prometheusExporter = new PrometheusExporter();
-      }
-      
-      // 管理API
-      if (this.config.enableDashboard) {
-        this.managementAPI = new CCSPManagementAPI(this, {
-          rateLimit: 100
+  async emergencyShutdown() {
+    this.logger.error('Emergency shutdown initiated');
+    
+    // アクティブなリクエストにエラーレスポンスを送信
+    for (const [requestId, request] of this.activeRequests) {
+      try {
+        await this.queueManager.sendResponse(request.fromAgent, {
+          requestId,
+          success: false,
+          error: 'Agent emergency shutdown',
+          timestamp: new Date().toISOString()
         });
+      } catch (e) {
+        // エラーは無視
       }
-      
-      // イベントリスナーの設定
-      this.setupEventListeners();
-      
-      this.logger.info('All CCSP components initialized successfully');
-      
+    }
+    
+    await this.stop();
+    process.exit(1);
+  }
+  
+  async start() {
+    this.logger.info('CCSPエージェント（パイちゃん）を起動しています...');
+    
+    // Redisの接続確認
+    try {
+      await this.redis.ping();
+      this.logger.info('Redis接続成功');
     } catch (error) {
-      this.logger.error('Failed to initialize CCSP components', error);
+      this.logger.error('Redis接続失敗:', error);
       throw error;
     }
+    
+    // 緊急停止状態をリセット（再起動時）
+    this.emergencyStop.reset();
+    this.logger.info('緊急停止状態をリセットしました');
+    
+    this.isRunning = true;
+    
+    // セッション監視を初期化
+    await this.sessionMonitor.initialize();
+    
+    // セッションイベントのリスナー設定
+    this.sessionMonitor.on('session-timeout', async (event) => {
+      this.logger.error('[CCSP] Session timeout event received');
+      // キューのブロックは各ワーカーで処理
+    });
+    
+    this.sessionMonitor.on('session-restored', async (event) => {
+      this.logger.info('[CCSP] Session restored event received');
+      // キューの再開は各ワーカーで処理
+    });
+    
+    // 通知ハンドラーを開始
+    this.notificationHandler.startProcessing();
+    
+    // ヘルスモニタリングを開始
+    this.healthMonitor.start();
+    
+    // 定期的な負荷情報の更新とクリーンアップ
+    this.maintenanceInterval = setInterval(async () => {
+      // 負荷情報を更新
+      await this.instanceCoordinator.updateLoad(this.activeRequests.size);
+      
+      // 古い要求をクリーンアップ（1時間ごと）
+      if (Date.now() % 3600000 < 30000) {
+        await this.instanceCoordinator.cleanupOldClaims();
+      }
+    }, 30000); // 30秒ごと
+    
+    // Prometheusメトリクスエクスポーターを開始
+    const prometheusPort = process.env.CCSP_PROMETHEUS_PORT || 9100;
+    this.prometheusExporter.start(prometheusPort);
+    this.logger.info(`Prometheus metrics available at port ${prometheusPort}`);
+    
+    // メインループを開始
+    this.processLoop();
+    
+    this.logger.info('CCSPエージェント起動完了');
   }
   
-  /**
-   * イベントリスナーの設定
-   */
-  setupEventListeners() {
-    // キューイベント
-    this.queueManager.on('taskEnqueued', (task) => {
-      this.emit('queueUpdated', this.queueManager.getStatus());
-      if (this.prometheusExporter) {
-        this.prometheusExporter.incrementQueueSize(task.priority);
-      }
-    });
-    
-    this.queueManager.on('taskDequeued', (task) => {
-      this.emit('queueUpdated', this.queueManager.getStatus());
-      if (this.prometheusExporter) {
-        this.prometheusExporter.decrementQueueSize(task.priority);
-      }
-    });
-    
-    // 使用量監視イベント
-    this.usageMonitor.on('usageAlert', (alert) => {
-      this.handleUsageAlert(alert);
-    });
-    
-    this.usageMonitor.on('usageRecorded', (usage) => {
-      this.emit('usageUpdated', usage);
-      if (this.prometheusExporter) {
-        this.prometheusExporter.recordAPIUsage(usage);
-      }
-    });
-    
-    // 緊急停止イベント
-    this.on('emergencyStop', (reason) => {
-      this.logger.error('Emergency stop triggered', { reason });
-      this.emergencyStop.initiateEmergencyStop(reason);
-    });
-  }
-  
-  /**
-   * CCSPエージェントの開始
-   */
-  async start() {
-    if (this.isRunning) {
-      this.logger.warn('CCSP Agent is already running');
-      return;
+  async processLoop() {
+    // ワーカープロセスを起動（同時実行数分）
+    const workers = [];
+    for (let i = 0; i < this.config.maxConcurrent; i++) {
+      workers.push(this.worker(i));
     }
+    
+    // 全ワーカーの完了を待つ
+    await Promise.all(workers);
+  }
+  
+  async worker(workerId) {
+    this.logger.info(`Worker ${workerId} started`);
+    
+    while (this.isRunning) {
+      try {
+        // セッションブロックチェック
+        if (this.sessionMonitor.isBlocked()) {
+          // セッションがブロックされている場合は待機
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
+        }
+        
+        // レート制限チェック
+        if (this.rateLimiter.isRateLimited()) {
+          const waitTime = this.rateLimiter.getWaitTime();
+          this.logger.info(`[Worker ${workerId}] レート制限中。${Math.round(waitTime / 1000)}秒待機`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        
+        // ブロッキングモードでリクエストを取得（CPU使用率削減）
+        const request = await this.queueManager.getNextRequestBlocking(1);
+        if (!request) {
+          // タイムアウト（リクエストなし）
+          continue;
+        }
+        
+        // 複数インスタンス対応：リクエストを要求
+        const claimed = await this.instanceCoordinator.claimRequest(request.requestId);
+        if (!claimed) {
+          // 他のインスタンスが処理中
+          this.logger.debug(`[Worker ${workerId}] Request ${request.requestId} claimed by another instance`);
+          continue;
+        }
+        
+        // リクエストを処理
+        this.logger.info(`[Worker ${workerId}] Processing request: ${request.requestId}`);
+        await this.processRequest(request);
+        
+      } catch (error) {
+        this.logger.error(`[Worker ${workerId}] Error:`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    this.logger.info(`Worker ${workerId} stopped`);
+  }
+  
+  async processRequest(request) {
+    const { requestId, fromAgent } = request;
+    
+    this.logger.info(`リクエスト処理開始: ${requestId} from ${fromAgent}`);
+    this.activeRequests.set(requestId, request);
+    
+    // メトリクス記録開始
+    this.metricsCollector.recordRequestStart(request);
+    const startTime = Date.now();
     
     try {
-      this.isRunning = true;
+      // Claude Codeを実行
+      const result = request.continueExecution 
+        ? await this.claudeExecutor.continueExecution(request)
+        : await this.claudeExecutor.execute(request);
       
-      // リクエスト処理ループの開始
-      this.startRequestProcessing();
+      // 実行時間を計算
+      const executionTime = Date.now() - startTime;
       
-      // 自動最適化機能（オプション）
-      if (this.config.autoOptimization) {
-        this.startAutoOptimization();
+      // エラーメッセージをEmergencyStopでチェック
+      if (!result.success && result.error) {
+        const shouldStop = this.emergencyStop.checkError(result.error);
+        if (shouldStop) {
+          // 緊急停止が発動されているので、ここで処理を終了
+          this.logger.error(`[CCSP] Emergency stop triggered for request ${requestId}`);
+          return; // emergencyStop.initiateEmergencyStop()内でプロセスが停止される
+        }
       }
       
-      // セッション監視
-      this.startSessionMonitoring();
-      
-      this.logger.info('CCSP Agent started successfully', {
-        port: this.config.port,
-        maxConcurrent: this.config.maxConcurrentRequests
-      });
-      
-      this.emit('agentStarted');
-      
-    } catch (error) {
-      this.logger.error('Failed to start CCSP Agent', error);
-      this.isRunning = false;
-      throw error;
-    }
-  }
-  
-  /**
-   * リクエスト処理ループ
-   */
-  async startRequestProcessing() {
-    this.processingInterval = setInterval(async () => {
-      if (!this.isRunning || this.emergencyStop.stopped) {
+      // セッションタイムアウトチェック
+      if (result.sessionTimeout) {
+        this.logger.error(`[CCSP] Session timeout detected for request ${requestId}`);
+        
+        // EmergencyStopでチェック（セッションタイムアウトも緊急停止対象）
+        const errorMessage = result.message || 'SESSION_TIMEOUT';
+        const shouldStop = this.emergencyStop.checkError(errorMessage);
+        if (shouldStop) {
+          return; // 緊急停止
+        }
+        
+        // セッションモニターに通知
+        await this.sessionMonitor.handleSessionTimeout(result);
+        
+        // ブロックされたリクエストとして記録
+        this.sessionMonitor.addBlockedRequest(requestId, request);
+        
+        // エラーレスポンスを送信
+        const timeoutResponse = {
+          requestId,
+          success: false,
+          error: 'SESSION_TIMEOUT',
+          message: 'Claude login session expired. Please check GitHub Issue for instructions.',
+          sessionTimeout: true,
+          timestamp: new Date().toISOString()
+        };
+        
+        await this.queueManager.sendResponse(fromAgent, timeoutResponse);
+        this.metricsCollector.recordRequestComplete(request, timeoutResponse, executionTime);
+        
+        // Prometheusメトリクスを記録（セッションタイムアウト）
+        this.prometheusExporter.recordSessionTimeout();
+        this.prometheusExporter.recordError('session_timeout', 'critical');
+        
         return;
       }
       
-      try {
-        // 同時実行数をチェック
-        if (this.activeRequests.size >= this.config.maxConcurrentRequests) {
-          return;
+      // レート制限情報を更新
+      if (result.rateLimitInfo) {
+        // EmergencyStopでレート制限をチェック
+        const rateLimitMessage = `${result.rateLimitInfo.message}|${Math.floor(result.rateLimitInfo.unlockTime / 1000)}`;
+        const shouldStop = this.emergencyStop.checkError(rateLimitMessage);
+        if (shouldStop) {
+          return; // 緊急停止
         }
         
-        // スロットリングチェック
-        if (this.throttleConfig.enabled) {
-          const shouldThrottle = await this.checkThrottling();
-          if (shouldThrottle) {
-            return;
-          }
-        }
-        
-        // 次のタスクを取得
-        const task = await this.queueManager.dequeue();
-        if (!task) {
-          return;
-        }
-        
-        // タスクを実行
-        this.executeTask(task);
-        
-      } catch (error) {
-        this.logger.error('Error in request processing loop', error);
+        this.rateLimiter.updateRateLimit(result.rateLimitInfo);
+        this.metricsCollector.recordRateLimit(request);
       }
-    }, 1000); // 1秒間隔
-  }
-  
-  /**
-   * タスクの実行
-   */
-  async executeTask(task) {
-    const requestId = task.id;
-    const startTime = Date.now();
-    
-    this.activeRequests.set(requestId, {
-      task,
-      startTime,
-      agent: task.agent || 'unknown'
-    });
-    
-    try {
-      this.logger.info('Executing Claude request', {
+      
+      // レスポンスを送信
+      const response = {
         requestId,
-        agent: task.agent,
-        priority: task.priority
-      });
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        executionTime: result.executionTime || executionTime,
+        timestamp: new Date().toISOString()
+      };
       
-      // Claude APIを実行
-      const result = await this.claudeExecutor.execute(task);
+      await this.queueManager.sendResponse(fromAgent, response);
       
-      const responseTime = Date.now() - startTime;
+      // メトリクス記録完了
+      this.metricsCollector.recordRequestComplete(request, result, executionTime);
       
-      // 使用量を記録
-      this.usageMonitor.recordUsage({
-        agent: task.agent,
-        requestId,
-        success: true,
-        responseTime,
-        rateLimited: false
-      });
+      // Prometheusメトリクスを記録
+      const complexity = request.priority === 'high' ? 'high' : 
+                        request.priority === 'low' ? 'low' : 'normal';
+      const status = result.success ? 'success' : 'failed';
+      this.prometheusExporter.recordTaskCompletion(complexity, executionTime / 1000, status);
       
-      // 結果をRedisに返送
-      await this.sendResponse(task.agent, requestId, {
-        success: true,
-        result,
-        responseTime
-      });
-      
-      this.logger.info('Claude request completed', {
-        requestId,
-        responseTime: `${responseTime}ms`
-      });
+      this.logger.info(`リクエスト処理完了: ${requestId}`);
       
     } catch (error) {
-      const responseTime = Date.now() - startTime;
+      this.logger.error(`リクエスト処理失敗: ${requestId}`, error);
       
-      // エラーパターンの検査
-      const isEmergencyError = this.emergencyStop.checkError(error.message);
+      const executionTime = Date.now() - startTime;
       
-      if (isEmergencyError) {
-        this.logger.error('Emergency error detected, stopping CCSP', {
-          requestId,
-          error: error.message
-        });
-        return; // 緊急停止により処理終了
-      }
-      
-      // 使用量を記録（エラー）
-      this.usageMonitor.recordUsage({
-        agent: task.agent,
+      // エラーレスポンスを送信
+      const errorResponse = {
         requestId,
         success: false,
-        responseTime,
-        rateLimited: error.message.includes('rate limit'),
-        error: error.message
-      });
-      
-      // エラー結果を返送
-      await this.sendResponse(task.agent, requestId, {
-        success: false,
         error: error.message,
-        responseTime
-      });
+        timestamp: new Date().toISOString()
+      };
       
-      this.logger.error('Claude request failed', {
-        requestId,
-        error: error.message,
-        responseTime: `${responseTime}ms`
-      });
+      await this.queueManager.sendResponse(fromAgent, errorResponse);
+      
+      // メトリクス記録（エラー）
+      this.metricsCollector.recordRequestComplete(request, errorResponse, executionTime);
+      
+      // Prometheusメトリクスを記録（エラー）
+      const complexity = request.priority === 'high' ? 'high' : 
+                        request.priority === 'low' ? 'low' : 'normal';
+      this.prometheusExporter.recordTaskCompletion(complexity, executionTime / 1000, 'failed');
+      this.prometheusExporter.recordError('task_execution', 'error');
       
     } finally {
       this.activeRequests.delete(requestId);
+      // リクエストの要求を解放
+      await this.instanceCoordinator.releaseRequest(requestId);
     }
   }
   
+  async stop() {
+    this.logger.info('CCSPエージェントを停止しています...');
+    this.isRunning = false;
+    
+    // アクティブなリクエストの完了を待つ
+    const waitStart = Date.now();
+    while (this.activeRequests.size > 0 && Date.now() - waitStart < 30000) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // タイムアウトしたリクエストの強制終了
+    if (this.activeRequests.size > 0) {
+      this.logger.warn(`Forcing termination of ${this.activeRequests.size} active requests`);
+      for (const [requestId, request] of this.activeRequests) {
+        try {
+          await this.queueManager.sendResponse(request.fromAgent, {
+            requestId,
+            success: false,
+            error: 'Agent shutdown timeout',
+            timestamp: new Date().toISOString()
+          });
+        } catch (e) {
+          // エラーは無視
+        }
+      }
+      this.activeRequests.clear();
+    }
+    
+    // メンテナンスインターバルを停止
+    if (this.maintenanceInterval) {
+      clearInterval(this.maintenanceInterval);
+    }
+    
+    // セッションモニターと通知ハンドラーを停止
+    await this.sessionMonitor.shutdown();
+    this.notificationHandler.stopProcessing();
+    
+    // 各コンポーネントのクリーンアップ
+    await this.claudeExecutor.cleanup();
+    this.metricsCollector.cleanup();
+    await this.healthMonitor.cleanup();
+    
+    // Prometheusエクスポーターを停止
+    this.prometheusExporter.stop();
+    
+    // Redis接続を閉じる
+    await this.redis.quit();
+    
+    this.logger.info('CCSPエージェント停止完了');
+  }
+  
   /**
-   * レスポンスの送信
+   * ヘルスステータスを取得（APIエンドポイント用）
    */
-  async sendResponse(agent, requestId, response) {
-    try {
-      const responseKey = `ccsp:response:${agent}`;
-      await this.redis.lpush(responseKey, JSON.stringify({
-        requestId,
-        ...response,
-        timestamp: new Date().toISOString()
-      }));
-      
-      // TTLを設定（1時間）
-      await this.redis.expire(responseKey, 3600);
-      
-    } catch (error) {
-      this.logger.error('Failed to send response', {
-        agent,
-        requestId,
-        error: error.message
-      });
-    }
+  async getHealthStatus() {
+    return await this.healthMonitor.getHealthSummary(this.metricsCollector);
+  }
+  
+  // ===== Issue #142: 高度な制御機能とモニタリング API =====
+  
+  /**
+   * キュー状態の取得
+   */
+  async getQueueStatus() {
+    return this.advancedQueueManager.getStatus();
   }
   
   /**
-   * 新しいタスクをキューに追加
+   * キューの一時停止
+   */
+  async pauseQueue() {
+    this.advancedQueueManager.pause();
+  }
+  
+  /**
+   * キューの再開
+   */
+  async resumeQueue() {
+    this.advancedQueueManager.resume();
+  }
+  
+  /**
+   * キューのクリア
+   */
+  async clearQueue(priority = 'all') {
+    this.advancedQueueManager.clearQueue(priority);
+  }
+  
+  /**
+   * タスクの削除
+   */
+  async removeTask(taskId) {
+    return await this.advancedQueueManager.removeTask(taskId);
+  }
+  
+  /**
+   * タスクの追加
    */
   async enqueueTask(task, priority = 'normal', executeAt = null) {
-    try {
-      const taskId = await this.queueManager.enqueue(task, priority, executeAt);
-      
-      this.logger.info('Task enqueued successfully', {
-        taskId,
-        priority,
-        agent: task.agent,
-        executeAt
-      });
-      
-      return taskId;
-      
-    } catch (error) {
-      this.logger.error('Failed to enqueue task', error);
-      throw error;
-    }
+    return await this.advancedQueueManager.enqueue(task, priority, executeAt);
   }
   
   /**
-   * 使用量アラートの処理
+   * 使用量統計の取得
    */
-  async handleUsageAlert(alert) {
-    this.logger.warn('Usage alert received', alert);
+  async getUsageStats(minutes = 60) {
+    const currentStats = this.usageMonitor.getCurrentWindowStats();
+    const timeSeriesStats = this.usageMonitor.getTimeSeriesStats(minutes);
+    const prediction = this.usageMonitor.predictUsage();
+    const rateLimitPrediction = this.usageMonitor.predictRateLimit();
     
-    switch (alert.type) {
-      case 'usage_threshold':
-        if (alert.data.usageRatio >= 0.9) {
-          // 90%以上で自動スロットリング
-          await this.setThrottling({
-            enabled: true,
-            delay: 5000,
-            mode: 'adaptive'
-          });
-        }
-        break;
-        
-      case 'rate_limit':
-        // レート制限時は緊急スロットリング
-        await this.setThrottling({
-          enabled: true,
-          delay: 60000, // 1分
-          mode: 'exponential'
-        });
-        break;
-    }
-    
-    this.emit('alert', alert);
+    return {
+      currentWindow: currentStats,
+      timeSeries: timeSeriesStats,
+      prediction,
+      rateLimitPrediction,
+      rateLimitInfo: this.usageMonitor.rateLimitInfo
+    };
+  }
+  
+  /**
+   * エージェント別統計の取得
+   */
+  async getAgentStats(agentName = null) {
+    return this.usageMonitor.getAgentStats(agentName);
+  }
+  
+  /**
+   * エラー統計の取得
+   */
+  async getErrorStats(hours = 24) {
+    // メトリクスコレクターからエラー情報を取得
+    return this.metricsCollector.getErrorStats(hours);
+  }
+  
+  /**
+   * パフォーマンス統計の取得
+   */
+  async getPerformanceStats() {
+    return {
+      queue: this.advancedQueueManager.getStats(),
+      usage: this.usageMonitor.getCurrentWindowStats(),
+      health: await this.getHealthStatus()
+    };
+  }
+  
+  /**
+   * 使用量予測の取得
+   */
+  async getPrediction(minutesAhead = 30) {
+    return this.usageMonitor.predictUsage(minutesAhead);
   }
   
   /**
    * スロットリング設定
    */
-  async setThrottling(config) {
-    this.throttleConfig = {
-      ...this.throttleConfig,
-      ...config,
-      lastThrottleTime: Date.now()
-    };
-    
-    this.logger.info('Throttling configured', this.throttleConfig);
-    return this.throttleConfig;
+  async setThrottling(options) {
+    // RateLimiterでスロットリングを設定
+    return this.rateLimiter.setThrottling(options);
   }
   
   /**
-   * スロットリングチェック
-   */
-  async checkThrottling() {
-    if (!this.throttleConfig.enabled) {
-      return false;
-    }
-    
-    const now = Date.now();
-    const timeSinceLastThrottle = now - (this.throttleConfig.lastThrottleTime || 0);
-    
-    let delay = this.throttleConfig.delay;
-    
-    switch (this.throttleConfig.mode) {
-      case 'adaptive':
-        // 使用率に基づいて遅延を調整
-        const usage = this.usageMonitor.getCurrentWindowStats();
-        const usageRate = usage.requestsPerMinute / 60; // requests/second
-        delay = Math.max(1000, Math.min(10000, 1000 / Math.max(0.1, 10 - usageRate)));
-        break;
-        
-      case 'exponential':
-        // 指数的バックオフ
-        const attempts = this.throttleConfig.attempts || 1;
-        delay = Math.min(300000, this.throttleConfig.delay * Math.pow(2, attempts - 1));
-        break;
-    }
-    
-    return timeSinceLastThrottle < delay;
-  }
-  
-  /**
-   * エージェント優先度の設定
+   * エージェント優先度設定
    */
   async setAgentPriority(agent, priority) {
-    this.agentPriorities.set(agent, priority);
-    this.logger.info('Agent priority set', { agent, priority });
+    // 将来的にエージェント別優先度マッピングを実装
+    // 現在は基本実装
+    this.logger.info(`Agent priority set: ${agent} -> ${priority}`);
+    return { agent, priority, timestamp: new Date().toISOString() };
   }
   
   /**
-   * セッション監視の開始
+   * 設定の取得
    */
-  startSessionMonitoring() {
-    this.sessionMonitorInterval = setInterval(async () => {
-      try {
-        const isValid = await this.checkSessionValidity();
-        if (!isValid) {
-          this.sessionState.timeoutWarnings++;
-          
-          if (this.sessionState.timeoutWarnings >= 3) {
-            this.emit('emergencyStop', 'Session timeout detected');
-          }
-        } else {
-          this.sessionState.timeoutWarnings = 0;
-        }
-      } catch (error) {
-        this.logger.error('Session monitoring error', error);
-      }
-    }, 300000); // 5分間隔
-  }
-  
-  /**
-   * セッション有効性チェック
-   */
-  async checkSessionValidity() {
-    try {
-      // 簡単なClaude CLI コマンドを実行してセッションを確認
-      const result = await this.claudeExecutor.execute({
-        prompt: 'Hi',
-        timeout: 30000
-      });
-      
-      this.sessionState.isValid = !result.error;
-      this.sessionState.lastCheck = Date.now();
-      
-      return this.sessionState.isValid;
-      
-    } catch (error) {
-      this.sessionState.isValid = false;
-      return false;
-    }
-  }
-  
-  /**
-   * 自動最適化の開始
-   */
-  startAutoOptimization() {
-    this.optimizationInterval = setInterval(() => {
-      this.performAutoOptimization();
-    }, 300000); // 5分間隔
-  }
-  
-  /**
-   * 自動最適化の実行
-   */
-  async performAutoOptimization() {
-    try {
-      const usage = this.usageMonitor.getCurrentWindowStats();
-      const prediction = this.usageMonitor.predictUsage(30);
-      
-      // キューサイズに基づく最適化
-      const queueStatus = this.queueManager.getStatus();
-      if (queueStatus.totalQueueSize > 100) {
-        // 大きなキューサイズの場合、並行実行数を増加
-        this.config.maxConcurrentRequests = Math.min(10, this.config.maxConcurrentRequests + 1);
-        this.logger.info('Auto-optimization: Increased concurrent requests', {
-          newLimit: this.config.maxConcurrentRequests
-        });
-      } else if (queueStatus.totalQueueSize < 10 && this.config.maxConcurrentRequests > 3) {
-        // 小さなキューサイズの場合、並行実行数を減少
-        this.config.maxConcurrentRequests = Math.max(3, this.config.maxConcurrentRequests - 1);
-        this.logger.info('Auto-optimization: Decreased concurrent requests', {
-          newLimit: this.config.maxConcurrentRequests
-        });
-      }
-      
-      // エラー率に基づく最適化
-      if (usage.errorRate > 0.1) { // 10%以上のエラー率
-        this.throttleConfig.delay = Math.min(10000, this.throttleConfig.delay * 1.5);
-        this.logger.warn('Auto-optimization: Increased throttle delay due to high error rate', {
-          errorRate: usage.errorRate,
-          newDelay: this.throttleConfig.delay
-        });
-      }
-      
-    } catch (error) {
-      this.logger.error('Auto-optimization error', error);
-    }
-  }
-  
-  // ======================
-  // API Methods for Management API
-  // ======================
-  
-  async getQueueStatus() {
-    return this.queueManager.getStatus();
-  }
-  
-  async pauseQueue() {
-    this.queueManager.pause();
-  }
-  
-  async resumeQueue() {
-    this.queueManager.resume();
-  }
-  
-  async clearQueue(priority = 'all') {
-    return this.queueManager.clearQueue(priority);
-  }
-  
-  async removeTask(taskId) {
-    return await this.queueManager.removeTask(taskId);
-  }
-  
-  async getUsageStats(minutes = 60) {
-    return this.usageMonitor.getTimeSeriesStats(minutes);
-  }
-  
-  async getAgentStats(agent = null) {
-    return this.usageMonitor.getAgentStats(agent);
-  }
-  
-  async getErrorStats(hours = 24) {
-    // Error statistics implementation
-    const stats = this.usageMonitor.getAgentStats();
-    const errorStats = {};
-    
-    for (const [agent, data] of Object.entries(stats)) {
-      errorStats[agent] = {
-        errorRate: data.errorRate,
-        errorCount: data.errorCount,
-        recentErrors: data.recentErrors || []
-      };
-    }
-    
-    return errorStats;
-  }
-  
-  async getPerformanceStats() {
-    const usage = this.usageMonitor.getCurrentWindowStats();
-    const queueStatus = this.queueManager.getStatus();
-    
-    return {
-      averageResponseTime: usage.averageResponseTime,
-      requestsPerMinute: usage.requestsPerMinute,
-      successRate: usage.successRate,
-      activeRequests: this.activeRequests.size,
-      queueSize: queueStatus.totalQueueSize,
-      uptime: Date.now() - this.startTime
-    };
-  }
-  
-  async getPrediction(minutesAhead = 30) {
-    return this.usageMonitor.predictUsage(minutesAhead);
-  }
-  
-  async getHealthStatus() {
-    const usage = this.usageMonitor.getCurrentWindowStats();
-    const queueStatus = this.queueManager.getStatus();
-    
-    let status = 'healthy';
-    if (this.emergencyStop.stopped || !this.sessionState.isValid) {
-      status = 'unhealthy';
-    } else if (usage.errorRate > 0.1 || queueStatus.totalQueueSize > 1000) {
-      status = 'degraded';
-    }
-    
-    return {
-      status,
-      sessionValid: this.sessionState.isValid,
-      emergencyStopped: this.emergencyStop.stopped,
-      activeRequests: this.activeRequests.size,
-      queueSize: queueStatus.totalQueueSize,
-      errorRate: usage.errorRate,
-      uptime: Date.now() - this.startTime
-    };
-  }
-  
-  async getDetailedHealth() {
-    const basicHealth = await this.getHealthStatus();
-    const usage = this.usageMonitor.getCurrentWindowStats();
-    const prediction = this.usageMonitor.predictUsage(30);
-    
-    return {
-      ...basicHealth,
-      components: {
-        redis: this.redis.isOpen,
-        queueManager: this.queueManager ? 'running' : 'stopped',
-        usageMonitor: this.usageMonitor ? 'running' : 'stopped',
-        claudeExecutor: this.claudeExecutor ? 'running' : 'stopped'
-      },
-      metrics: usage,
-      prediction,
-      throttling: this.throttleConfig,
-      agents: this.usageMonitor.getAgentStats()
-    };
-  }
-  
   async getConfig() {
     return {
       ...this.config,
-      throttling: this.throttleConfig,
-      agentPriorities: Object.fromEntries(this.agentPriorities)
+      queueStatus: this.advancedQueueManager.getStatus(),
+      rateLimitInfo: this.usageMonitor.rateLimitInfo
     };
   }
   
+  /**
+   * 設定の更新
+   */
   async updateConfig(newConfig) {
-    // 安全な設定更新
-    const allowedKeys = [
-      'maxConcurrentRequests',
-      'throttleDelay',
-      'autoOptimization'
-    ];
+    // 安全な設定項目のみ更新
+    const safeUpdates = ['maxConcurrent', 'alertThreshold', 'schedulerInterval'];
+    const updated = {};
     
-    for (const key of allowedKeys) {
+    for (const key of safeUpdates) {
       if (newConfig[key] !== undefined) {
         this.config[key] = newConfig[key];
+        updated[key] = newConfig[key];
       }
     }
     
-    this.logger.info('Configuration updated', newConfig);
-    return this.config;
+    this.logger.info('Config updated', updated);
+    return updated;
   }
   
-  async emergencyShutdown(reason) {
-    this.logger.error('Emergency shutdown requested', { reason });
-    this.emit('emergencyStop', reason || 'Manual emergency stop');
+  /**
+   * 詳細ヘルスチェック
+   */
+  async getDetailedHealth() {
+    const baseHealth = await this.getHealthStatus();
+    const queueStatus = this.advancedQueueManager.getStatus();
+    const usageStats = this.usageMonitor.getCurrentWindowStats();
+    
+    return {
+      ...baseHealth,
+      queue: queueStatus,
+      usage: usageStats,
+      components: {
+        redis: this.redis.status === 'ready',
+        advancedQueue: !queueStatus.isPaused,
+        usageMonitor: true,
+        rateLimiter: true,
+        sessionMonitor: true
+      },
+      timestamp: new Date().toISOString()
+    };
   }
   
+  /**
+   * Prometheusメトリクスの取得
+   */
   async getPrometheusMetrics() {
-    if (!this.prometheusExporter) {
-      throw new Error('Prometheus metrics not enabled');
-    }
+    const queueStats = this.advancedQueueManager.getStats();
+    const usageStats = this.usageMonitor.getCurrentWindowStats();
+    const health = await this.getHealthStatus();
     
-    return await this.prometheusExporter.getMetrics();
+    const metrics = [
+      `# HELP ccsp_queue_size Current queue size by priority`,
+      `# TYPE ccsp_queue_size gauge`,
+      `ccsp_queue_size{priority="urgent"} ${queueStats.currentQueueSizes?.urgent || 0}`,
+      `ccsp_queue_size{priority="high"} ${queueStats.currentQueueSizes?.high || 0}`,
+      `ccsp_queue_size{priority="normal"} ${queueStats.currentQueueSizes?.normal || 0}`,
+      `ccsp_queue_size{priority="low"} ${queueStats.currentQueueSizes?.low || 0}`,
+      `ccsp_queue_size{priority="scheduled"} ${queueStats.currentQueueSizes?.scheduled || 0}`,
+      
+      `# HELP ccsp_requests_total Total processed requests`,
+      `# TYPE ccsp_requests_total counter`,
+      `ccsp_requests_total ${queueStats.totalProcessed || 0}`,
+      
+      `# HELP ccsp_requests_per_minute Current requests per minute`,
+      `# TYPE ccsp_requests_per_minute gauge`,
+      `ccsp_requests_per_minute ${usageStats.requestsPerMinute || 0}`,
+      
+      `# HELP ccsp_success_rate Current success rate`,
+      `# TYPE ccsp_success_rate gauge`,
+      `ccsp_success_rate ${usageStats.successRate || 0}`,
+      
+      `# HELP ccsp_average_response_time Average response time in milliseconds`,
+      `# TYPE ccsp_average_response_time gauge`,
+      `ccsp_average_response_time ${usageStats.averageResponseTime || 0}`,
+      
+      `# HELP ccsp_health_status Overall health status (1=healthy, 0=unhealthy)`,
+      `# TYPE ccsp_health_status gauge`,
+      `ccsp_health_status ${health.status === 'healthy' ? 1 : 0}`
+    ];
+    
+    return metrics.join('\n');
   }
+}
+
+// エントリーポイント
+if (require.main === module) {
+  const agent = new CCSPAgent();
   
-  /**
-   * Express Router取得（管理API用）
-   */
-  getManagementRouter() {
-    if (!this.managementAPI) {
-      throw new Error('Management API not enabled');
-    }
-    
-    return this.managementAPI.getRouter();
-  }
+  // シグナルハンドラー
+  process.on('SIGINT', async () => {
+    await agent.stop();
+    process.exit(0);
+  });
   
-  /**
-   * WebSocket統合セットアップ
-   */
-  setupWebSocketIntegration(io) {
-    if (this.managementAPI) {
-      this.managementAPI.setupWebSocketIntegration(io);
-    }
-  }
+  process.on('SIGTERM', async () => {
+    await agent.stop();
+    process.exit(0);
+  });
   
-  /**
-   * CCSPエージェントの停止
-   */
-  async shutdown() {
-    this.logger.info('Shutting down CCSP Agent...');
-    
-    this.isRunning = false;
-    
-    // インターバルの停止
-    if (this.processingInterval) {
-      clearInterval(this.processingInterval);
-    }
-    
-    if (this.sessionMonitorInterval) {
-      clearInterval(this.sessionMonitorInterval);
-    }
-    
-    if (this.optimizationInterval) {
-      clearInterval(this.optimizationInterval);
-    }
-    
-    // アクティブなリクエストの完了を待機
-    const maxWait = 30000; // 30秒
-    const start = Date.now();
-    
-    while (this.activeRequests.size > 0 && (Date.now() - start) < maxWait) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    
-    // コンポーネントのシャットダウン
-    if (this.queueManager) {
-      await this.queueManager.shutdown();
-    }
-    
-    if (this.usageMonitor) {
-      await this.usageMonitor.shutdown();
-    }
-    
-    if (this.redis && this.redis.isOpen) {
-      await this.redis.disconnect();
-    }
-    
-    this.logger.info('CCSP Agent shutdown complete', {
-      activeRequestsRemaining: this.activeRequests.size
-    });
-  }
+  // 起動
+  agent.start().catch(error => {
+    logger.error('起動エラー:', error);
+    process.exit(1);
+  });
 }
 
 module.exports = CCSPAgent;

@@ -1,0 +1,203 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "ccsp-monitoring",
+    "title": "CCSP Agent Monitoring",
+    "tags": ["ccsp", "poppo-builder"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Service Status",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "up{job=\"ccsp-agent\"}",
+            "legendFormat": "CCSP Agent"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              { "type": "value", "value": 0, "text": "DOWN", "color": "red" },
+              { "type": "value", "value": 1, "text": "UP", "color": "green" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Session Status",
+        "type": "stat",
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "ccsp_session_status",
+            "legendFormat": "Claude Session"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              { "type": "value", "value": 0, "text": "INACTIVE", "color": "red" },
+              { "type": "value", "value": 1, "text": "ACTIVE", "color": "green" }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Health Score",
+        "type": "gauge",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "ccsp_health_score{component=\"overall\"}",
+            "legendFormat": "Overall Health"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "yellow", "value": 60 },
+                { "color": "green", "value": 80 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Queue Size",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ccsp_queue_size",
+            "legendFormat": "{{ priority }} priority"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Tasks" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Task Processing Time",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ccsp_task_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(ccsp_task_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          }
+        ],
+        "yaxes": [
+          { "format": "s", "label": "Duration" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Tasks Processed",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ccsp_tasks_processed_total[5m])",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "yaxes": [
+          { "format": "ops", "label": "Tasks/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "rate(ccsp_errors_total[5m])",
+            "legendFormat": "{{ type }}"
+          }
+        ],
+        "yaxes": [
+          { "format": "ops", "label": "Errors/sec" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Resource Usage",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ccsp_process_resident_memory_bytes / 1024 / 1024",
+            "legendFormat": "Memory (MB)"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "MB" },
+          { "format": "short" }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Rate Limit Status",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "ccsp_rate_limit_remaining",
+            "legendFormat": "Remaining"
+          },
+          {
+            "expr": "ccsp_rate_limit_total",
+            "legendFormat": "Total"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Requests" },
+          { "format": "short" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 const AgentBase = require('../shared/agent-base');
-const ProcessManager = require('../../src/process-manager');
+const Redis = require('ioredis');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -11,7 +12,12 @@ class CCPMAgent extends AgentBase {
   constructor(config = {}) {
     super('CCPM', config);
     
-    this.processManager = new ProcessManager();
+    // Redis接続を追加（processManagerの代わり）
+    this.redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: process.env.REDIS_PORT || 6379
+    });
+    this.responseQueue = 'ccsp:responses:ccpm';
     this.reviewPatterns = {
       security: [
         /password|secret|key|token/i,
@@ -173,19 +179,64 @@ ${JSON.stringify(reviewResults, null, 2)}
 `;
     
     try {
-      const result = await this.processManager.executeWithContext(
-        prompt,
-        '',
-        null,
-        30000 // 30秒のタイムアウト
-      );
+      // パイちゃんへのリクエスト作成
+      const requestId = uuidv4();
+      const request = {
+        requestId,
+        fromAgent: 'ccpm',
+        type: 'advanced-analysis',
+        prompt: prompt,
+        context: {
+          workingDirectory: process.cwd(),
+          timeout: 600000, // 10分
+          priority: 'high'
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      this.logger.info(`[CCPM] Sending analysis request to CCSP: ${requestId}`);
+      
+      // リクエスト送信
+      await this.redis.lpush('ccsp:requests', JSON.stringify(request));
+      
+      // レスポンス待機
+      const timeout = Date.now() + 600000;
+      let response = null;
+      
+      while (Date.now() < timeout) {
+        const data = await this.redis.rpop(this.responseQueue);
+        
+        if (data) {
+          const parsed = JSON.parse(data);
+          
+          if (parsed.requestId === requestId) {
+            if (parsed.success) {
+              this.logger.info('[CCPM] Received analysis from CCSP');
+              response = parsed.result;
+              break;
+            } else {
+              this.logger.error('[CCPM] CCSP error:', parsed.error);
+              throw new Error(parsed.error || 'CCSP analysis failed');
+            }
+          } else {
+            // 他のリクエストのレスポンスは戻す
+            await this.redis.lpush(this.responseQueue, data);
+          }
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (!response) {
+        throw new Error('Timeout waiting for CCSP response');
+      }
       
       return {
         success: true,
-        analysis: result.output
+        analysis: response
       };
     } catch (error) {
-      this.logger.error(`Claude分析エラー: ${error.message}`);
+      this.logger.error(`[CCPM] Claude分析エラー: ${error.message}`);
       return {
         success: false,
         error: error.message
@@ -445,6 +496,16 @@ ${content}
       default:
         return 300000; // デフォルト5分
     }
+  }
+  
+  /**
+   * クリーンアップ処理
+   */
+  async cleanup() {
+    if (this.redis) {
+      await this.redis.quit();
+    }
+    await super.cleanup();
   }
 }
 

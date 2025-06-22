@@ -5,15 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const LogSearchAPI = require('./api/logs');
 const AnalyticsAPI = require('./api/analytics');
-const i18n = require('../../lib/i18n');
-const { Server } = require('socket.io');
-const PrometheusExporter = require('../../src/prometheus-exporter');
+const HealthAPI = require('./api/health');
+const ProcessAPI = require('./api/process');
 
 /**
  * PoppoBuilder Process Dashboard Server
  */
 class DashboardServer {
-  constructor(config, processStateManager, logger) {
+  constructor(config, processStateManager, logger, healthCheckManager = null, independentProcessManager = null) {
     this.config = config.dashboard || {
       enabled: true,
       port: 3001,
@@ -23,22 +22,11 @@ class DashboardServer {
     
     this.stateManager = processStateManager;
     this.logger = logger;
-    
-    // Initialize Prometheus exporter
-    this.prometheusExporter = new PrometheusExporter({
-      port: this.config.prometheusPort || 9090,
-      host: this.config.host || 'localhost'
-    }, logger);
-    
-    // Initialize i18n if not already done
-    if (!i18n.initialized) {
-      i18n.init({ language: i18n.getUserLanguage() }).catch(err => {
-        console.error('Failed to initialize i18n:', err);
-      });
-    }
+    this.healthCheckManager = healthCheckManager;
+    this.independentProcessManager = independentProcessManager;
     
     if (!this.config.enabled) {
-      this.logger?.info(i18n.t('dashboard.disabled'));
+      this.logger?.info('ダッシュボードは無効化されています');
       return;
     }
     
@@ -46,20 +34,18 @@ class DashboardServer {
     this.server = http.createServer(this.app);
     this.wss = new WebSocket.Server({ server: this.server });
     
-    // Socket.ioサーバーの初期化
-    this.io = new Server(this.server, {
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST']
-      }
-    });
-    
     // ログ検索APIの初期化
     this.logSearchAPI = new LogSearchAPI(this.logger);
     
+    // ヘルスチェックAPIの初期化
+    this.healthAPI = new HealthAPI(this.healthCheckManager);
+    
+    // プロセス管理APIの初期化
+    this.processAPI = this.independentProcessManager ? 
+      new ProcessAPI(this.stateManager, this.independentProcessManager, this.logger) : null;
+    
     this.setupRoutes();
     this.setupWebSocket();
-    this.setupSocketIO();
   }
 
   /**
@@ -68,14 +54,6 @@ class DashboardServer {
   setupRoutes() {
     // 静的ファイルの提供
     this.app.use(express.static(path.join(__dirname, '../client')));
-    
-    // CCSP dashboard route
-    this.app.get('/ccsp', (req, res) => {
-      res.sendFile(path.join(__dirname, '../ccsp/index.html'));
-    });
-    
-    // CCSP static files
-    this.app.use('/ccsp', express.static(path.join(__dirname, '../ccsp')));
     
     // CORS設定（開発用）
     this.app.use((req, res, next) => {
@@ -128,126 +106,50 @@ class DashboardServer {
       }
     });
     
-    // ヘルスチェック
-    this.app.get('/api/health', (req, res) => {
-      res.json({ 
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-      });
-    });
-    
-    // Prometheusメトリクスエンドポイント
-    this.app.get('/metrics', async (req, res) => {
-      try {
-        res.set('Content-Type', this.prometheusExporter.registry.contentType);
-        const metrics = await this.prometheusExporter.getMetrics();
-        res.end(metrics);
-      } catch (error) {
-        this.logger?.error('Error collecting metrics:', error);
-        res.status(500).end('Error collecting metrics');
+    // 基本的なヘルスチェック（HealthAPIが無い場合のフォールバック）
+    this.app.get('/api/health', (req, res, next) => {
+      if (this.healthAPI) {
+        // HealthAPIが存在する場合は次のミドルウェアへ
+        next();
+      } else {
+        // フォールバック
+        res.json({ 
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime()
+        });
       }
     });
+    
+    // JSONパーサーミドルウェア（すべてのAPIルートの前に設定）
+    this.app.use(express.json());
     
     // ログ検索APIのルートを設定
     this.logSearchAPI.setupRoutes(this.app);
     
     // アナリティクスAPIのルートを設定
-    this.app.use(express.json());
     this.app.use('/api/analytics', AnalyticsAPI);
     
-    // CCSP API endpoints (モック実装)
-    this.setupCCSPRoutes();
+    // ヘルスチェックAPIのルートを設定
+    if (this.healthAPI) {
+      this.app.use('/api/health', this.healthAPI.getRouter());
+    }
+    
+    // プロセス管理APIのルートを設定
+    if (this.processAPI) {
+      this.app.use('/api', this.processAPI.getRouter());
+    }
   }
 
-  /**
-   * CCSP APIルートの設定（モック実装）
-   */
-  setupCCSPRoutes() {
-    // キューステータス
-    this.app.get('/api/ccsp/queue/status', (req, res) => {
-      res.json({
-        success: true,
-        data: {
-          totalQueueSize: 0,
-          isPaused: false,
-          queues: {
-            urgent: { size: 0, oldestTask: null },
-            high: { size: 0, oldestTask: null },
-            normal: { size: 0, oldestTask: null },
-            low: { size: 0, oldestTask: null },
-            scheduled: { size: 0, oldestTask: null }
-          }
-        }
-      });
-    });
-    
-    // 使用統計
-    this.app.get('/api/ccsp/stats/usage', (req, res) => {
-      res.json({
-        success: true,
-        data: {
-          currentWindow: {
-            requests: 0,
-            requestsPerMinute: 0,
-            successRate: 1.0,
-            averageResponseTime: 0,
-            errorRate: 0
-          },
-          rateLimitInfo: {
-            limit: 100,
-            remaining: 100,
-            resetTime: Date.now() + 3600000
-          },
-          prediction: {
-            prediction: {
-              requestsPerMinute: 0
-            }
-          },
-          rateLimitPrediction: {
-            prediction: {
-              minutesToLimit: 999
-            },
-            recommendation: {
-              message: "CCSP未接続（モックモード）"
-            }
-          }
-        }
-      });
-    });
-    
-    // エージェント統計
-    this.app.get('/api/ccsp/stats/agents', (req, res) => {
-      res.json({
-        success: true,
-        data: {}
-      });
-    });
-    
-    // キュー制御エンドポイント
-    this.app.post('/api/ccsp/queue/pause', (req, res) => {
-      res.json({ success: true, message: 'Queue paused (mock)' });
-    });
-    
-    this.app.post('/api/ccsp/queue/resume', (req, res) => {
-      res.json({ success: true, message: 'Queue resumed (mock)' });
-    });
-    
-    this.app.delete('/api/ccsp/queue/clear', (req, res) => {
-      res.json({ success: true, message: 'Queue cleared (mock)' });
-    });
-    
-    this.app.post('/api/ccsp/control/emergency-stop', (req, res) => {
-      res.json({ success: true, message: 'Emergency stop executed (mock)' });
-    });
-  }
-  
   /**
    * WebSocket通信の設定
    */
   setupWebSocket() {
+    // プロセス状態の追跡（差分検出用）
+    this.processStates = new Map();
+    
     this.wss.on('connection', (ws) => {
-      this.logger?.info(i18n.t('dashboard.websocket.connected'));
+      this.logger?.info('WebSocket接続が確立されました');
       
       // 初回接続時に現在の状態を送信
       const currentState = {
@@ -259,32 +161,117 @@ class DashboardServer {
       };
       ws.send(JSON.stringify(currentState));
       
-      // 定期更新の開始
+      // クライアントからのメッセージを処理
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message);
+          
+          switch (data.type) {
+            case 'ping':
+              // Ping応答
+              ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+              break;
+              
+            case 'subscribe-logs':
+              // ログ購読（将来の拡張用）
+              this.subscribeToLogs(ws, data.processId);
+              break;
+              
+            case 'unsubscribe-logs':
+              // ログ購読解除（将来の拡張用）
+              this.unsubscribeFromLogs(ws, data.processId);
+              break;
+          }
+        } catch (error) {
+          this.logger?.error('WebSocketメッセージ処理エラー', error);
+        }
+      });
+      
+      // 定期更新の開始（差分更新対応）
       const updateInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          const update = {
-            type: 'update',
-            data: {
-              processes: this.stateManager.getRunningProcesses(),
-              stats: this.stateManager.getSystemStats(),
-              timestamp: new Date().toISOString()
-            }
-          };
-          ws.send(JSON.stringify(update));
+          this.sendDifferentialUpdates(ws);
         }
       }, this.config.updateInterval);
       
       // 切断時のクリーンアップ
       ws.on('close', () => {
         clearInterval(updateInterval);
-        this.logger?.info(i18n.t('dashboard.websocket.disconnected'));
+        this.logger?.info('WebSocket接続が切断されました');
       });
       
       // エラーハンドリング
       ws.on('error', (error) => {
-        this.logger?.error(i18n.t('dashboard.websocket.error'), error);
+        this.logger?.error('WebSocketエラー', error);
       });
     });
+  }
+  
+  /**
+   * 差分更新を送信
+   */
+  sendDifferentialUpdates(ws) {
+    const currentProcesses = this.stateManager.getAllProcesses();
+    const currentProcessMap = new Map(currentProcesses.map(p => [p.processId, p]));
+    
+    // 新規プロセスの検出
+    currentProcesses.forEach(process => {
+      const oldProcess = this.processStates.get(process.processId);
+      if (!oldProcess) {
+        // 新規プロセス
+        ws.send(JSON.stringify({
+          type: 'process-added',
+          process: process,
+          timestamp: new Date().toISOString()
+        }));
+      } else if (JSON.stringify(oldProcess) !== JSON.stringify(process)) {
+        // 更新されたプロセス
+        ws.send(JSON.stringify({
+          type: 'process-updated',
+          process: process,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    });
+    
+    // 削除されたプロセスの検出
+    this.processStates.forEach((process, processId) => {
+      if (!currentProcessMap.has(processId)) {
+        ws.send(JSON.stringify({
+          type: 'process-removed',
+          processId: processId,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    });
+    
+    // 現在の状態を保存
+    this.processStates = currentProcessMap;
+    
+    // 統計情報も送信
+    ws.send(JSON.stringify({
+      type: 'update',
+      data: {
+        stats: this.stateManager.getSystemStats(),
+        timestamp: new Date().toISOString()
+      }
+    }));
+  }
+  
+  /**
+   * ログ購読（将来の実装用）
+   */
+  subscribeToLogs(ws, processId) {
+    // TODO: プロセスのログをリアルタイムで配信
+    this.logger?.info(`ログ購読開始: ${processId}`);
+  }
+  
+  /**
+   * ログ購読解除（将来の実装用）
+   */
+  unsubscribeFromLogs(ws, processId) {
+    // TODO: ログ配信の停止
+    this.logger?.info(`ログ購読解除: ${processId}`);
   }
 
   /**
@@ -296,16 +283,8 @@ class DashboardServer {
     }
     
     this.server.listen(this.config.port, this.config.host, () => {
-      const url = `http://${this.config.host}:${this.config.port}`;
-      this.logger?.info(i18n.t('dashboard.starting', { url }));
-      console.log(`📊 ${i18n.t('dashboard.started', { url })}`);
-    });
-    
-    // Start Prometheus exporter
-    this.prometheusExporter.start().then((prometheusUrl) => {
-      this.logger?.info(`Prometheus metrics available at ${prometheusUrl}/metrics`);
-    }).catch((error) => {
-      this.logger?.error('Failed to start Prometheus exporter:', error);
+      this.logger?.info(`ダッシュボードサーバーが起動しました: http://${this.config.host}:${this.config.port}`);
+      console.log(`📊 プロセスダッシュボード: http://${this.config.host}:${this.config.port}`);
     });
   }
 
@@ -315,16 +294,7 @@ class DashboardServer {
   stop() {
     if (this.server) {
       this.server.close(() => {
-        this.logger?.info(i18n.t('dashboard.stopped'));
-      });
-    }
-    
-    // Stop Prometheus exporter
-    if (this.prometheusExporter) {
-      this.prometheusExporter.stop().then(() => {
-        this.logger?.info('Prometheus exporter stopped');
-      }).catch((error) => {
-        this.logger?.error('Error stopping Prometheus exporter:', error);
+        this.logger?.info('ダッシュボードサーバーが停止しました');
       });
     }
   }
@@ -348,184 +318,99 @@ class DashboardServer {
   }
   
   /**
-   * Socket.io通信の設定（CCSPダッシュボード用）
+   * 通知メッセージを送信
    */
-  setupSocketIO() {
-    // CCSP名前空間の作成
-    const ccspNamespace = this.io.of('/ccsp');
+  sendNotification(notification) {
+    const message = JSON.stringify({
+      type: 'notification',
+      notification: notification,
+      timestamp: new Date().toISOString()
+    });
     
-    ccspNamespace.on('connection', (socket) => {
-      this.logger?.info('CCSP client connected:', socket.id);
-      
-      // 初期状態の送信（モックデータ）
-      socket.emit('initialState', {
-        queue: {
-          totalQueueSize: 0,
-          isPaused: false,
-          queues: {
-            urgent: { size: 0, oldestTask: null },
-            high: { size: 0, oldestTask: null },
-            normal: { size: 0, oldestTask: null },
-            low: { size: 0, oldestTask: null },
-            scheduled: { size: 0, oldestTask: null }
-          }
-        },
-        usage: {
-          currentWindow: {
-            requests: 0,
-            requestsPerMinute: 0,
-            successRate: 1.0,
-            averageResponseTime: 0,
-            errorRate: 0
-          },
-          rateLimitInfo: {
-            limit: 100,
-            remaining: 100,
-            resetTime: Date.now() + 3600000
-          }
-        },
-        agents: {}
-      });
-      
-      // 統計情報の購読
-      socket.on('subscribeStats', (interval) => {
-        this.logger?.info(`CCSP client subscribed to stats with interval: ${interval}ms`);
-        
-        // 定期的にモックデータを送信
-        const statsInterval = setInterval(() => {
-          // モック使用量データ
-          socket.emit('usageUpdate', {
-            currentWindow: {
-              requests: Math.floor(Math.random() * 100),
-              requestsPerMinute: Math.random() * 20,
-              successRate: 0.9 + Math.random() * 0.1,
-              averageResponseTime: 800 + Math.random() * 400,
-              errorRate: Math.random() * 0.05
-            },
-            rateLimitInfo: {
-              limit: 100,
-              remaining: Math.floor(Math.random() * 100),
-              resetTime: Date.now() + 3600000
-            },
-            prediction: {
-              prediction: {
-                requestsPerMinute: 10 + Math.random() * 10
-              }
-            },
-            rateLimitPrediction: {
-              prediction: {
-                minutesToLimit: 60 + Math.random() * 60
-              },
-              recommendation: {
-                message: "現在のペースは安全です"
-              }
-            }
-          });
-          
-          // モックキューデータ
-          socket.emit('queueUpdate', {
-            totalQueueSize: Math.floor(Math.random() * 10),
-            isPaused: false,
-            queues: {
-              urgent: { size: Math.floor(Math.random() * 2), oldestTask: new Date().toISOString() },
-              high: { size: Math.floor(Math.random() * 3), oldestTask: new Date().toISOString() },
-              normal: { size: Math.floor(Math.random() * 5), oldestTask: new Date().toISOString() },
-              low: { size: 0, oldestTask: null },
-              scheduled: { size: 0, oldestTask: null }
-            }
-          });
-        }, interval || 5000);
-        
-        // 購読解除時にインターバルをクリア
-        socket.on('unsubscribeStats', () => {
-          clearInterval(statsInterval);
-          this.logger?.info('CCSP client unsubscribed from stats');
-        });
-        
-        socket.on('disconnect', () => {
-          clearInterval(statsInterval);
-          this.logger?.info('CCSP client disconnected:', socket.id);
-        });
-      });
-      
-      // エラーハンドリング
-      socket.on('error', (error) => {
-        this.logger?.error('CCSP socket error:', error);
-      });
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
     });
   }
   
   /**
-   * Prometheusメトリクスの更新
+   * ログメッセージを送信
    */
-  updatePrometheusMetrics() {
-    if (!this.prometheusExporter) return;
+  sendLogMessage(log) {
+    const message = JSON.stringify({
+      type: 'log',
+      log: log,
+      timestamp: new Date().toISOString()
+    });
     
-    try {
-      // エージェント状態の更新
-      const processes = this.stateManager.getAllProcesses();
-      processes.forEach(process => {
-        const agentName = process.taskId || 'unknown';
-        const isRunning = process.status === 'running' ? 1 : 0;
-        
-        this.prometheusExporter.updateAgentMetrics(agentName, {
-          status: isRunning,
-          uptime: process.startTime ? (Date.now() - new Date(process.startTime).getTime()) / 1000 : 0,
-          memory: {
-            rss: process.memory?.rss || 0,
-            heapUsed: process.memory?.heapUsed || 0,
-            heapTotal: process.memory?.heapTotal || 0
-          },
-          cpu: process.cpu || 0,
-          healthScore: process.healthScore || 100
-        });
-      });
-      
-      // キューサイズの更新（モックデータ）
-      this.prometheusExporter.updateQueueMetrics('default', 0);
-      this.prometheusExporter.updateQueueMetrics('urgent', 0);
-      this.prometheusExporter.updateQueueMetrics('high', 0);
-      this.prometheusExporter.updateQueueMetrics('normal', 0);
-      
-    } catch (error) {
-      this.logger?.error('Error updating Prometheus metrics:', error);
-    }
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
   }
   
   /**
-   * Issue処理メトリクスの記録
+   * プロセス追加を通知
    */
-  recordIssueProcessing(agentName, issueType, status, duration) {
-    if (this.prometheusExporter) {
-      this.prometheusExporter.recordIssueProcessing(agentName, issueType, status, duration);
-    }
+  notifyProcessAdded(process) {
+    const message = JSON.stringify({
+      type: 'process-added',
+      process: process,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+    
+    // 通知も送信
+    this.sendNotification({
+      type: 'info',
+      message: `新しいプロセスが開始されました: Issue #${process.issueNumber}`
+    });
   }
   
   /**
-   * エラーメトリクスの記録
+   * プロセス更新を通知
    */
-  recordError(agentName, errorType) {
-    if (this.prometheusExporter) {
-      this.prometheusExporter.recordError(agentName, errorType);
-    }
+  notifyProcessUpdated(process) {
+    const message = JSON.stringify({
+      type: 'process-updated',
+      process: process,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
   }
   
   /**
-   * GitHub APIメトリクスの記録
+   * プロセス削除を通知
    */
-  recordGitHubApiCall(endpoint, statusCode, responseTime, rateLimit) {
-    if (this.prometheusExporter) {
-      this.prometheusExporter.recordGitHubApiCall(endpoint, statusCode, responseTime, rateLimit);
-    }
-  }
-  
-  /**
-   * Claude APIメトリクスの記録
-   */
-  recordClaudeApiCall(model, status, tokensUsed) {
-    if (this.prometheusExporter) {
-      this.prometheusExporter.recordClaudeApiCall(model, status, tokensUsed);
-    }
+  notifyProcessRemoved(processId) {
+    const message = JSON.stringify({
+      type: 'process-removed',
+      processId: processId,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
   }
 }
 

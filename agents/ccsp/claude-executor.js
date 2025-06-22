@@ -1,460 +1,383 @@
 /**
- * Claude CLI Execution Engine
+ * Claude Code実行管理モジュール
  * 
- * Issue #142: CCSP Advanced Control and Monitoring Implementation
- * Handles Claude CLI command execution and error handling
+ * Claude CLIの呼び出しとレート制限処理を担当
  */
 
 const { spawn } = require('child_process');
-const Logger = require('../../src/logger');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 
 class ClaudeExecutor {
-  constructor(options = {}) {
-    this.logger = new Logger('ClaudeExecutor');
-    this.config = {
-      maxRetries: options.maxRetries || 3,
-      retryDelay: options.retryDelay || 5000,
-      timeout: options.timeout || 120000, // 2分
-      tempDir: options.tempDir || '/tmp/ccsp-claude',
-      ...options
-    };
+  constructor(logger) {
+    this.logger = logger;
+    this.maxConcurrent = 2;
+    this.runningProcesses = new Map();
+    this.tempDir = path.join(__dirname, '../../temp/ccsp');
     
-    // Session state tracking
-    this.sessionTimeout = false;
-    this.lastLoginCheck = null;
-    
-    // Statistics
-    this.stats = {
-      totalExecutions: 0,
-      successCount: 0,
-      errorCount: 0,
-      sessionTimeouts: 0,
-      rateLimits: 0
-    };
-    
-    this.ensureTempDir();
-    
-    this.logger.info('Claude Executor initialized', {
-      maxRetries: this.config.maxRetries,
-      timeout: this.config.timeout
-    });
-  }
-  
-  /**
-   * Ensure temporary directory
-   */
-  async ensureTempDir() {
-    try {
-      await fs.mkdir(this.config.tempDir, { recursive: true });
-    } catch (error) {
-      this.logger.error('Failed to create temp directory', error);
+    // 一時ディレクトリを作成
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
     }
+    
+    // 定期的な一時ファイルクリーンアップ（1時間ごと）
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupOldTempFiles();
+    }, 3600000);
   }
   
-  /**
-   * Execute Claude CLI command
-   * @param {Object} task - Execution task
-   */
-  async execute(task) {
-    const {
-      prompt,
-      files = [],
-      timeout = this.config.timeout,
-      includeContext = false,
-      agent = 'unknown'
-    } = task;
+  async execute(request) {
+    // 同時実行数チェック
+    if (this.runningProcesses.size >= this.maxConcurrent) {
+      throw new Error('Max concurrent executions reached');
+    }
     
-    this.stats.totalExecutions++;
+    const { requestId, prompt, systemPrompt, includeFiles, modelPreference } = request;
     const startTime = Date.now();
-    const executionId = crypto.randomUUID();
     
-    this.logger.info('Starting Claude execution', {
-      executionId,
-      agent,
-      promptLength: prompt.length,
-      filesCount: files.length,
-      timeout
-    });
-    
-    let attempt = 0;
-    let lastError = null;
-    
-    while (attempt < this.config.maxRetries) {
-      attempt++;
+    try {
+      // プロンプトファイルを作成（特殊文字対策）
+      const promptFile = path.join(this.tempDir, `prompt-${requestId}.txt`);
+      const fullPrompt = this.buildFullPrompt(request);
+      fs.writeFileSync(promptFile, fullPrompt, 'utf8');
       
-      try {
-        // Check session timeout flag
-        if (this.sessionTimeout) {
-          throw new Error('Session timeout detected, login required');
-        }
-        
-        const result = await this.executeClaudeCommand(prompt, files, timeout, executionId);
-        
-        this.stats.successCount++;
-        const responseTime = Date.now() - startTime;
-        
-        this.logger.info('Claude execution successful', {
-          executionId,
-          attempt,
-          responseTime: `${responseTime}ms`,
-          outputLength: result.length
-        });
-        
-        return {
-          success: true,
-          result,
-          responseTime,
-          executionId,
-          attempts: attempt
-        };
-        
-      } catch (error) {
-        lastError = error;
-        const responseTime = Date.now() - startTime;
-        
-        this.logger.warn('Claude execution failed', {
-          executionId,
-          attempt,
-          error: error.message,
-          responseTime: `${responseTime}ms`
-        });
-        
-        // Analyze error patterns
-        const errorType = this.analyzeError(error.message);
-        
-        if (errorType === 'SESSION_TIMEOUT') {
-          this.sessionTimeout = true;
-          this.stats.sessionTimeouts++;
-          throw error; // セッションタイムアウトは即座に失敗
-        }
-        
-        if (errorType === 'RATE_LIMIT') {
-          this.stats.rateLimits++;
-          // For rate limit, use longer delay
-          const delay = this.config.retryDelay * Math.pow(2, attempt);
-          this.logger.warn(`Rate limit detected, waiting ${delay}ms before retry`, {
-            executionId,
-            attempt
-          });
-          await this.sleep(delay);
-        } else if (attempt < this.config.maxRetries) {
-          // Normal retry delay
-          await this.sleep(this.config.retryDelay);
+      // コマンドライン引数を構築
+      const args = [
+        '--dangerously-skip-permissions',
+        '--print'
+      ];
+      
+      // モデル指定
+      if (modelPreference?.primary) {
+        args.push('--model', modelPreference.primary);
+        if (modelPreference.fallback) {
+          args.push('--fallback-model', modelPreference.fallback);
         }
       }
-    }
-    
-    // All retries failed
-    this.stats.errorCount++;
-    const responseTime = Date.now() - startTime;
-    
-    this.logger.error('Claude execution failed after all retries', {
-      executionId,
-      attempts: attempt,
-      responseTime: `${responseTime}ms`,
-      finalError: lastError.message
-    });
-    
-    throw lastError;
-  }
-  
-  /**
-   * Actual Claude CLI command execution
-   */
-  async executeClaudeCommand(prompt, files, timeout, executionId) {
-    return new Promise(async (resolve, reject) => {
-      let tempFiles = [];
       
-      try {
-        // If files are specified, save as temporary files
-        if (files && files.length > 0) {
-          tempFiles = await this.createTempFiles(files, executionId);
-        }
-        
-        // Build Claude CLI command
-        const args = this.buildClaudeArgs(prompt, tempFiles);
-        
-        this.logger.debug('Executing claude command', {
-          executionId,
-          args: args.slice(0, 3), // Only log first 3 arguments
-          tempFilesCount: tempFiles.length
+      // プロンプトはファイルから読み込むよう指示
+      const executePrompt = `Please read and execute the instructions in ${promptFile}`;
+      
+      this.logger.info(`[CCSP] Starting execution: ${requestId}`);
+      
+      // プロセスを開始
+      const process = spawn('claude', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      this.runningProcesses.set(requestId, process);
+      
+      // プロンプトを送信
+      process.stdin.write(executePrompt);
+      process.stdin.end();
+      
+      // 結果を収集
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      // プロセス完了を待つ
+      const result = await new Promise((resolve, reject) => {
+        process.on('error', (error) => {
+          this.runningProcesses.delete(requestId);
+          reject(error);
         });
         
-        // Start Claude CLI process
-        const claude = spawn('claude', args, {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          cwd: process.cwd(),
-          env: {
-            ...process.env,
-            CLAUDE_LOG_LEVEL: 'ERROR' // Suppress unnecessary logs
-          }
-        });
-        
-        let stdout = '';
-        let stderr = '';
-        let isResolved = false;
-        
-        // Timeout setting
-        const timeoutId = setTimeout(() => {
-          if (!isResolved) {
-            claude.kill('SIGTERM');
-            reject(new Error(`Claude execution timed out after ${timeout}ms`));
-            isResolved = true;
-          }
-        }, timeout);
-        
-        // Collect standard output
-        claude.stdout.on('data', (data) => {
-          stdout += data.toString();
-        });
-        
-        // Collect standard error
-        claude.stderr.on('data', (data) => {
-          stderr += data.toString();
-        });
-        
-        // Process termination handling
-        claude.on('close', async (code) => {
-          clearTimeout(timeoutId);
+        process.on('exit', async (code) => {
+          this.runningProcesses.delete(requestId);
           
-          // Clean up temporary files
-          await this.cleanupTempFiles(tempFiles);
+          // 一時ファイルを削除
+          try {
+            fs.unlinkSync(promptFile);
+          } catch (e) {
+            // エラーは無視
+          }
           
-          if (isResolved) return;
-          isResolved = true;
+          const outputTrimmed = stdout.trim();
+          
+          // セッションタイムアウトチェック
+          if (outputTrimmed.includes('Invalid API key') || 
+              outputTrimmed.includes('Please run /login') ||
+              outputTrimmed.includes('API Login Failure')) {
+            this.logger.error(`[CCSP] Session timeout detected: ${outputTrimmed}`);
+            resolve({
+              success: false,
+              error: 'SESSION_TIMEOUT',
+              sessionTimeout: true,
+              message: outputTrimmed,
+              requiresManualAction: true
+            });
+            return;
+          }
+          
+          // レート制限チェック（バーチカルバー形式）
+          if (outputTrimmed.includes('|')) {
+            const parts = outputTrimmed.split('|');
+            if (parts.length === 2 && !isNaN(parseInt(parts[1]))) {
+              this.logger.info(`[CCSP] Rate limit detected: ${parts[0]}`);
+              const retryResult = await this.handleRateLimit(outputTrimmed, request);
+              resolve(retryResult);
+              return;
+            }
+          }
+          
+          // Execute error% チェック
+          if (outputTrimmed === 'Execute error%') {
+            this.logger.info('[CCSP] Handling Execute error%');
+            const retryResult = await this.handleExecuteError(request);
+            resolve(retryResult);
+            return;
+          }
           
           if (code === 0) {
-            // Success
-            const cleanOutput = this.cleanClaudeOutput(stdout);
-            resolve(cleanOutput);
+            resolve({
+              success: true,
+              result: stdout,
+              executionTime: Date.now() - startTime
+            });
           } else {
-            // Error
-            const errorMessage = stderr || stdout || `Claude process exited with code ${code}`;
-            reject(new Error(errorMessage));
+            resolve({
+              success: false,
+              error: stderr || stdout,
+              code: code
+            });
           }
         });
-        
-        claude.on('error', async (error) => {
-          clearTimeout(timeoutId);
-          await this.cleanupTempFiles(tempFiles);
-          
-          if (isResolved) return;
-          isResolved = true;
-          
-          reject(new Error(`Failed to start claude process: ${error.message}`));
-        });
-        
-      } catch (error) {
-        await this.cleanupTempFiles(tempFiles);
-        reject(error);
+      });
+      
+      return result;
+      
+    } catch (error) {
+      this.runningProcesses.delete(requestId);
+      throw error;
+    }
+  }
+  
+  buildFullPrompt(request) {
+    let prompt = '';
+    
+    // 重要な制限事項を最初に追加
+    prompt += '【重要な制限事項】\n';
+    prompt += '1. Claude APIの呼び出しは絶対に禁止です。\n';
+    prompt += '2. anthropic、claude-ai、claude-sdk などのAPIライブラリの使用は禁止です。\n';
+    prompt += '3. HTTPリクエストでClaude APIエンドポイントへのアクセスは禁止です。\n';
+    prompt += '4. 子プロセスからのclaude CLIコマンドの実行も禁止です。\n';
+    prompt += '5. この制限はPoppoBuilderSuiteシステム全体のポリシーです。\n\n';
+    prompt += '上記の制限に違反するコードの生成、実行、提案は行わないでください。\n';
+    prompt += 'Claude APIが必要な場合は、代わりにRedis Queue経由でCCSPエージェント（パイちゃん）にリクエストしてください。\n\n';
+    prompt += '=== 以下、本来のリクエスト内容 ===\n\n';
+    
+    // システムプロンプト
+    if (request.systemPrompt) {
+      prompt += request.systemPrompt + '\n\n';
+    }
+    
+    // インクルードファイル
+    if (request.includeFiles && request.includeFiles.length > 0) {
+      prompt += '=== Included Files ===\n';
+      for (const file of request.includeFiles) {
+        try {
+          const content = fs.readFileSync(file, 'utf8');
+          prompt += `\n--- ${file} ---\n${content}\n--- End of ${file} ---\n`;
+        } catch (error) {
+          prompt += `\n--- ${file} ---\n[Error reading file: ${error.message}]\n---\n`;
+        }
       }
+      prompt += '\n=== End of Included Files ===\n\n';
+    }
+    
+    // メインプロンプト
+    prompt += request.prompt;
+    
+    return prompt;
+  }
+  
+  async handleRateLimit(output, request) {
+    // バーチカルバーで分割
+    const parts = output.trim().split('|');
+    if (parts.length !== 2) {
+      return {
+        success: false,
+        error: 'Invalid rate limit format'
+      };
+    }
+    
+    const message = parts[0];
+    const epochStr = parts[1];
+    
+    // エポック秒を解析
+    const unlockTime = parseInt(epochStr) * 1000; // ミリ秒に変換
+    if (isNaN(unlockTime)) {
+      return {
+        success: false,
+        error: 'Failed to parse unlock time'
+      };
+    }
+    
+    const now = Date.now();
+    const waitTime = unlockTime - now + 60000; // 1分余裕を持たせる
+    
+    this.logger.info(`[CCSP] Rate limited: ${message}`);
+    this.logger.info(`[CCSP] Waiting until ${new Date(unlockTime).toISOString()}`);
+    this.logger.info(`[CCSP] Wait time: ${Math.round(waitTime / 1000)}s`);
+    
+    // レート制限情報を返す（呼び出し元で管理）
+    return {
+      success: false,
+      rateLimitInfo: {
+        message,
+        unlockTime,
+        waitTime
+      }
+    };
+  }
+  
+  async continueExecution(request) {
+    const args = [
+      '--dangerously-skip-permissions',
+      '--print',
+      '--continue'
+    ];
+    
+    return new Promise((resolve, reject) => {
+      const process = spawn('claude', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdin.write('please continue your job');
+      process.stdin.end();
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      process.on('error', (error) => {
+        reject(error);
+      });
+      
+      process.on('exit', (code) => {
+        if (code === 0) {
+          resolve({
+            success: true,
+            result: stdout
+          });
+        } else {
+          resolve({
+            success: false,
+            error: stderr || stdout,
+            code: code
+          });
+        }
+      });
     });
   }
   
-  /**
-   * Build Claude CLI arguments
-   */
-  buildClaudeArgs(prompt, tempFiles) {
-    const args = [];
+  async handleExecuteError(request) {
+    const args = [
+      '--dangerously-skip-permissions',
+      '--print'
+    ];
     
-    // If files are specified
-    if (tempFiles.length > 0) {
-      for (const file of tempFiles) {
-        args.push(file);
-      }
-    }
-    
-    // Add prompt
-    // Note: Automatically add note prohibiting Claude API calls
-    const enhancedPrompt = this.enhancePrompt(prompt);
-    args.push(enhancedPrompt);
-    
-    return args;
-  }
-  
-  /**
-   * Enhance prompt (add note prohibiting API calls)
-   */
-  enhancePrompt(prompt) {
-    const apiWarning = `
-Note: Do not call Claude API directly in this task.
-All Claude API calls are made through the CCSP agent.
-
-`;
-    
-    return apiWarning + prompt;
-  }
-  
-  /**
-   * Create temporary files
-   */
-  async createTempFiles(files, executionId) {
-    const tempFiles = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const tempFileName = `${executionId}_file_${i}_${path.basename(file.name || `file${i}`)}`;
-      const tempFilePath = path.join(this.config.tempDir, tempFileName);
+    return new Promise((resolve, reject) => {
+      const process = spawn('claude', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
       
-      try {
-        await fs.writeFile(tempFilePath, file.content || file.data || '');
-        tempFiles.push(tempFilePath);
-        
-        this.logger.debug('Temp file created', {
-          original: file.name,
-          temp: tempFilePath,
-          size: (file.content || file.data || '').length
-        });
-        
-      } catch (error) {
-        this.logger.error('Failed to create temp file', {
-          file: file.name,
-          error: error.message
-        });
-        
-        // Clean up partially created files
-        await this.cleanupTempFiles(tempFiles);
-        throw error;
-      }
+      let stdout = '';
+      let stderr = '';
+      
+      process.stdin.write('処理が完了していれば結果を返してください');
+      process.stdin.end();
+      
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      process.on('error', (error) => {
+        reject(error);
+      });
+      
+      process.on('exit', (code) => {
+        if (code === 0) {
+          resolve({
+            success: true,
+            result: stdout
+          });
+        } else {
+          resolve({
+            success: false,
+            error: stderr || stdout,
+            code: code
+          });
+        }
+      });
+    });
+  }
+  
+  async cleanup() {
+    // クリーンアップインターバルを停止
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
     }
     
-    return tempFiles;
-  }
-  
-  /**
-   * Clean up temporary files
-   */
-  async cleanupTempFiles(tempFiles) {
-    for (const file of tempFiles) {
-      try {
-        await fs.unlink(file);
-        this.logger.debug('Temp file cleaned up', { file });
-      } catch (error) {
-        this.logger.warn('Failed to cleanup temp file', {
-          file,
-          error: error.message
-        });
-      }
+    // 実行中のプロセスを停止
+    for (const [requestId, process] of this.runningProcesses) {
+      this.logger.info(`[CCSP] Terminating process: ${requestId}`);
+      process.kill('SIGTERM');
     }
+    this.runningProcesses.clear();
+    
+    // 最後に一時ファイルをクリーンアップ
+    this.cleanupOldTempFiles();
   }
   
   /**
-   * Clean Claude output
+   * 古い一時ファイルをクリーンアップ
    */
-  cleanClaudeOutput(output) {
-    // Remove unnecessary control characters and prompt characters
-    return output
-      .replace(/\x1b\[[0-9;]*m/g, '') // ANSI escape codes
-      .replace(/^[\s\S]*?claude>\s*/m, '') // claude> prompt
-      .trim();
-  }
-  
-  /**
-   * Analyze error
-   */
-  analyzeError(errorMessage) {
-    const message = errorMessage.toLowerCase();
-    
-    // Session timeout
-    if (message.includes('invalid api key') ||
-        message.includes('please run /login') ||
-        message.includes('api login failure') ||
-        message.includes('authentication failed')) {
-      return 'SESSION_TIMEOUT';
-    }
-    
-    // Rate limit
-    if (message.includes('rate limit') ||
-        message.includes('usage limit') ||
-        message.includes('too many requests')) {
-      return 'RATE_LIMIT';
-    }
-    
-    // Network error
-    if (message.includes('network') ||
-        message.includes('connection') ||
-        message.includes('timeout')) {
-      return 'NETWORK_ERROR';
-    }
-    
-    // Input error
-    if (message.includes('invalid input') ||
-        message.includes('file not found') ||
-        message.includes('permission denied')) {
-      return 'INPUT_ERROR';
-    }
-    
-    return 'UNKNOWN_ERROR';
-  }
-  
-  /**
-   * Reset session state
-   */
-  resetSession() {
-    this.sessionTimeout = false;
-    this.lastLoginCheck = Date.now();
-    this.logger.info('Session state reset');
-  }
-  
-  /**
-   * Get statistics
-   */
-  getStats() {
-    const total = this.stats.totalExecutions;
-    
-    return {
-      ...this.stats,
-      successRate: total > 0 ? (this.stats.successCount / total) : 0,
-      errorRate: total > 0 ? (this.stats.errorCount / total) : 0,
-      sessionTimeoutRate: total > 0 ? (this.stats.sessionTimeouts / total) : 0,
-      rateLimitRate: total > 0 ? (this.stats.rateLimits / total) : 0
-    };
-  }
-  
-  /**
-   * Reset statistics
-   */
-  resetStats() {
-    this.stats = {
-      totalExecutions: 0,
-      successCount: 0,
-      errorCount: 0,
-      sessionTimeouts: 0,
-      rateLimits: 0
-    };
-    
-    this.logger.info('Statistics reset');
-  }
-  
-  /**
-   * Sleep utility
-   */
-  async sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-  
-  /**
-   * Cleanup
-   */
-  async shutdown() {
-    this.logger.info('Claude Executor shutting down', this.getStats());
-    
-    // Clean up temporary directory
+  cleanupOldTempFiles() {
     try {
-      const files = await fs.readdir(this.config.tempDir);
+      const now = Date.now();
+      const maxAge = 3600000; // 1時間
+      
+      const files = fs.readdirSync(this.tempDir);
+      let cleanedCount = 0;
+      
       for (const file of files) {
-        const filePath = path.join(this.config.tempDir, file);
-        await fs.unlink(filePath);
+        if (file.startsWith('prompt-') && file.endsWith('.txt')) {
+          const filePath = path.join(this.tempDir, file);
+          const stats = fs.statSync(filePath);
+          
+          if (now - stats.mtimeMs > maxAge) {
+            fs.unlinkSync(filePath);
+            cleanedCount++;
+          }
+        }
       }
       
-      await fs.rmdir(this.config.tempDir);
-      this.logger.info('Temp directory cleaned up');
-      
+      if (cleanedCount > 0) {
+        this.logger.info(`[CCSP] Cleaned up ${cleanedCount} old temp files`);
+      }
     } catch (error) {
-      this.logger.warn('Failed to cleanup temp directory', error);
+      this.logger.error(`[CCSP] Error cleaning up temp files: ${error.message}`);
     }
   }
 }
