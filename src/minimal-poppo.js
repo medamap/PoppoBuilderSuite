@@ -233,8 +233,72 @@ const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github;
 // GitHub設定が見つからない場合のエラーハンドリング
 if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
   console.error('\n❌ GitHub設定が見つかりません\n');
-  console.log('📁 PoppoBuilderを使用するには、プロジェクトの設定が必要です');
-  console.log('\n解決方法:');
+  console.log('📁 PoppoBuilderを使用するには、プロジェクトの設定が必要です\n');
+  
+  // 初期設定ウィザードの提案
+  const chalk = require('chalk');
+  console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  console.log(chalk.cyan('🎯 初回セットアップが必要です'));
+  console.log(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'));
+  
+  // Claude CLIが利用可能かチェック
+  let claudeAvailable = false;
+  try {
+    require('child_process').execSync('claude --version', { stdio: 'ignore' });
+    claudeAvailable = true;
+  } catch {}
+  
+  if (claudeAvailable) {
+    console.log(chalk.green('✨ Claude CLIが検出されました！'));
+    console.log(chalk.yellow('\n対話型セットアップウィザードを起動しますか？'));
+    console.log(chalk.gray('Claude CLIがあなたの設定を手助けします\n'));
+    
+    const readline = require('readline');
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    rl.question('セットアップウィザードを起動する？ (Y/n): ', async (answer) => {
+      rl.close();
+      
+      if (answer.toLowerCase() !== 'n') {
+        // SetupWizardを起動
+        console.log(chalk.cyan('\n🚀 セットアップウィザードを起動しています...\n'));
+        const SetupWizard = require('../lib/commands/setup-wizard');
+        const wizard = new SetupWizard();
+        const success = await wizard.runSetup();
+        
+        if (success) {
+          console.log(chalk.green('\n✅ セットアップが完了しました！'));
+          console.log(chalk.yellow('もう一度 poppo-builder を実行してください\n'));
+        } else {
+          console.log(chalk.red('\nセットアップがキャンセルされました'));
+        }
+      } else {
+        // 手動設定の手順を表示
+        showManualSetupInstructions();
+      }
+      process.exit(0);
+    });
+  } else {
+    // TUIウィザードを起動（inquirer使用）
+    console.log(chalk.yellow('🔧 対話型設定ツールを起動しています...\n'));
+    const InitWizard = require('./init-wizard');
+    const wizard = new InitWizard();
+    wizard.run().then((success) => {
+      if (success) {
+        console.log(chalk.green('\n✅ 設定が完了しました！'));
+        console.log(chalk.yellow('もう一度 poppo-builder を実行してください\n'));
+      }
+      process.exit(0);
+    });
+  }
+  return; // これ以降の処理を停止
+}
+
+function showManualSetupInstructions() {
+  console.log('\n手動設定の手順:');
   console.log('1. プロジェクトの設定ファイルを作成:');
   console.log('   mkdir -p .poppo');
   console.log('   cat > .poppo/config.json << EOF');
@@ -252,7 +316,6 @@ if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
   console.log('   export POPPO_GITHUB_OWNER=YOUR_USERNAME');
   console.log('   export POPPO_GITHUB_REPO=YOUR_REPO_NAME\n');
   console.log('詳細: https://github.com/medamap/PoppoBuilderSuite/blob/main/config/config.example.json\n');
-  process.exit(1);
 }
 
 console.log('使用するGitHub設定:', githubConfig);

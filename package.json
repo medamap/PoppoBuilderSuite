@@ -5,6 +5,7 @@
   "main": "src/minimal-poppo.js",
   "bin": {
     "poppo-builder": "./src/minimal-poppo.js",
+    "poppo-init": "./scripts/poppo-init.js",
     "poppo": "./scripts/poppo-process.js",
     "poppo-health": "./scripts/poppo-health.js",
     "poppo-log-rotate": "./scripts/poppo-log-rotate.js",
@@ -123,6 +124,7 @@
     "express-session": "^1.18.1",
     "i18next": "^25.2.1",
     "i18next-fs-backend": "^2.6.0",
+    "inquirer": "^8.2.6",
     "ioredis": "^5.6.1",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
