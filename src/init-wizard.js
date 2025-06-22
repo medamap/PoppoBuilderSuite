@@ -15,11 +15,25 @@ class InitWizard {
   }
 
   async run() {
+    // Ctrl+Cのハンドリング
+    process.on('SIGINT', () => {
+      console.log(chalk.red('\n\n❌ セットアップがキャンセルされました'));
+      process.exit(0);
+    });
+    
     console.clear();
     console.log(chalk.cyan('╔════════════════════════════════════════╗'));
     console.log(chalk.cyan('║  PoppoBuilder Suite 初期設定ウィザード  ║'));
     console.log(chalk.cyan('╚════════════════════════════════════════╝'));
     console.log();
+    
+    // 設定の説明
+    console.log(chalk.yellow('📝 PoppoBuilderの設定を行います'));
+    console.log(chalk.gray('PoppoBuilderは、GitHubのIssueを自動的に処理するAIアシスタントです。'));
+    console.log(chalk.gray('以下の情報を設定してください：\n'));
+    console.log(chalk.gray('• GitHubリポジトリ情報（どのリポジトリのIssueを処理するか）'));
+    console.log(chalk.gray('• 表示言語（日本語 or 英語）'));
+    console.log(chalk.gray('• ダッシュボード設定（オプション）\n'));
 
     // 既存の設定をチェック
     if (fs.existsSync(this.configPath)) {
@@ -61,6 +75,18 @@ class InitWizard {
         type: 'input',
         name: 'githubOwner',
         message: 'GitHubのユーザー名またはOrganization名を入力してください:',
+        default: () => {
+          // Gitリモートから推測を試みる
+          try {
+            const remoteUrl = require('child_process')
+              .execSync('git remote get-url origin 2>/dev/null', { encoding: 'utf8' })
+              .trim();
+            const match = remoteUrl.match(/github\.com[:/]([^/]+)\//);
+            return match ? match[1] : '';
+          } catch {
+            return '';
+          }
+        },
         validate: (input) => {
           if (!input.trim()) {
             return 'GitHub ownerは必須です';
@@ -74,7 +100,20 @@ class InitWizard {
       {
         type: 'input',
         name: 'githubRepo',
-        message: 'GitHubリポジトリ名を入力してください:',
+        message: 'GitHubリポジトリ名を入力してください（このプロジェクトのリポジトリ名）:',
+        default: () => {
+          // 現在のディレクトリ名またはGitリモートから推測
+          try {
+            const remoteUrl = require('child_process')
+              .execSync('git remote get-url origin 2>/dev/null', { encoding: 'utf8' })
+              .trim();
+            const match = remoteUrl.match(/\/([^/]+?)(\.git)?$/);
+            if (match) return match[1];
+          } catch {}
+          
+          // フォルダ名から推測
+          return path.basename(process.cwd());
+        },
         validate: (input) => {
           if (!input.trim()) {
             return 'リポジトリ名は必須です';
