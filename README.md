@@ -1,54 +1,54 @@
 # PoppoBuilder Suite
 
-GitHub IssueとClaude CLIを連携した自動タスク処理システム
+An automated task processing system that integrates GitHub Issues with Claude CLI
 
-## 🎭 システムファミリー
+## 🎭 System Family
 
-PoppoBuilder Suiteは複数の協調システムで構成されています：
+PoppoBuilder Suite consists of multiple collaborative systems:
 
-- **PoppoBuilder（ぽっぽちゃん）** 🚂 - メインの自動タスク処理システム
-- **MedamaRepair（目玉さん）** 👁️ - PoppoBuilderの監視・自動復旧システム
-- **MeraCleaner（メラさん）** 🔥 - エラーコメント分析・整理システム
-- **MirinOrphanManager（ミリンちゃん）** 🎋 - 孤児Issue検出・管理システム
-- **CCLAエージェント（クララちゃん）** 🤖 - エラーログ収集・自動修復エージェント
-- **CCAGエージェント（カグラちゃん）** 📝 - ドキュメント生成・多言語対応エージェント
-- **CCPMエージェント（ドレミちゃん）** 🔍 - コードレビュー・リファクタリング提案エージェント
-- **CCQAエージェント（キューちゃん）** 🔍 - コード品質保証・テスト実行エージェント
-- **CCRAエージェント（ランちゃん）** 📋 - コードレビュー自動化エージェント
-- **CCTAエージェント（クーちゃん）** 🧪 - テスト自動実行・品質保証エージェント（実装中）
-- **CCSPエージェント（パイちゃん）** 🥧 - Claude Code呼び出し専任エージェント（計画中）
+- **PoppoBuilder (Poppo-chan)** 🚂 - Main automated task processing system
+- **MedamaRepair (Medama-san)** 👁️ - PoppoBuilder monitoring and auto-recovery system
+- **MeraCleaner (Mera-san)** 🔥 - Error comment analysis and organization system
+- **MirinOrphanManager (Mirin-chan)** 🎋 - Orphan issue detection and management system
+- **CCLA Agent (Clara-chan)** 🤖 - Error log collection and auto-repair agent
+- **CCAG Agent (Kagura-chan)** 📝 - Documentation generation and multi-language support agent
+- **CCPM Agent (Doremi-chan)** 🔍 - Code review and refactoring suggestion agent
+- **CCQA Agent (Q-chan)** 🔍 - Code quality assurance and test execution agent
+- **CCRA Agent (Ran-chan)** 📋 - Code review automation agent
+- **CCTA Agent (Ku-chan)** 🧪 - Test automation and quality assurance agent (in development)
+- **CCSP Agent (Pie-chan)** 🥧 - Dedicated Claude Code invocation agent (planned)
 
-## 🎯 概要
+## 🎯 Overview
 
-PoppoBuilder Suiteは、GitHub IssueとClaude CLIを連携した自動タスク処理システムです：
-- **GitHub Issue駆動**: Issueの内容を自動で読み取り実行
-- **Claude CLI統合**: 高度なタスク処理をAIが担当
-- **多言語対応**: 日本語/英語に対応（設定可能）
-- **継続的対話**: コメント追記による対話的なタスク処理
-- **自己改善**: Dogfooding機能で自身の機能拡張が可能
+PoppoBuilder Suite is an automated task processing system that integrates GitHub Issues with Claude CLI:
+- **GitHub Issue-driven**: Automatically reads and executes issue content
+- **Claude CLI Integration**: AI handles advanced task processing
+- **Multi-language Support**: Japanese/English support (configurable)
+- **Continuous Dialogue**: Interactive task processing through comment additions
+- **Self-improvement**: Extends its own functionality through dogfooding
 
-## 🚀 現在の機能
+## 🚀 Current Features
 
-✅ **Issue自動処理** - ラベル付きIssueを30秒間隔で監視・処理  
-✅ **重複処理抑制** - 同一Issueに対する重複処理を防止（多層防御システム）  
-✅ **コメント追記対応** - `awaiting-response`ラベルで継続的な対話が可能  
-✅ **Dogfooding機能** - `task:dogfooding`で自己改善タスク実行  
-✅ **自動再起動** - Dogfoodingタスク完了時に30秒後の自動再起動  
-✅ **多言語対応** - 日本語/英語を設定ファイルで切り替え可能  
-✅ **詳細ログ** - タスク別・プロセス別の実行ログを記録  
-✅ **完了キーワード認識** - 設定可能な完了キーワードで自動的に`completed`ラベル付与
+✅ **Automated Issue Processing** - Monitors and processes labeled issues every 30 seconds  
+✅ **Duplicate Processing Prevention** - Prevents duplicate processing of the same issue (multi-layered defense system)  
+✅ **Comment Follow-up** - Enables continuous dialogue with `awaiting-response` label  
+✅ **Dogfooding Feature** - Executes self-improvement tasks with `task:dogfooding`  
+✅ **Auto-restart** - Automatic restart 30 seconds after dogfooding task completion  
+✅ **Multi-language Support** - Switchable between Japanese/English via configuration  
+✅ **Detailed Logging** - Records execution logs per task and process  
+✅ **Completion Keyword Recognition** - Automatically adds `completed` label upon detecting configurable completion keywords
 
-### 重複処理抑制機能
-PoppoBuilderは以下の4層の仕組みで、同一Issueの重複処理を確実に防止します：
+### Duplicate Processing Prevention
+PoppoBuilder ensures reliable prevention of duplicate processing through a 4-layer mechanism:
 
-1. **GitHubラベル管理** - `processing`ラベルによる視覚的な状態管理
-2. **ファイルベースロック** - IssueLockManagerによる排他制御（TTL付き）
-3. **状態永続化** - FileStateManagerによる処理済みIssueの記録
-4. **メモリ内管理** - TaskQueueによる実行中タスクの追跡
+1. **GitHub Label Management** - Visual state management using `processing` label
+2. **File-based Locking** - Exclusive control via IssueLockManager (with TTL)
+3. **State Persistence** - Recording processed issues via FileStateManager
+4. **In-memory Management** - Tracking running tasks via TaskQueue
 
-プロセス異常終了時も自動回復が可能で、孤児Issueは定期的に検出・修復されます。詳細は[重複処理抑制機能ドキュメント](docs/duplicate-processing-prevention.md)を参照してください。
+Automatic recovery is possible even after process abnormal termination, with orphan issues being periodically detected and repaired. See [Duplicate Processing Prevention Documentation](docs/duplicate-processing-prevention.md) for details.
 
-## 🏗️ 現在のアーキテクチャ
+## 🏗️ Current Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -62,138 +62,138 @@ PoppoBuilderは以下の4層の仕組みで、同一Issueの重複処理を確�
                      ▼               ▼
               ┌──────────────┐ ┌──────────────┐
               │ PoppoBuilder │ │   Comment    │
-              │   (30秒毎)   │ │   Monitor    │
+              │ (every 30s)  │ │   Monitor    │
               └──────┬───────┘ └──────┬───────┘
                      │               │
                      ▼               │
               ┌──────────────┐       │
               │ Claude CLI   │       │
-              │ (stdin入力)  │       │
+              │ (stdin input)│       │
               └──────┬───────┘       │
                      │               │
                      ▼               │
               ┌──────────────┐       │
               │GitHub Comment│ ◀─────┘
-              │ (file経由)   │
+              │ (via file)   │
               └──────────────┘
 ```
 
-### 主要コンポーネント
-- **Issue監視**: 30秒間隔でGitHub APIを使用してIssue検出
-- **Claude CLI連携**: stdin経由でプロンプトを送信（ハングアップ問題解決済み）
-- **コメント処理**: ファイル経由で特殊文字を含むコメント投稿
-- **状態管理**: ラベルによるIssue状態の管理（`processing`→`awaiting-response`→`completed`）
-- **自動再起動**: dogfoodingタスク完了時にワンショット再起動
+### Key Components
+- **Issue Monitoring**: Detects issues using GitHub API every 30 seconds
+- **Claude CLI Integration**: Sends prompts via stdin (hang-up issue resolved)
+- **Comment Processing**: Posts comments containing special characters via file
+- **State Management**: Manages issue states using labels (`processing`→`awaiting-response`→`completed`)
+- **Auto-restart**: One-shot restart after dogfooding task completion
 
-## 📁 プロジェクト構造
+## 📁 Project Structure
 
 ```
 PoppoBuilderSuite/
-├── src/                # ソースコード
-│   ├── minimal-poppo.js    # メイン処理
-│   ├── process-manager.js  # Claude CLI実行管理
-│   ├── github-client.js    # GitHub API操作
-│   ├── logger.js          # ログ機能
-│   └── config-loader.js   # 設定読み込み
-├── scripts/            # ユーティリティスクリプト
-│   ├── setup-labels.js     # GitHubラベル作成
-│   └── restart-scheduler.js   # 自動再起動スケジューラ
-├── config/             # 設定ファイル
-│   └── config.json         # システム設定
-├── .poppo/             # ローカル設定
-│   └── config.json        # 言語設定等
-├── logs/               # ログファイル
-├── temp/               # 一時ファイル
-└── docs/              # ドキュメント
+├── src/                # Source code
+│   ├── minimal-poppo.js    # Main processing
+│   ├── process-manager.js  # Claude CLI execution management
+│   ├── github-client.js    # GitHub API operations
+│   ├── logger.js          # Logging functionality
+│   └── config-loader.js   # Configuration loading
+├── scripts/            # Utility scripts
+│   ├── setup-labels.js     # GitHub label creation
+│   └── restart-scheduler.js   # Auto-restart scheduler
+├── config/             # Configuration files
+│   └── config.json         # System configuration
+├── .poppo/             # Local settings
+│   └── config.json        # Language settings etc.
+├── logs/               # Log files
+├── temp/               # Temporary files
+└── docs/              # Documentation
 ```
 
-## 🚀 クイックスタート
+## 🚀 Quick Start
 
-### 前提条件
-- Node.js 18以上
-- Claude CLI (インストール済み)
-- GitHub CLI (`gh` コマンド、認証済み)
+### Prerequisites
+- Node.js 18 or later
+- Claude CLI (installed)
+- GitHub CLI (`gh` command, authenticated)
 - Git
 
-### インストール
-詳細なインストール手順は[インストールガイド](docs/INSTALL.md)（[English](docs/INSTALL_en.md)）を参照してください。
+### Installation
+For detailed installation instructions, see the [Installation Guide](docs/INSTALL.md) ([English](docs/INSTALL_en.md)).
 
 ```bash
-# リポジトリのクローン
+# Clone repository
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
 
-# 依存関係のインストール
+# Install dependencies
 npm install
 
-# 環境変数設定
+# Set up environment variables
 cp .env.example .env
-# .envファイルを編集してGitHub設定を記入
+# Edit .env file and fill in GitHub settings
 
-# GitHubラベルの初期設定
+# Initialize GitHub labels
 node scripts/setup-labels.js
 
-# PoppoBuilder起動
+# Start PoppoBuilder
 npm start
 ```
 
-### 基本的な使い方
+### Basic Usage
 
-1. **通常タスクの実行**
+1. **Execute Regular Tasks**
 ```bash
 gh issue create \
-  --title "タスクのタイトル" \
-  --body "実行したい内容の説明" \
+  --title "Task title" \
+  --body "Description of what to execute" \
   --label "task:misc" \
   --repo owner/repo
 ```
 
-2. **Dogfoodingタスク（自己改善）**
+2. **Dogfooding Tasks (Self-improvement)**
 ```bash
 gh issue create \
-  --title "PoppoBuilder機能追加" \
-  --body "新機能の説明" \
+  --title "PoppoBuilder Feature Addition" \
+  --body "Description of new feature" \
   --label "task:dogfooding" \
   --repo medamap/PoppoBuilderSuite
 ```
 
-3. **言語設定の変更**
-`.poppo/config.json`を編集：
+3. **Change Language Settings**
+Edit `.poppo/config.json`:
 ```json
 {
-  "language": "en"  // "ja" または "en"
+  "language": "en"  // "ja" or "en"
 }
 ```
 
-## 📋 動作の仕組み
+## 📋 How It Works
 
-### Issue処理フロー
-1. **Issue検出**: 30秒ごとに対象ラベル付きIssueをチェック
-2. **処理開始**: `processing`ラベルを付与してClaude CLIを実行
-3. **結果投稿**: 実行結果をGitHubコメントとして投稿
-4. **状態更新**: `awaiting-response`ラベルに変更（継続対話可能）
-5. **コメント監視**: Issue作成者からの新規コメントを検出して追加処理
-6. **完了判定**: 完了キーワード検出時に`completed`ラベル付与
+### Issue Processing Flow
+1. **Issue Detection**: Checks for labeled issues every 30 seconds
+2. **Processing Start**: Adds `processing` label and executes Claude CLI
+3. **Result Posting**: Posts execution results as GitHub comments
+4. **State Update**: Changes to `awaiting-response` label (enables continuous dialogue)
+5. **Comment Monitoring**: Detects new comments from issue creator for additional processing
+6. **Completion Detection**: Adds `completed` label when completion keywords are detected
 
-### Dogfooding機能
-`task:dogfooding`ラベル付きIssueでは：
-- CLAUDE.mdを自動的に参照して現在の実装状況を把握
-- 実装後にCLAUDE.mdを更新して次回セッション用に記録
-- 完了時に30秒後の自動再起動をスケジュール（新機能を反映）
+### Dogfooding Feature
+For issues with `task:dogfooding` label:
+- Automatically references CLAUDE.md to understand current implementation status
+- Updates CLAUDE.md after implementation for next session reference
+- Schedules automatic restart 30 seconds after completion (to reflect new features)
 
-## 🔧 設定
+## 🔧 Configuration
 
-### システム設定 (`config/config.json`)
+### System Configuration (`config/config.json`)
 ```json
 {
   "github": {
-    "owner": "GitHubユーザー名",
-    "repo": "リポジトリ名",
+    "owner": "GitHub username",
+    "repo": "Repository name",
     "checkInterval": 30000
   },
   "claude": {
     "command": "claude",
-    "timeout": 86400000  // 24時間
+    "timeout": 86400000  // 24 hours
   },
   "commentHandling": {
     "enabled": true,
@@ -202,82 +202,82 @@ gh issue create \
 }
 ```
 
-### 言語設定 (`.poppo/config.json`)
+### Language Settings (`.poppo/config.json`)
 ```json
 {
-  "language": "ja"  // "ja" または "en"
+  "language": "ja"  // "ja" or "en"
 }
 ```
 
-## 📈 ロードマップ
+## 📈 Roadmap
 
-### ✅ Phase 1: 基本機能（完了）
-- ✅ Issue自動処理機能
-- ✅ Claude CLI統合
-- ✅ GitHubコメント投稿
-- ✅ 詳細ログ機能
+### ✅ Phase 1: Basic Features (Completed)
+- ✅ Automated issue processing
+- ✅ Claude CLI integration
+- ✅ GitHub comment posting
+- ✅ Detailed logging
 
-### ✅ Phase 2: 拡張機能（完了）
-- ✅ コメント追記対応
-- ✅ Dogfooding機能
-- ✅ 自動再起動機能
-- ✅ 多言語対応
+### ✅ Phase 2: Extended Features (Completed)
+- ✅ Comment follow-up support
+- ✅ Dogfooding feature
+- ✅ Auto-restart functionality
+- ✅ Multi-language support
 
-### 🚧 Phase 3: 高度な機能（計画中）
-- [ ] マルチプロジェクト対応
-- [ ] プロセス管理ダッシュボード
-- [ ] トレーサビリティ機能
-- [ ] エージェント分離（CCPM, CCAG等）
+### 🚧 Phase 3: Advanced Features (Planned)
+- [ ] Multi-project support
+- [ ] Process management dashboard
+- [ ] Traceability features
+- [ ] Agent separation (CCPM, CCAG, etc.)
 
-## 📚 ドキュメント
+## 📚 Documentation
 
-- [インストールガイド](docs/INSTALL.md) ([English](docs/INSTALL_en.md))
-- [クイックスタートガイド](docs/guides/quick-start.md)
-- [セットアップガイド](docs/setup-guide.md)
-- [最小実装ガイド](docs/minimal-implementation-guide.md)
-- [要求定義](docs/requirements/)
-- [設計書](docs/design/)
-- [アーキテクチャ](docs/architecture/)
+- [Installation Guide](docs/INSTALL.md) ([English](docs/INSTALL_en.md))
+- [Quick Start Guide](docs/guides/quick-start.md)
+- [Setup Guide](docs/setup-guide.md)
+- [Minimal Implementation Guide](docs/minimal-implementation-guide.md)
+- [Requirements](docs/requirements/)
+- [Design Documents](docs/design/)
+- [Architecture](docs/architecture/)
 
-## 🔍 トラブルシューティング
+## 🔍 Troubleshooting
 
-### よくある問題と解決方法
+### Common Issues and Solutions
 
-#### Claude CLIハングアップ
-- **問題**: Claude CLIがプロンプト待ちでハングアップ
-- **解決**: stdin方式でプロンプトを送信（実装済み）
+#### Claude CLI Hang-up
+- **Issue**: Claude CLI hangs waiting for prompt
+- **Solution**: Send prompts via stdin (implemented)
 
-#### 特殊文字エラー
-- **問題**: GitHubコメント投稿時の特殊文字エラー
-- **解決**: `--body-file`オプションでファイル経由投稿（実装済み）
+#### Special Character Errors
+- **Issue**: Special character errors when posting GitHub comments
+- **Solution**: Post via file using `--body-file` option (implemented)
 
-#### 言語が期待と異なる
-- **問題**: 英語で回答される
-- **解決**: `.poppo/config.json`の`language`設定を確認
+#### Unexpected Language Response
+- **Issue**: Responses in English instead of expected language
+- **Solution**: Check `language` setting in `.poppo/config.json`
 
-#### restart-flag.jsonエラー
-- **問題**: 再起動時に`restart-flag.json`が見つからない
-- **解決**: ワンショット再起動方式を使用（実装済み）
+#### restart-flag.json Error
+- **Issue**: `restart-flag.json` not found during restart
+- **Solution**: Use one-shot restart method (implemented)
 
-#### awaiting-responseラベルが付かない
-- **問題**: Issue処理後にコメント対応できない
-- **解決**: GitHubでラベルを事前に作成する必要あり（`scripts/setup-labels.js`を実行）
+#### awaiting-response Label Not Applied
+- **Issue**: Cannot respond to comments after issue processing
+- **Solution**: Labels must be created in GitHub beforehand (run `scripts/setup-labels.js`)
 
-詳細は[インストールガイド](docs/INSTALL.md#トラブルシューティング)を参照してください。
+For details, see the [Installation Guide](docs/INSTALL.md#troubleshooting).
 
-## 🤝 コントリビューション
+## 🤝 Contributing
 
-このプロジェクトは自己改善型です！機能拡張のIssueを作成して、PoppoBuilderに実装させましょう。
+This project is self-improving! Create feature enhancement issues and let PoppoBuilder implement them.
 
 ```bash
-# Dogfoodingタスクの作成例
+# Example of creating a dogfooding task
 gh issue create \
-  --title "新機能: XXX機能の追加" \
-  --body "機能の詳細説明..." \
+  --title "New Feature: Add XXX functionality" \
+  --body "Detailed description of the feature..." \
   --label "task:dogfooding" \
   --repo medamap/PoppoBuilderSuite
 ```
 
-## 📄 ライセンス
+## 📄 License
 
-MIT License - 詳細はLICENSEファイルを参照
+MIT License - See LICENSE file for details

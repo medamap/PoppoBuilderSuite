@@ -28,7 +28,7 @@
     "authentication": {
       "enabled": true,
       "username": "admin",
-      "password": "poppo2025"
+      "password": "CHANGE_THIS_PASSWORD"
     }
   },
   "rateLimiting": {

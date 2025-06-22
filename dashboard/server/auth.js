@@ -14,6 +14,14 @@ class AuthMiddleware {
       password: 'changeme'
     };
     
+    // 環境変数から上書き
+    if (process.env.DASHBOARD_USERNAME) {
+      this.config.username = process.env.DASHBOARD_USERNAME;
+    }
+    if (process.env.DASHBOARD_PASSWORD) {
+      this.config.password = process.env.DASHBOARD_PASSWORD;
+    }
+    
     this.logger = logger;
     
     // セッションシークレットの生成（設定にない場合はランダム生成）
