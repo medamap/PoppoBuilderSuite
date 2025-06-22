@@ -78,6 +78,37 @@
             </div>
         </section>
 
+        <section class="token-usage">
+            <h2 data-i18n="tokenUsage.title">トークン使用量</h2>
+            <div class="token-usage-container">
+                <div class="token-stats-grid">
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.today">本日</span>
+                        <span id="tokenToday" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.week">今週</span>
+                        <span id="tokenWeek" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.month">今月</span>
+                        <span id="tokenMonth" class="stat-value">-</span>
+                    </div>
+                    <div class="token-stat-item">
+                        <span class="stat-label" data-i18n="tokenUsage.total">累計</span>
+                        <span id="tokenTotal" class="stat-value">-</span>
+                    </div>
+                </div>
+                <div class="token-usage-chart">
+                    <canvas id="tokenUsageChart"></canvas>
+                </div>
+                <div class="token-usage-actions">
+                    <button id="refreshTokenUsageBtn" class="btn btn-primary" data-i18n="common.refresh">更新</button>
+                    <button id="viewCCSPDashboardBtn" class="btn btn-secondary" data-i18n="tokenUsage.viewCCSP">CCSP詳細</button>
+                </div>
+            </div>
+        </section>
+
         <section class="performance-analytics">
             <h2 data-i18n="analytics.title">パフォーマンス分析</h2>
             <div class="analytics-tabs">

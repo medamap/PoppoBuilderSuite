@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCSP Dashboard - PoppoBuilder Suite</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/ccsp-dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>🥧 CCSP (Claude Code Service Provider) Dashboard</h1>
+            <div class="header-actions">
+                <button id="refreshBtn" class="btn btn-primary">更新</button>
+                <button id="pauseBtn" class="btn btn-warning">一時停止</button>
+                <button id="resumeBtn" class="btn btn-success" style="display:none;">再開</button>
+                <a href="../index.html" class="btn btn-secondary">メインダッシュボード</a>
+            </div>
+        </header>
+
+        <!-- レート制限状態 -->
+        <section class="rate-limit-status">
+            <h2>レート制限状態</h2>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>トークン使用率</h3>
+                    <div class="progress-bar">
+                        <div id="tokenProgress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="status-details">
+                        <span id="tokenUsage">0 / 100,000</span>
+                        <span id="tokenPercent">0%</span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <h3>リクエスト使用率</h3>
+                    <div class="progress-bar">
+                        <div id="requestProgress" class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="status-details">
+                        <span id="requestUsage">0 / 50</span>
+                        <span id="requestPercent">0%</span>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <h3>予測</h3>
+                    <div class="prediction-info">
+                        <p>トークン制限到達: <span id="tokenLimitTime">-</span></p>
+                        <p>リクエスト制限到達: <span id="requestLimitTime">-</span></p>
+                        <p>推奨遅延: <span id="recommendedDelay">500ms</span></p>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <h3>推奨アクション</h3>
+                    <div id="recommendedAction" class="action-normal">
+                        NORMAL
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- キュー状態 -->
+        <section class="queue-status">
+            <h2>キュー状態</h2>
+            <div class="queue-controls">
+                <select id="priorityFilter" class="filter-select">
+                    <option value="all">全優先度</option>
+                    <option value="urgent">緊急</option>
+                    <option value="high">高</option>
+                    <option value="normal">通常</option>
+                    <option value="low">低</option>
+                    <option value="scheduled">スケジュール</option>
+                </select>
+                <button id="clearQueueBtn" class="btn btn-danger">キュークリア</button>
+            </div>
+            <div class="queue-grid">
+                <div class="queue-item" data-priority="urgent">
+                    <h4>緊急</h4>
+                    <div class="queue-count">0</div>
+                    <div class="queue-info">
+                        <span class="oldest">-</span>
+                        <span class="newest">-</span>
+                    </div>
+                </div>
+                <div class="queue-item" data-priority="high">
+                    <h4>高優先度</h4>
+                    <div class="queue-count">0</div>
+                    <div class="queue-info">
+                        <span class="oldest">-</span>
+                        <span class="newest">-</span>
+                    </div>
+                </div>
+                <div class="queue-item" data-priority="normal">
+                    <h4>通常</h4>
+                    <div class="queue-count">0</div>
+                    <div class="queue-info">
+                        <span class="oldest">-</span>
+                        <span class="newest">-</span>
+                    </div>
+                </div>
+                <div class="queue-item" data-priority="low">
+                    <h4>低優先度</h4>
+                    <div class="queue-count">0</div>
+                    <div class="queue-info">
+                        <span class="oldest">-</span>
+                        <span class="newest">-</span>
+                    </div>
+                </div>
+                <div class="queue-item" data-priority="scheduled">
+                    <h4>スケジュール</h4>
+                    <div class="queue-count">0</div>
+                    <div class="queue-info">
+                        <span class="oldest">-</span>
+                        <span class="newest">-</span>
+                    </div>
+                </div>
+                <div class="queue-item queue-total">
+                    <h4>合計</h4>
+                    <div class="queue-count" id="totalQueueSize">0</div>
+                    <div class="queue-info">
+                        <span>全キュー</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 使用量統計 -->
+        <section class="usage-statistics">
+            <h2>使用量統計</h2>
+            <div class="stats-tabs">
+                <button class="tab-btn active" data-tab="realtime">リアルタイム</button>
+                <button class="tab-btn" data-tab="agents">エージェント別</button>
+                <button class="tab-btn" data-tab="errors">エラー分析</button>
+                <button class="tab-btn" data-tab="patterns">使用パターン</button>
+            </div>
+            
+            <div id="realtimeTab" class="tab-content active">
+                <div class="realtime-stats">
+                    <div class="stat-card">
+                        <h4>現在（1分）</h4>
+                        <div class="stat-value">
+                            <span id="currentTokens">0</span> トークン
+                        </div>
+                        <div class="stat-value">
+                            <span id="currentRequests">0</span> リクエスト
+                        </div>
+                        <div class="stat-value">
+                            <span id="currentLatency">0</span> ms
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <h4>過去5分</h4>
+                        <canvas id="last5MinutesChart"></canvas>
+                    </div>
+                    <div class="stat-card">
+                        <h4>過去60分</h4>
+                        <canvas id="last60MinutesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="agentsTab" class="tab-content">
+                <div class="agents-table-container">
+                    <table class="agents-table">
+                        <thead>
+                            <tr>
+                                <th>エージェント</th>
+                                <th>総トークン</th>
+                                <th>総リクエスト</th>
+                                <th>エラー</th>
+                                <th>平均レイテンシ</th>
+                                <th>最終使用</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agentsTableBody">
+                            <!-- 動的に生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="errorsTab" class="tab-content">
+                <div class="errors-summary">
+                    <div class="error-stat">
+                        <h4>総エラー数</h4>
+                        <div id="totalErrors">0</div>
+                    </div>
+                    <div class="error-stat">
+                        <h4>エラー種別</h4>
+                        <div id="errorTypes">0</div>
+                    </div>
+                    <div class="error-stat">
+                        <h4>影響エージェント</h4>
+                        <div id="affectedAgents">0</div>
+                    </div>
+                </div>
+                <div class="error-details">
+                    <h4>最近のエラー</h4>
+                    <div id="recentErrors" class="error-list">
+                        <!-- 動的に生成 -->
+                    </div>
+                </div>
+            </div>
+            
+            <div id="patternsTab" class="tab-content">
+                <div class="patterns-grid">
+                    <div class="pattern-card">
+                        <h4>ピーク時間</h4>
+                        <div id="peakHours" class="pattern-list">
+                            <!-- 動的に生成 -->
+                        </div>
+                    </div>
+                    <div class="pattern-card">
+                        <h4>静かな時間</h4>
+                        <div id="quietHours" class="pattern-list">
+                            <!-- 動的に生成 -->
+                        </div>
+                    </div>
+                    <div class="pattern-card">
+                        <h4>トレンド</h4>
+                        <div id="usageTrend" class="trend-indicator">
+                            <!-- 動的に生成 -->
+                        </div>
+                    </div>
+                    <div class="pattern-card">
+                        <h4>時間別使用量</h4>
+                        <canvas id="hourlyPatternChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 制御パネル -->
+        <section class="control-panel">
+            <h2>制御パネル</h2>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <label>スロットリング遅延 (ms)</label>
+                    <input type="number" id="throttleDelay" min="0" value="0">
+                    <button id="setThrottleBtn" class="btn btn-primary">設定</button>
+                </div>
+                <div class="control-item">
+                    <label>同時実行数</label>
+                    <input type="number" id="concurrency" min="1" max="10" value="1">
+                    <button id="setConcurrencyBtn" class="btn btn-primary">設定</button>
+                </div>
+                <div class="control-item">
+                    <label>キューサイズ制限</label>
+                    <input type="number" id="queueSizeLimit" min="100" max="10000" value="1000">
+                    <button id="setQueueLimitBtn" class="btn btn-primary">設定</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="../js/ccsp-dashboard.js"></script>
+</body>
+</html>

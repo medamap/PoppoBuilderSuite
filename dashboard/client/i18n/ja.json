@@ -73,6 +73,14 @@
     "refresh": "更新",
     "allTypes": "全タスクタイプ"
   },
+  "tokenUsage": {
+    "title": "トークン使用量",
+    "today": "本日",
+    "week": "今週",
+    "month": "今月",
+    "total": "累計",
+    "viewCCSP": "CCSP詳細"
+  },
   "multiProject": {
     "title": "PoppoBuilder マルチプロジェクトダッシュボード",
     "stats": {

@@ -73,6 +73,14 @@
     "refresh": "Refresh",
     "allTypes": "All Task Types"
   },
+  "tokenUsage": {
+    "title": "Token Usage",
+    "today": "Today",
+    "week": "This Week",
+    "month": "This Month",
+    "total": "Total",
+    "viewCCSP": "CCSP Details"
+  },
   "multiProject": {
     "title": "PoppoBuilder Multi-Project Dashboard",
     "stats": {

@@ -130,6 +130,10 @@ class DashboardServer {
     // アナリティクスAPIのルートを設定
     this.app.use('/api/analytics', AnalyticsAPI);
     
+    // トークン使用量APIのルートを設定
+    const TokenUsageAPI = require('./api/token-usage');
+    this.app.use('/api/token-usage', TokenUsageAPI);
+    
     // ヘルスチェックAPIのルートを設定
     if (this.healthAPI) {
       this.app.use('/api/health', this.healthAPI.getRouter());
@@ -139,6 +143,11 @@ class DashboardServer {
     if (this.processAPI) {
       this.app.use('/api', this.processAPI.getRouter());
     }
+    
+    // CCSP管理APIのルートを設定（Phase 4）
+    const CCSPManagementAPI = require('./api/ccsp-management');
+    // CCSPコンポーネントは外部から注入される必要がある
+    this.app.use('/api/ccsp', CCSPManagementAPI.router);
   }
 
   /**
