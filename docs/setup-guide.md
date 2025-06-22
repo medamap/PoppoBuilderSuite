@@ -1,6 +1,6 @@
 # PoppoBuilder Suite Setup Guide
 
-This guide explains the detailed setup procedures and configuration options for PoppoBuilder. For basic installation instructions, see the [Installation Guide](INSTALL_en.md).
+This guide explains the detailed setup procedures and configuration options for PoppoBuilder. For basic installation instructions, see the [Installation Guide](INSTALL.md).
 
 ## Initial Setup
 
@@ -208,7 +208,7 @@ npm run deps:check
 npm run config:validate
 ```
 
-For detailed troubleshooting, see the [Installation Guide](INSTALL_en.md#troubleshooting).
+For detailed troubleshooting, see the [Installation Guide](INSTALL.md#troubleshooting).
 
 ## Next Steps
 
@@ -218,7 +218,10 @@ After setup is complete:
 - Read [Best Practices](best-practices.md) for optimal usage
 - Check [API Reference](api/) for detailed command information
 
-## Language Support
+## Additional Resources
 
-- **[English Documentation](README_en.md)** - Complete English documentation
-- **[日本語ドキュメント](ja/setup-guide.md)** - 日本語版セットアップガイド
+For more information:
+- [Quick Start Guide](guides/quick-start.md) - Basic usage guide
+- [Installation Guide](INSTALL.md) - Complete installation instructions
+- [Contributing Guide](../CONTRIBUTING.md) - How to contribute to the project
+- [Feature Documentation](features/) - Detailed feature guides

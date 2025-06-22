@@ -1,48 +1,48 @@
-# エージェント分離アーキテクチャ
+# Agent Separation Architecture
 
-## 概要
+## Overview
 
-PoppoBuilderの処理を機能別のエージェントに分離し、各エージェントが専門的な処理を担当する分散アーキテクチャです。
+A distributed architecture that separates PoppoBuilder processing into functional agents, with each agent responsible for specialized processing.
 
-## エージェント構成
+## Agent Configuration
 
-### 1. PoppoBuilder Core (コーディネーター)
-- 全体の統括・調整
-- Issueの振り分け
-- エージェント間の連携制御
-- 最終的な結果の集約
+### 1. PoppoBuilder Core (Coordinator)
+- Overall orchestration and coordination
+- Issue distribution
+- Inter-agent coordination control
+- Final result aggregation
 
 ### 2. CCPM (Code Change Process Manager)
-- コードレビュー
-- 修正提案の生成
-- コード品質チェック
-- リファクタリング提案
+- Code review
+- Modification suggestions
+- Code quality checks
+- Refactoring proposals
 
 ### 3. CCAG (Code Change Assistant Generator)
-- ドキュメント生成
-- コメント作成
-- README/設計書の更新
-- 多言語対応
+- Documentation generation
+- Comment creation
+- README/design document updates
+- Multi-language support
 
-### 4. CCQA (Code Change Quality Assurance) ※Phase 2で実装
-- テスト実行
-- 品質チェック
-- セキュリティ検査
-- パフォーマンス分析
+### 4. CCQA (Code Change Quality Assurance) *To be implemented in Phase 2
+- Test execution
+- Quality checks
+- Security inspection
+- Performance analysis
 
-## エージェント間通信
+## Inter-Agent Communication
 
-### Phase 1: プロセス間通信（IPC）
-- 共有ファイルシステムを使用
-- JSONファイルによるメッセージ交換
-- ポーリングベースの監視
+### Phase 1: Inter-Process Communication (IPC)
+- Using shared filesystem
+- Message exchange via JSON files
+- Polling-based monitoring
 
-### Phase 2: メッセージキュー
-- Redis Pub/Sub または RabbitMQ
-- 非同期メッセージング
-- イベントドリブンアーキテクチャ
+### Phase 2: Message Queue
+- Redis Pub/Sub or RabbitMQ
+- Asynchronous messaging
+- Event-driven architecture
 
-## メッセージフォーマット
+## Message Format
 
 ```json
 {
@@ -54,72 +54,72 @@ PoppoBuilderの処理を機能別のエージェントに分離し、各エー�
   "taskId": "issue-27",
   "action": "code-review|generate-docs|etc",
   "payload": {
-    // タスク固有のデータ
+    // Task-specific data
   },
   "status": "pending|processing|completed|failed",
   "result": {
-    // 処理結果
+    // Processing results
   }
 }
 ```
 
-## ディレクトリ構造
+## Directory Structure
 
 ```
 agents/
 ├── core/           # PoppoBuilder Core
 ├── ccpm/           # Code Change Process Manager
 ├── ccag/           # Code Change Assistant Generator
-└── shared/         # 共有ライブラリ・ユーティリティ
-    ├── messaging/  # メッセージング機能
-    └── config/     # 共通設定
+└── shared/         # Shared libraries and utilities
+    ├── messaging/  # Messaging functionality
+    └── config/     # Common configuration
 
-messages/           # Phase 1でのメッセージ交換用
-├── inbox/         # 各エージェントの受信ボックス
-└── outbox/        # 各エージェントの送信ボックス
+messages/           # For message exchange in Phase 1
+├── inbox/         # Inbox for each agent
+└── outbox/        # Outbox for each agent
 ```
 
-## 実装フェーズ
+## Implementation Phases
 
-### Phase 1: 基本実装（現在）
-1. エージェント基盤クラスの作成
-2. CCPM、CCAGエージェントの実装
-3. ファイルベースのメッセージング
-4. 基本的なタスク振り分け
+### Phase 1: Basic Implementation (Current)
+1. Agent base class creation
+2. CCPM and CCAG agent implementation
+3. File-based messaging
+4. Basic task distribution
 
-### Phase 2: メッセージキュー導入
-1. Redis/RabbitMQの統合
-2. 非同期メッセージング
-3. イベントドリブン化
+### Phase 2: Message Queue Introduction
+1. Redis/RabbitMQ integration
+2. Asynchronous messaging
+3. Event-driven implementation
 
-### Phase 3: スケーリング機能
-1. 動的エージェント起動
-2. 負荷分散
-3. ヘルスチェック
+### Phase 3: Scaling Features
+1. Dynamic agent startup
+2. Load balancing
+3. Health checks
 
-### Phase 4: コンテナ化
-1. Docker対応
-2. Kubernetes統合
-3. オートスケーリング
+### Phase 4: Containerization
+1. Docker support
+2. Kubernetes integration
+3. Auto-scaling
 
-## 利点
+## Benefits
 
-1. **専門化**: 各エージェントが特定の機能に特化
-2. **スケーラビリティ**: 必要に応じてエージェントを増減
-3. **耐障害性**: 一部のエージェントが停止してもシステム継続
-4. **メンテナンス性**: 個別にアップデート・再起動可能
-5. **パフォーマンス**: 並列処理による高速化
+1. **Specialization**: Each agent specializes in specific functions
+2. **Scalability**: Agents can be scaled up or down as needed
+3. **Fault Tolerance**: System continues even if some agents fail
+4. **Maintainability**: Individual updates and restarts possible
+5. **Performance**: Improved speed through parallel processing
 
-## セキュリティ考慮事項
+## Security Considerations
 
-1. エージェント間の認証
-2. メッセージの暗号化（Phase 2以降）
-3. アクセス制御
-4. 監査ログ
+1. Inter-agent authentication
+2. Message encryption (Phase 2 onwards)
+3. Access control
+4. Audit logging
 
-## モニタリング
+## Monitoring
 
-1. 各エージェントの状態監視
-2. メッセージフローの可視化
-3. パフォーマンスメトリクス
-4. エラー追跡
+1. Agent status monitoring
+2. Message flow visualization
+3. Performance metrics
+4. Error tracking

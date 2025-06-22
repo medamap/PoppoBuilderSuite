@@ -1,167 +1,167 @@
-# PoppoBuilder Suite クイックスタートガイド
+# PoppoBuilder Suite Quick Start Guide
 
-## 前提条件
+## Prerequisites
 
-- Node.js 18以上
-- Claude CLI がインストール・設定済み
-- GitHub CLI (`gh`) がインストール・認証済み
+- Node.js 18 or higher
+- Claude CLI installed and configured
+- GitHub CLI (`gh`) installed and authenticated
 - Git
 
-## 初期セットアップ
+## Initial Setup
 
-詳細なセットアップ手順は[インストールガイド](../INSTALL.md)を参照してください。
+For detailed setup instructions, see the [Installation Guide](../INSTALL.md).
 
-### 1. クイックセットアップ
+### 1. Quick Setup
 
 ```bash
-# リポジトリのクローン
+# Clone the repository
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
 
-# 依存関係のインストール
+# Install dependencies
 npm install
 
-# 環境変数設定
+# Configure environment variables
 cp .env.example .env
-# .envファイルを編集してGitHub設定を記入
+# Edit .env file with your GitHub settings
 
-# GitHubラベルの初期設定
+# Initialize GitHub labels
 node scripts/setup-labels.js
 
-# PoppoBuilder起動
+# Start PoppoBuilder
 npm start
 ```
 
-## 基本的な使い方
+## Basic Usage
 
-### 1. 通常タスクの実行
+### 1. Running Regular Tasks
 
-GitHub Issueを作成してタスクを実行：
+Create a GitHub Issue to execute a task:
 ```bash
 gh issue create \
-  --title "タスクのタイトル" \
-  --body "実行したい内容の説明" \
+  --title "Task title" \
+  --body "Description of what you want to do" \
   --label "task:misc" \
   --repo owner/repo
 ```
 
-例：
+Example:
 ```bash
 gh issue create \
-  --title "データベース接続設定を教えて" \
-  --body "PostgreSQLへの接続方法を説明してください" \
+  --title "Explain database connection setup" \
+  --body "Please explain how to connect to PostgreSQL" \
   --label "task:misc" \
   --repo medamap/my-project
 ```
 
-### 2. ステータス確認
+### 2. Checking Status
 
 ```bash
-# 実行中のIssueを確認
+# Check issues being processed
 gh issue list --label "processing" --repo owner/repo
 
-# コメント待機中のIssueを確認
+# Check issues awaiting response
 gh issue list --label "awaiting-response" --repo owner/repo
 
-# ログを確認
+# Check logs
 tail -f logs/poppo-$(date +%Y-%m-%d).log
 ```
 
-### 3. コメントでの対話
+### 3. Dialogue via Comments
 
-PoppoBuilderが初回処理後、コメントで続けて質問できます：
+After PoppoBuilder's initial processing, you can continue asking questions via comments:
 ```bash
-# 追加の質問
+# Additional questions
 gh issue comment <issue-number> \
-  --body "追加の質問をここに記載" \
+  --body "Your additional question here" \
   --repo owner/repo
 
-# 完了を伝える
+# Indicate completion
 gh issue comment <issue-number> \
-  --body "ありがとうございました" \
+  --body "Thank you" \
   --repo owner/repo
 ```
 
-## Dogfooding（自己改善）タスク
+## Dogfooding (Self-Improvement) Tasks
 
-PoppoBuilder自体の機能を改善するタスク：
+Tasks that improve PoppoBuilder itself:
 
-### 1. 機能追加のIssue作成
+### 1. Create Feature Addition Issue
 
 ```bash
 gh issue create \
-  --title "PoppoBuilder機能追加: XXX機能" \
-  --body "機能の詳細説明..." \
+  --title "PoppoBuilder Feature: XXX feature" \
+  --body "Detailed description of the feature..." \
   --label "task:dogfooding" \
   --repo medamap/PoppoBuilderSuite
 ```
 
-### 2. Dogfoodingの特別動作
+### 2. Special Dogfooding Behavior
 
-`task:dogfooding`ラベル付きIssueでは：
-- CLAUDE.mdを自動的に参照
-- 実装後にCLAUDE.mdを更新
-- 完了時に30秒後の自動再起動をスケジュール
+Issues with `task:dogfooding` label:
+- Automatically reference CLAUDE.md
+- Update CLAUDE.md after implementation
+- Schedule automatic restart 30 seconds after completion
 
-### 3. 自動再起動の確認
+### 3. Verify Automatic Restart
 
 ```bash
-# 再起動ログの確認
+# Check restart logs
 tail -f logs/restart-$(date +%Y-%m-%d).log
 
-# PoppoBuilderプロセスの監視
+# Monitor PoppoBuilder process
 watch -n 1 'ps aux | grep PoppoBuilder-Main | grep -v grep'
 ```
 
-## 言語設定の変更
+## Language Configuration
 
-PoppoBuilderの応答言語を変更する場合：
+To change PoppoBuilder's response language:
 
-### 1. 設定ファイルの編集
+### 1. Edit Configuration File
 
-`.poppo/config.json`を作成または編集：
+Create or edit `.poppo/config.json`:
 ```json
 {
-  "language": "en"  // "ja" または "en"
+  "language": "en"  // "ja" or "en"
 }
 ```
 
-### 2. PoppoBuilderの再起動
+### 2. Restart PoppoBuilder
 
 ```bash
-# 現在のプロセスを停止
+# Stop current process
 ps aux | grep PoppoBuilder-Main
 kill <PID>
 
-# 再起動
+# Restart
 npm start
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### Issueが検出されない場合
+### If Issues Are Not Detected
 
-1. 正しいラベルが付与されているか確認
-2. PoppoBuilderが実行中か確認
-3. ログを確認：`tail -f logs/poppo-$(date +%Y-%m-%d).log`
+1. Verify correct labels are applied
+2. Confirm PoppoBuilder is running
+3. Check logs: `tail -f logs/poppo-$(date +%Y-%m-%d).log`
 
-### Claude CLIがハングアップする場合
+### If Claude CLI Hangs
 
-1. Claude CLIが最新版であることを確認
-2. APIキーが正しく設定されているか確認
-3. プロセスログを確認：`tail -f logs/processes-$(date +%Y-%m-%d).log`
+1. Ensure Claude CLI is the latest version
+2. Verify API key is correctly configured
+3. Check process logs: `tail -f logs/processes-$(date +%Y-%m-%d).log`
 
-### コメントへの返信がない場合
+### If Comments Get No Response
 
-1. `awaiting-response`ラベルが付いているか確認
-2. コメントがIssue作成者からのものか確認
-3. コメント監視ログを確認
+1. Confirm `awaiting-response` label is attached
+2. Verify comment is from the issue creator
+3. Check comment monitoring logs
 
-## 高度な使い方
+## Advanced Usage
 
-### システム設定のカスタマイズ
+### Customize System Configuration
 
-`config/config.json`を編集して動作を調整：
+Edit `config/config.json` to adjust behavior:
 
 ```json
 {
@@ -170,66 +170,65 @@ npm start
     "repo": "your-repo"
   },
   "polling": {
-    "interval": 60000  // 1分ごとにチェック
+    "interval": 60000  // Check every minute
   },
   "claude": {
     "maxConcurrent": 2,
-    "timeout": 43200000  // 12時間に短縮
+    "timeout": 43200000  // Reduce to 12 hours
   },
   "commentHandling": {
     "enabled": true,
-    "maxCommentCount": 20,  // 最大コメント数を増やす
+    "maxCommentCount": 20,  // Increase max comments
     "completionKeywords": [
-      "ありがとう", "完了", "終了", "OK",
-      "thanks", "done", "finished", "closed"
+      "thank you", "thanks", "done", "finished", "closed"
     ]
   }
 }
 ```
 
-### 複数プロジェクトの管理
+### Managing Multiple Projects
 
-別のプロジェクト用にPoppoBuilderを設定：
+Set up PoppoBuilder for another project:
 
 ```bash
-# 別ディレクトリにクローン
+# Clone to a different directory
 cd ~/Projects/AnotherProject
 git clone https://github.com/medamap/PoppoBuilderSuite.git poppo-for-project
 cd poppo-for-project
 
-# 環境変数を設定
+# Configure environment variables
 cp .env.example .env
-# GITHUB_OWNERとGITHUB_REPOをターゲットプロジェクトに設定
+# Set GITHUB_OWNER and GITHUB_REPO to target project
 
-# 起動
+# Start
 npm start
 ```
 
-### バッチ処理
+### Batch Processing
 
-複数の関連Issueを一度に作成：
+Create multiple related issues at once:
 
 ```bash
-# スクリプトでバッチ作成
-for task in "テスト追加" "ドキュメント更新" "リファクタリング"; do
+# Batch creation with script
+for task in "Add tests" "Update documentation" "Refactoring"; do
   gh issue create \
     --title "$task" \
-    --body "$taskの詳細" \
+    --body "Details for $task" \
     --label "task:misc" \
     --repo owner/repo
 done
 ```
 
-## ベストプラクティス
+## Best Practices
 
-1. **Issueの説明は具体的に**: 何をしてほしいか明確に記述
-2. **適切なラベルを使用**: `task:misc`または`task:dogfooding`
-3. **ログを定期的に確認**: 長時間実行タスクを監視
-4. **コメントで対話**: 追加情報や質問をコメントで伝える
-5. **完了キーワードを使用**: "ありがとう"等でタスクを終了
+1. **Be specific in issue descriptions**: Clearly describe what you want done
+2. **Use appropriate labels**: `task:misc` or `task:dogfooding`
+3. **Check logs regularly**: Monitor long-running tasks
+4. **Dialogue via comments**: Provide additional info or questions in comments
+5. **Use completion keywords**: End tasks with "thank you" etc.
 
-## 次のステップ
+## Next Steps
 
-- [インストールガイド](../INSTALL.md)で詳細な設定を確認
-- [セットアップガイド](../setup-guide.md)でカスタマイズ方法を学ぶ
-- PoppoBuilder自体を改善するIssueを作成！
+- Check the [Installation Guide](../INSTALL.md) for detailed configuration
+- Learn customization methods in the [Setup Guide](../setup-guide.md)
+- Create issues to improve PoppoBuilder itself!

@@ -1,4 +1,5 @@
 const chai = require('chai');
+const sinon = require('sinon');
 
 // 依存関係を追加（互換性のためのバージョンチェック）
 try {
@@ -26,6 +27,12 @@ try {
 } catch (e) {
     console.warn('❌ sinon-chai not available:', e.message);
 }
+
+// Expose globally for tests
+global.expect = chai.expect;
+global.assert = chai.assert;
+global.should = chai.should();
+global.sinon = sinon;
 
 // 重複した設定を削除
 

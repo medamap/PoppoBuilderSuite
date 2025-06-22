@@ -1,99 +1,118 @@
-# コメント追記対応機能 要求定義
+# Comment Handling Feature Requirements
 
-## 1. 背景と課題
+## 1. Background and Challenges
 
-### 現状の問題点
-- 現在のPoppoBuilderは、Issueのdescription（本文）のみを処理対象としている
-- Issueに初回処理を行い`completed`ラベルが付いた後は、新たなコメントが追加されても反応しない
-- Issue作成者（オーナー）が追加の要望や質問をコメントしても、それに対応できない
+### Current Issues
+- Current PoppoBuilder only processes the Issue description (body)
+- After initial processing and adding `completed` label, it doesn't respond to new comments
+- Cannot handle additional requests or questions from the Issue creator (owner) via comments
 
-### ビジネスニーズ
-- Issueの処理後も、作成者との継続的な対話を可能にする
-- 追加の質問や修正依頼に柔軟に対応できるようにする
-- より自然なインタラクションを実現する
+### Business Needs
+- Enable continuous dialogue with the creator after Issue processing
+- Flexibly respond to additional questions or modification requests
+- Achieve more natural interaction
 
-## 2. 要求事項
+## 2. Requirements
 
-### 機能要求
+### Functional Requirements
 
-#### FR-1: コメント監視機能
-- `completed`ラベルが付いたIssueでも、新規コメントを監視する
-- Issue作成者（オーナー）のコメントのみを処理対象とする
-- PoppoBuilder自身のコメントは無視する
+#### FR-1: Comment Monitoring Feature
+- Monitor new comments even on Issues with `completed` label
+- Only process comments from the Issue creator (owner)
+- Ignore PoppoBuilder's own comments
 
-#### FR-2: 状態管理の拡張
-- 新しいラベル「`awaiting-response`」を導入
-- 状態遷移：
-  - 初回処理完了時: `processing` → `awaiting-response`
-  - コメント追加時: `awaiting-response` → `processing`
-  - コメント処理完了時: `processing` → `awaiting-response`
-  - 最終的な完了時: `awaiting-response` → `completed`
+#### FR-2: State Management Extension
+- Introduce new label "`awaiting-response`"
+- State transitions:
+  - On initial processing completion: `processing` → `awaiting-response`
+  - On comment addition: `awaiting-response` → `processing`
+  - On comment processing completion: `processing` → `awaiting-response`
+  - On final completion: `awaiting-response` → `completed`
 
-#### FR-3: コメント処理機能
-- 新規コメントを検出した際、そのコメント内容をClaudeに送信
-- 以前の処理コンテキストを保持（Issue本文 + 過去のやり取り）
-- コメントへの返信として処理結果を投稿
+#### FR-3: Comment Processing Feature
+- When detecting new comment, send the comment content to Claude
+- Maintain previous processing context (Issue body + past interactions)
+- Post processing results as reply to comment
 
-#### FR-4: 完了判定機能
-- オーナーが明示的に完了を示すコメント（例：「ありがとう」「完了」「OK」）を投稿した場合
-- または一定期間（設定可能）新規コメントがない場合
-- `completed`ラベルを付けて処理を終了
+#### FR-4: Completion Detection Feature
+- When owner posts explicit completion comment (e.g., "thank you", "done", "OK")
+- Or when no new comments for a certain period (configurable)
+- Add `completed` label and finish processing
 
-### 非機能要求
+### Non-Functional Requirements
 
-#### NFR-1: パフォーマンス
-- コメント監視の頻度は既存のポーリング間隔（30秒）を維持
-- 大量のコメントがあるIssueでも効率的に処理
+#### NFR-1: Performance
+- Maintain existing polling interval (30 seconds) for comment monitoring
+- Process efficiently even for Issues with many comments
 
-#### NFR-2: 信頼性
-- コメント処理中にエラーが発生しても、Issue全体の処理は継続
-- 重複処理を防ぐメカニズムを実装
+#### NFR-2: Reliability
+- Continue overall Issue processing even if error occurs during comment processing
+- Implement mechanism to prevent duplicate processing
 
-#### NFR-3: 互換性
-- 既存の`task:misc`および`task:dogfooding`ラベルとの互換性を維持
-- 現在の処理フローを大きく変更しない
+#### NFR-3: Usability
+- Comment responses maintain the same quality as initial processing
+- Natural conversation flow experience
 
-## 3. 制約事項
+## 3. Detailed Specifications
 
-### 技術的制約
-- GitHub APIのレート制限を考慮
-- 現在のポーリングベースのアーキテクチャを維持
+### 3.1 Comment Monitoring Logic
 
-### 運用制約
-- Issueごとの最大コメント処理回数を設定可能にする（無限ループ防止）
-- タイムアウト設定により長期間放置されたIssueは自動的に`completed`
+```javascript
+// Pseudo code
+function checkComments() {
+  const awaitingIssues = getIssuesWithLabel('awaiting-response');
+  
+  for (const issue of awaitingIssues) {
+    const lastProcessedTime = getLastProcessedTime(issue);
+    const newComments = getCommentsSince(issue, lastProcessedTime);
+    const ownerComments = filterByOwner(newComments);
+    
+    if (ownerComments.length > 0) {
+      processComments(issue, ownerComments);
+    }
+  }
+}
+```
 
-## 4. 受け入れ基準
+### 3.2 Context Building
 
-### AC-1: 基本的なコメント処理
-- `awaiting-response`ラベルが付いたIssueに新規コメントが追加された場合、それを検出し処理できること
+When processing comments, build context including:
+1. Original Issue body
+2. All previous PoppoBuilder responses
+3. All owner comments
+4. Current comment to process
 
-### AC-2: 状態遷移の正確性
-- ラベルの状態遷移が設計通りに動作すること
-- 同時実行時も状態の整合性が保たれること
+### 3.3 Completion Keywords
 
-### AC-3: コンテキストの保持
-- 過去のやり取りを踏まえた適切な応答ができること
+Default completion keywords (configurable):
+- Japanese: "ありがとう", "ありがとうございます", "完了", "OK", "了解"
+- English: "thank you", "thanks", "done", "complete", "finished"
 
-### AC-4: 終了条件の動作
-- 明示的な完了指示または期限切れで適切に処理が終了すること
+## 4. Configuration Options
 
-## 5. 実装時のキーワード
+Add to `config/config.json`:
 
-次回この機能を実装する際は、以下のキーワードで依頼してください：
+```json
+{
+  "commentHandling": {
+    "enabled": true,
+    "completionKeywords": ["thank you", "thanks", "done", "complete"],
+    "maxCommentCount": 10,
+    "timeoutHours": 24
+  }
+}
+```
 
-- **「コメント追記対応機能の実装」**
-- **「Issue #11 の実装」**
-- **「awaiting-responseラベル機能の実装」**
-- **「コメント監視機能の追加」**
+## 5. Implementation Priority
 
-## 6. 参考情報
+1. **Phase 1**: Basic comment monitoring and processing
+2. **Phase 2**: Context management and state transitions
+3. **Phase 3**: Completion detection and configuration options
 
-### 関連ファイル
-- `src/minimal-poppo.js` - メイン処理ロジック
-- `src/github-client.js` - GitHub API操作
-- `config/config.json` - 設定ファイル
+## 6. Success Criteria
 
-### 考慮事項
-- 将来的にWebhook対応への移行も検討
-- より高度なコンテキスト管理（会話履歴の要約など）の可能性
+- Can detect and process new comments from Issue creator
+- Maintains conversation context across multiple interactions
+- Correctly transitions between states
+- Automatically completes on detection of completion keywords
+- No duplicate processing of comments

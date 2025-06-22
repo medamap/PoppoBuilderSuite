@@ -1,24 +1,24 @@
-# 言語設定機能の要求定義
+# Language Configuration Feature Requirements
 
-## 作成日: 2025/6/15
-## ステータス: 要求定義
+## Created: 2025/6/15
+## Status: Requirements Definition
 
-## 概要
-PoppoBuilderの回答言語を設定可能にし、一貫した言語でユーザーとのやり取りを行う機能。
+## Overview
+Feature to configure PoppoBuilder's response language and ensure consistent language interaction with users.
 
-## 詳細要求
+## Detailed Requirements
 
-### 1. 設定管理
-- **設定場所**: プロジェクト固有の設定ファイル (`.poppo/config.json`)
-- **デフォルト言語**: 日本語
-- **対応言語**: 日本語、英語（将来的に他言語も追加可能）
+### 1. Configuration Management
+- **Configuration Location**: Project-specific configuration file (`.poppo/config.json`)
+- **Default Language**: Japanese
+- **Supported Languages**: Japanese, English (other languages can be added in the future)
 
-### 2. 設定ファイル形式
+### 2. Configuration File Format
 ```json
 {
   "language": {
-    "primary": "ja",
-    "fallback": "en"
+    "primary": "en",
+    "fallback": "ja"
   },
   "systemPrompt": {
     "enforceLanguage": true,
@@ -27,19 +27,31 @@ PoppoBuilderの回答言語を設定可能にし、一貫した言語でユー�
 }
 ```
 
-### 3. システムプロンプトへの反映
-言語設定に基づいてシステムプロンプトに以下を自動追加：
+### 3. System Prompt Integration
+Automatically add the following to system prompt based on language settings:
 
 ```
-重要: 回答は必ず${primary_language}で行ってください。
-- 日本語が設定されている場合: すべての回答、コメント、説明を日本語で記述
-- 英語が設定されている場合: すべての回答、コメント、説明を英語で記述
-- コードコメントや変数名も指定言語に従う
+Important: All responses must be in ${primary_language}.
+- When Japanese is set: Write all responses, comments, and explanations in Japanese
+- When English is set: Write all responses, comments, and explanations in English
+- Code comments and variable names should also follow the specified language
 ```
 
-### 4. 言語別システムプロンプト例
+### 4. Language-Specific System Prompt Examples
 
-#### 日本語設定時
+#### When English is Set
+```
+Important: You are PoppoBuilder's automated execution agent.
+All responses, comments, and explanations must be in English.
+
+Follow these rules:
+1. The default working branch is 'work/poppo-builder'
+2. Write all responses in English
+3. Write code comments in English
+4. Error messages and logs should be in English
+```
+
+#### When Japanese is Set
 ```
 重要: あなたは PoppoBuilder の自動実行エージェントです。
 すべての回答、コメント、説明は日本語で行ってください。
@@ -48,81 +60,34 @@ PoppoBuilderの回答言語を設定可能にし、一貫した言語でユー�
 1. デフォルトの作業ブランチは 'work/poppo-builder' です
 2. 回答はすべて日本語で記述してください
 3. コードコメントも日本語で記述してください
-...
+4. エラーメッセージやログも日本語で出力してください
 ```
 
-#### 英語設定時
-```
-Important: You are PoppoBuilder's automated execution agent.
-Provide all responses, comments, and explanations in English.
+### 5. Implementation Requirements
+- **Configuration File Loading**: Load on startup and respect hot-reload
+- **Default Behavior**: Use Japanese when configuration file doesn't exist
+- **System Prompt Generation**: Dynamically generate based on language settings
+- **Error Handling**: Display appropriate messages for invalid language settings
 
-Follow these rules:
-1. The default working branch is 'work/poppo-builder'
-2. All responses must be written in English
-3. Code comments should also be written in English
-...
-```
+### 6. Test Cases
+1. **Default Behavior Test**: Verify Japanese response without config file
+2. **Language Setting Test**: Verify correct language response after setting
+3. **Hot-Reload Test**: Verify language change after config file update
+4. **Invalid Setting Test**: Verify fallback to default for invalid settings
 
-### 5. 設定変更方法
+### 7. Future Extensions
+- **Multi-language Support**: Support for Chinese, Korean, etc.
+- **Context-Aware Language Switching**: Automatic language detection based on issue content
+- **Language-Specific Templates**: Prepare response templates for each language
+- **Translation Feature**: Automatic translation between languages
 
-#### 手動設定
-```bash
-# プロジェクトの言語を日本語に設定
-echo '{"language":{"primary":"ja"}}' > .poppo/config.json
+## Benefits
+- **International Support**: Support for international projects
+- **Team Collaboration**: Consistent communication within teams
+- **User Experience**: Interaction in user's preferred language
+- **Flexibility**: Easy language switching per project
 
-# プロジェクトの言語を英語に設定  
-echo '{"language":{"primary":"en"}}' > .poppo/config.json
-```
-
-#### Issue経由での設定変更
-```
-タイトル: 言語設定変更
-内容: PoppoBuilderの回答言語を英語に変更してください
-ラベル: task:config
-```
-
-### 6. 実装の考慮事項
-
-#### 設定読み込み優先順位
-1. プロジェクト設定 (`.poppo/config.json`)
-2. ユーザーグローバル設定 (`~/.poppo/config.json`)
-3. システムデフォルト (日本語)
-
-#### システムプロンプト生成
-```javascript
-function generateSystemPrompt(config) {
-  const language = config.language?.primary || 'ja';
-  const languageInstructions = {
-    ja: 'すべての回答、コメント、説明は日本語で行ってください。',
-    en: 'Provide all responses, comments, and explanations in English.'
-  };
-  
-  return `
-重要: あなたは PoppoBuilder の自動実行エージェントです。
-${languageInstructions[language]}
-
-以下のルールに従ってください：
-...
-`;
-}
-```
-
-### 7. 段階的実装
-
-#### Phase 1: 基本言語設定
-- `.poppo/config.json` からの言語設定読み込み
-- システムプロンプトへの言語指示追加
-
-#### Phase 2: 動的言語変更
-- Issue経由での言語設定変更
-- 設定変更時の即座反映
-
-#### Phase 3: 高度な言語機能
-- 多言語対応拡張
-- 地域別設定（ja-JP, en-US等）
-- 混在モード（コードは英語、説明は日本語等）
-
-## 期待される効果
-- 一貫した言語でのユーザー体験
-- 国際化対応の基盤構築
-- チーム開発時の言語統一
+## Notes
+- Language setting is project-specific
+- Doesn't affect Claude's code understanding or execution capabilities
+- Code quality remains consistent regardless of language setting

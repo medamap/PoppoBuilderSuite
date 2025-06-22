@@ -1,90 +1,121 @@
-# PoppoBuilder Suite インストールガイド
+# PoppoBuilder Suite Installation Guide
 
-PoppoBuilderは、GitHub IssueとClaude CLIを連携させて、自動的にタスクを処理するシステムです。コメント追記による継続的な対話機能や、自己改善機能（Dogfooding）を備えています。このガイドでは、PoppoBuilderのインストールと初期設定について説明します。
+PoppoBuilder is an advanced automated task processing system that integrates GitHub Issues with Claude CLI. It features continuous dialogue through comment threads, self-improvement capabilities (Dogfooding), comprehensive internationalization support, and advanced error handling. This guide explains how to install and configure PoppoBuilder.
 
-## 前提条件
+## Prerequisites
 
-### 必須要件
-- **Node.js** (v18以上)
-- **npm** または **yarn**
-- **Claude CLI** (インストール済み)
-- **GitHub CLI (`gh`)** (インストール済み)
-- **Git**
+### Required Components
+- **Node.js** (v14 or higher, v18+ recommended)
+- **npm** (6.0.0 or higher) or **yarn**
+- **Claude CLI** (installed and configured)
+- **GitHub CLI (`gh`)** (installed and authenticated)
+- **Git** (2.0.0 or higher)
 
-### Claude CLI設定
-Claude CLIがインストールされ、APIキーが設定されていることを確認してください：
+### Claude CLI Setup
+Ensure Claude CLI is installed and API key is configured:
 ```bash
 claude --version
 ```
 
-### GitHub CLI設定
-GitHub CLIが認証済みであることを確認してください：
+### GitHub CLI Setup
+Ensure GitHub CLI is authenticated:
 ```bash
 gh auth status
 ```
 
-## インストール手順
+## Installation Steps
 
-### 1. リポジトリのクローン
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/medamap/PoppoBuilderSuite.git
 cd PoppoBuilderSuite
 ```
 
-### 2. 依存関係のインストール
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 3. 環境変数の設定
-`.env`ファイルを作成し、必要な環境変数を設定します：
+### 3. Run Setup Wizard (Recommended)
+PoppoBuilder includes an interactive setup wizard to assist with environment configuration:
+
+```bash
+# Run the setup wizard
+npm run setup:wizard
+
+# Or run directly
+node lib/commands/setup-wizard.js
+
+# Check dependencies only
+npm run deps:check
+```
+
+Setup wizard features:
+- ✅ Automatic checking of required dependencies (Node.js, npm, Git, Claude CLI)
+- ✅ Detection of missing dependencies with installation guidance
+- ✅ Git repository initialization and configuration
+- ✅ GitHub CLI authentication verification
+- ✅ Automatic working branch creation
+- ✅ Interactive Claude CLI setup (when available)
+
+### 4. Configure Environment Variables
+Create a `.env` file and set the required environment variables:
 ```bash
 cp .env.example .env
 ```
 
-`.env`ファイルを編集：
+Edit the `.env` file:
 ```
-# GitHub設定
+# GitHub Configuration
 GITHUB_OWNER=your-github-username
 GITHUB_REPO=your-repo-name
 
-# ログ設定（オプション）
+# Logging Configuration (optional)
 LOG_LEVEL=info
 ```
 
-### 4. GitHub リポジトリ設定
+### 5. GitHub Repository Setup
 
-#### 必要なラベルの作成
-PoppoBuilderが正常に動作するために、以下のラベルをGitHubリポジトリに作成する必要があります：
+#### Create Required Labels
+PoppoBuilder requires specific labels in your GitHub repository to function properly:
 
 ```bash
-# 自動ラベル作成スクリプトを実行
+# Run the automatic label creation script
 node scripts/setup-labels.js
 ```
 
-または手動で以下のラベルを作成：
-- `task:misc` - 通常のタスク用
-- `task:dogfooding` - PoppoBuilder自己改善用
-- `processing` - 処理中を示す
-- `awaiting-response` - コメント待機中を示す
-- `completed` - 完了済みを示す
+Or manually create the following labels:
+- `task:misc` - For regular tasks
+- `task:dogfooding` - For PoppoBuilder self-improvement
+- `processing` - Indicates processing in progress
+- `awaiting-response` - Indicates waiting for comments
+- `completed` - Indicates task completion
 
-### 5. 言語設定（オプション）
-PoppoBuilderの応答言語を設定できます。デフォルトは日本語です。
+### 6. Language Configuration (Optional)
+PoppoBuilder features comprehensive internationalization support. You can configure the response language and localization settings.
 
-`.poppo/config.json`を作成：
+Create `.poppo/config.json`:
 ```json
 {
-  "language": "ja"
+  "language": "en",           
+  "fallbackLanguage": "en",   
+  "autoDetect": false         
 }
 ```
 
-利用可能な言語：
-- `ja` - 日本語（デフォルト）
-- `en` - 英語
+Available languages:
+- `ja` - Japanese (default)
+- `en` - English
 
-### 6. システム設定（必須）
-`config/config.json`を確認し、必要に応じて調整します：
+Internationalization features:
+- **Automatic Language Detection**: Based on system locale or configuration
+- **Dynamic Message Translation**: Real-time translation of all system messages
+- **Error Message Localization**: Comprehensive error messages in both languages
+- **Log Message Translation**: Multilingual logging with structured error codes
+- **CLI Internationalization**: Command-line interface in multiple languages
+
+### 7. System Configuration (Required)
+Review and adjust `config/config.json` as needed:
 ```json
 {
   "github": {
@@ -94,120 +125,168 @@ PoppoBuilderの応答言語を設定できます。デフォルトは日本語�
   "commentHandling": {
     "enabled": true,
     "completionKeywords": [
-      "ありがとう", "ありがとうございます", "ありがとうございました",
-      "完了", "OK", "ok", "了解", "承知",
-      "thank you", "thanks", "done", "complete"
+      "thank you", "thanks", "done", "complete", "completed",
+      "OK", "ok", "understood", "got it"
     ]
   }
 }
 ```
 
-## 動作確認
+## CLI Commands
 
-### 1. PoppoBuilderの起動
+PoppoBuilder provides various CLI commands for enhanced management:
+
+```bash
+# Project initialization
+poppobuilder init
+
+# Service startup
+poppobuilder start
+poppobuilder start --daemon  # Start in daemon mode
+
+# Status check
+poppobuilder status
+
+# PR creation guide (NEW!)
+poppobuilder pr              # Interactive PR creation guide
+poppobuilder pr --draft      # Create draft PR
+poppobuilder pr --base develop  # PR to specific branch
+
+# Other commands
+poppobuilder config --list   # List configuration
+poppobuilder logs -f         # Real-time log display
+poppobuilder doctor          # Environment diagnostics
+```
+
+See `poppobuilder --help` for details.
+```
+
+## Verification
+
+### 1. Start PoppoBuilder
 ```bash
 npm start
 ```
 
-正常に起動すると、以下のようなログが表示されます：
+When started successfully, you'll see logs like:
 ```
 [2025-06-16 10:00:00] [INFO] PoppoBuilder started
 [2025-06-16 10:00:00] [INFO] Monitoring GitHub issues...
 ```
 
-### 2. テストIssueの作成
-別のターミナルで以下を実行：
+### 2. Create a Test Issue
+In another terminal, run:
 ```bash
 gh issue create \
-  --title "インストール確認テスト" \
-  --body "現在時刻を教えてください" \
+  --title "Installation Test" \
+  --body "What time is it now?" \
   --label "task:misc" \
   --repo $GITHUB_OWNER/$GITHUB_REPO
 ```
 
-### 3. 動作確認
-- 約30秒後にPoppoBuilderがIssueを検出し、処理を開始します
-- GitHubのIssueページで、PoppoBuilderからのコメントが投稿されることを確認します
-- `processing`ラベルが付与され、処理完了後に`awaiting-response`ラベルに変わります
+### 3. Verify Operation
+- PoppoBuilder will detect the issue after about 30 seconds and start processing
+- Check the GitHub issue page to see PoppoBuilder's comment
+- The `processing` label will be added, then changed to `awaiting-response` after completion
 
-### 4. コメント追記機能のテスト
-初回処理完了後、Issueにコメントを追加すると：
+### 4. Test Comment Thread Feature
+After initial processing is complete, add a comment to the issue:
 ```bash
 gh issue comment <issue-number> \
-  --body "追加の質問です" \
+  --body "I have an additional question" \
   --repo $GITHUB_OWNER/$GITHUB_REPO
 ```
-- PoppoBuilderが自動的にコメントを検出し、追加処理を行います
-- 完了キーワード（「ありがとう」など）を含むコメントを投稿すると`completed`ラベルが付与されます
+- PoppoBuilder will automatically detect the comment and process it
+- When you post a comment with completion keywords (like "thank you"), the `completed` label will be applied
 
-## プロセス管理
+## Process Management
 
-### PoppoBuilderの停止
+### Stopping PoppoBuilder
 ```bash
-# プロセスIDを確認
+# Find the process ID
 ps aux | grep PoppoBuilder-Main
 
-# プロセスを停止
+# Stop the process
 kill <PID>
 ```
 
-### ログの確認
+### Checking Logs
 ```bash
-# リアルタイムログ表示
+# Real-time log display
 tail -f logs/poppo-$(date +%Y-%m-%d).log
 
-# プロセスログ
+# Process logs
 tail -f logs/processes-$(date +%Y-%m-%d).log
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### Claude CLIがハングアップする場合
-- **症状**: Claude CLIがプロンプト待ちでハングアップ
-- **解決策**: 現在のバージョンではstdin経由でプロンプトを送信するため、この問題は解決済みです
-- **確認事項**: Claude CLIが最新版であることを確認
+### If Claude CLI Hangs
+- **Symptom**: Claude CLI hangs waiting for prompt
+- **Solution**: Current version sends prompts via stdin, so this issue is resolved
+- **Check**: Ensure Claude CLI is the latest version
 
-### GitHubへのコメント投稿が失敗する場合
-- **症状**: 特殊文字を含むコメントでエラーが発生
-- **解決策**: 現在のバージョンでは`--body-file`オプションを使用してファイル経由で投稿するため、この問題は解決済みです
-- **確認事項**: 
-  - GitHub CLIの認証状態を確認：`gh auth status`
-  - リポジトリへの書き込み権限があることを確認
+### If GitHub Comment Posting Fails
+- **Symptom**: Errors occur with comments containing special characters
+- **Solution**: Current version uses `--body-file` option to post via file, so this issue is resolved
+- **Check**: 
+  - Verify GitHub CLI authentication: `gh auth status`
+  - Ensure you have write permissions to the repository
 
-### Issueが検出されない場合
-- 正しいラベルが付与されているか確認（`task:misc`または`task:dogfooding`）
-- `.env`ファイルのGitHub設定が正しいか確認
-- `config/config.json`のGitHub設定も確認
+### If Issues Are Not Detected
+- Verify correct labels are applied (`task:misc` or `task:dogfooding`)
+- Check GitHub settings in `.env` file
+- Also check GitHub settings in `config/config.json`
 
-### awaiting-responseラベルが付かない場合
-- **症状**: Issue処理後にコメント追記機能が動作しない
-- **原因**: GitHubリポジトリに`awaiting-response`ラベルが存在しない
-- **解決策**: `node scripts/setup-labels.js`を実行して必要なラベルを作成
+### If awaiting-response Label is Not Applied
+- **Symptom**: Comment thread feature doesn't work after issue processing
+- **Cause**: `awaiting-response` label doesn't exist in GitHub repository
+- **Solution**: Run `node scripts/setup-labels.js` to create required labels
 
-### restart-flag.jsonエラー
-- **症状**: 再起動時に`restart-flag.json`が見つからないエラー
-- **解決策**: 現在のバージョンではワンショット再起動方式を使用するため、この問題は解決済みです
+### restart-flag.json Error
+- **Symptom**: `restart-flag.json` not found error during restart
+- **Solution**: Current version uses one-shot restart method, so this issue is resolved
 
-### 日本語/英語の応答が期待と異なる場合
-- `.poppo/config.json`の言語設定を確認
-- PoppoBuilderを再起動して設定を反映
-- デフォルトは日本語（`"language": "ja"`）です
+### If Language Response is Unexpected
+- Check language setting in `.poppo/config.json`
+- Restart PoppoBuilder to apply settings
+- Default is Japanese (`"language": "ja"`)
 
-### Dogfoodingタスク完了後に再起動されない場合
-- **症状**: `task:dogfooding`ラベル付きIssue完了後に自動再起動されない
-- **確認事項**: 
-  - `restart-scheduler.js`が正しく配置されているか確認
-  - ログファイル`logs/restart-*.log`を確認してエラーがないか確認
+### If Auto-restart Doesn't Work After Dogfooding Task
+- **Symptom**: Auto-restart doesn't occur after `task:dogfooding` labeled issue completion
+- **Check**: 
+  - Verify `restart-scheduler.js` is properly placed
+  - Check log files `logs/restart-*.log` for any errors
 
-## 次のステップ
+## Testing
 
-インストールが完了したら、以下のガイドを参照してください：
-- [クイックスタートガイド](guides/quick-start.md) - 基本的な使い方
-- [設定ガイド](setup-guide.md) - 詳細な設定オプション
-- [要求定義](requirements/) - 機能の詳細仕様
+PoppoBuilder Suite includes comprehensive testing capabilities:
 
-## サポート
+```bash
+# Run all tests
+npm test
 
-問題が発生した場合は、以下の方法でサポートを受けることができます：
-- [GitHub Issues](https://github.com/medamap/PoppoBuilderSuite/issues)でIssueを作成
-- ログファイルを確認して詳細なエラー情報を取得
+# Specific test suites
+npm run test:i18n          # Internationalization tests
+npm run test:errors        # Error system tests
+npm run test:integration   # Integration tests
+
+# Dependency check
+npm run deps:check
+```
+
+## Next Steps
+
+After installation is complete, refer to these guides:
+- [Quick Start Guide](guides/quick-start.md) - Basic usage
+- [Setup Guide](setup-guide.md) - Detailed configuration options
+- [Internationalization Guide](features/i18n-system.md) - I18n system details
+- [Error Handling Guide](features/error-system.md) - Error system documentation
+- [Requirements](requirements/) - Detailed specifications
+- [Architecture](architecture/) - System architecture documentation
+
+## Support
+
+If you encounter issues, you can get support through:
+- Create an issue on [GitHub Issues](https://github.com/medamap/PoppoBuilderSuite/issues)
+- Check log files for detailed error information

@@ -1,0 +1,102 @@
+[
+  {
+    "type": "comment",
+    "issue": {
+      "author": {
+        "id": "MDQ6VXNlcjE1NjY0OTk1",
+        "is_bot": false,
+        "login": "medamap",
+        "name": "Medamap"
+      },
+      "body": "## 概要\ncron実行用に実装したminimal-poppo-cron.jsに状態管理の重複と二重起動の脆弱性が発見されたため、修正を行います。\n\n## 問題点\n1. **状態管理の重複**: FileStateManagerとIndependentProcessManagerが別々の場所で状態を管理\n2. **二重起動の脆弱性**: 同じIssueを複数のcronプロセスが処理する可能性\n3. **エラー時の不整合**: 独立プロセスとの状態同期が不完全\n4. **タスクキューの揮発性**: cron終了時にキューに残ったタスクが失われる\n\n## 修正内容\n修正内容については深く深く検討したうえで指示内容について確実に修正を行ってください。\n\n1. **状態管理の統一**\n   - `logs/running-tasks.json`と`state/running-tasks.json`の統合\n   - IndependentProcessManagerにFileStateManagerを設定\n   - 一元的な状態管理の実装\n\n2. **二重起動防止の強化**\n   - プロセスレベルのロック機構\n   - 処理開始前の状態確認強化\n   - アトミックな状態更新\n\n3. **エラーハンドリングの改善**\n   - エラー時の状態クリーンアップ\n   - 独立プロセスの異常終了検知\n   - 適切なロールバック処理\n\n4. **タスクキューの永続化**\n   - キューの状態をファイルに保存\n   - 次回起動時の復元機能\n   - 未処理タスクの引き継ぎ\n\n## 実装詳細\n\n### 1. IndependentProcessManagerとの連携\n```javascript\n// FileStateManagerをIndependentProcessManagerに設定\nprocessManager.setStateManager(stateManager);\n```\n\n### 2. 処理開始時の排他制御\n```javascript\n// Issue処理前に再度確認\nconst currentRunningTasks = await stateManager.loadRunningTasks();\nif (currentRunningTasks[`issue-${issueNumber}`]) {\n  console.log(`Issue #${issueNumber} は既に処理中です`);\n  return;\n}\n```\n\n### 3. エラー時のクリーンアップ\n```javascript\n} catch (error) {\n  // 状態のクリーンアップ\n  await stateManager.removeRunningTask(`issue-${issueNumber}`);\n  // 独立プロセスの停止確認\n  if (result && result.pid) {\n    try {\n      process.kill(result.pid, 'SIGTERM');\n    } catch {}\n  }\n}\n```\n\n### 4. タスクキューの永続化\n```javascript\n// 終了時にキューを保存\nconst pendingTasks = taskQueue.getAllPendingTasks();\nawait stateManager.savePendingTasks(pendingTasks);\n```\n\n## テスト方法\n1. 同時に複数のcronプロセスを起動して重複処理がないことを確認\n2. プロセス異常終了時の状態回復を確認\n3. キューに残ったタスクが次回実行時に処理されることを確認\n4. エラー発生時の状態整合性を確認\n\n## 影響範囲\n- FileStateManagerへの新メソッド追加が必要\n- IndependentProcessManagerとの連携強化\n\n## 備考\nこの修正により、cron実行の信頼性が大幅に向上します。特に異常終了時の回復力が強化されます。",
+      "createdAt": "2025-06-18T15:09:42Z",
+      "labels": [
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC42Gsw",
+          "name": "completed",
+          "description": "PoppoBuilderが処理完了",
+          "color": "0E8A16"
+        },
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC8UZPg",
+          "name": "task:dogfooding",
+          "description": "PoppoBuilder自己改善タスク（CLAUDE.md参照・更新必須）",
+          "color": "ff6b35"
+        },
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC8glTg",
+          "name": "awaiting-response",
+          "description": "PoppoBuilderがコメント追記を待機中",
+          "color": "fbca04"
+        },
+        {
+          "id": "LA_kwDOO7m6fc8AAAACDAElMQ",
+          "name": "task:bug",
+          "description": "プログラムのバグ",
+          "color": "d73a4a"
+        }
+      ],
+      "number": 98,
+      "title": "minimal-poppo-cron.jsの状態管理統合と二重起動防止強化",
+      "updatedAt": "2025-06-21T17:04:52Z"
+    },
+    "comment": {
+      "id": "IC_kwDOO7m6fc6x_DFF",
+      "author": {
+        "login": "medamap"
+      },
+      "authorAssociation": "OWNER",
+      "body": "🎋 **MirinOrphanManager より通知**\nこの Issue は孤児として検出されました。\n**詳細:**\n- 検出元: GitHub ラベル\n`processing` ラベルを削除し、Issue を再処理可能な状態に戻しました。",
+      "createdAt": "2025-06-19T00:12:54Z",
+      "includesCreatedEdit": false,
+      "isMinimized": false,
+      "minimizedReason": "",
+      "reactionGroups": [],
+      "url": "https://github.com/medamap/PoppoBuilderSuite/issues/98#issuecomment-2986094917",
+      "viewerDidAuthor": true
+    },
+    "issueNumber": 98,
+    "labels": [
+      "completed",
+      "task:dogfooding",
+      "awaiting-response",
+      "task:bug"
+    ],
+    "id": "task-1750622592987-yqr8pmgy4",
+    "priority": 100,
+    "enqueuedAt": 1750622592987,
+    "attempts": 0
+  },
+  {
+    "type": "issue",
+    "issue": {
+      "author": {
+        "id": "MDQ6VXNlcjE1NjY0OTk1",
+        "is_bot": false,
+        "login": "medamap",
+        "name": "Medamap"
+      },
+      "body": "PoppoBuilderがMochaテストフレームワークで正常に動作するかテストします。",
+      "createdAt": "2025-06-22T12:17:19Z",
+      "labels": [
+        {
+          "id": "LA_kwDOO7m6fc8AAAACC404sQ",
+          "name": "task:misc",
+          "description": "",
+          "color": "aaaaaa"
+        }
+      ],
+      "number": 193,
+      "title": "Test Mocha framework integration",
+      "updatedAt": "2025-06-22T12:17:19Z"
+    },
+    "issueNumber": 193,
+    "labels": [
+      "task:misc"
+    ],
+    "id": "task-1750622591250-h28n7sijx",
+    "priority": 50,
+    "enqueuedAt": 1750622591250,
+    "attempts": 0
+  }
+]

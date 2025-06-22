@@ -1,21 +1,21 @@
-# PoppoBuilder Suite ベストプラクティス集
+# PoppoBuilder Suite Best Practices
 
-PoppoBuilder Suite を効果的に運用するための推奨事項、セキュリティガイドライン、スケーリング戦略、保守・運用指針をまとめました。
+This document provides recommendations, security guidelines, scaling strategies, and maintenance/operation guidelines for effectively operating PoppoBuilder Suite.
 
-## 📋 目次
+## 📋 Table of Contents
 
-1. [推奨設定](#推奨設定)
-2. [セキュリティガイドライン](#セキュリティガイドライン)
-3. [スケーリング戦略](#スケーリング戦略)
-4. [保守・運用指針](#保守運用指針)
-5. [パフォーマンス最適化](#パフォーマンス最適化)
-6. [開発ワークフロー](#開発ワークフロー)
+1. [Recommended Configuration](#recommended-configuration)
+2. [Security Guidelines](#security-guidelines)
+3. [Scaling Strategies](#scaling-strategies)
+4. [Maintenance & Operations](#maintenance--operations)
+5. [Performance Optimization](#performance-optimization)
+6. [Development Workflow](#development-workflow)
 
-## 🔧 推奨設定
+## 🔧 Recommended Configuration
 
-### 基本設定テンプレート
+### Basic Configuration Templates
 
-#### 開発環境向け設定
+#### Development Environment Configuration
 
 ```javascript
 // config/config.development.json
@@ -25,28 +25,28 @@ PoppoBuilder Suite を効果的に運用するための推奨事項、セキュ�
   "github": {
     "owner": "your-username",
     "repo": "your-repo",
-    "checkInterval": 60000  // 1分（開発時は長めに）
+    "checkInterval": 60000  // 1 minute (longer for development)
   },
   "claude": {
-    "maxConcurrent": 1,     // 開発時は1つずつ
-    "timeout": 300000,      // 5分（短めに設定）
+    "maxConcurrent": 1,     // One at a time for development
+    "timeout": 300000,      // 5 minutes (shorter setting)
     "retryAttempts": 1
   },
   "performance": {
     "maxConcurrentTasks": 2,
     "memoryOptimization": {
-      "enabled": false    // 開発時は無効化
+      "enabled": false    // Disabled for development
     }
   },
   "monitoring": {
     "alerts": {
-      "enabled": false    // 開発時はアラート不要
+      "enabled": false    // No alerts needed for development
     }
   }
 }
 ```
 
-#### 本番環境向け設定
+#### Production Environment Configuration
 
 ```javascript
 // config/config.production.json
@@ -56,11 +56,11 @@ PoppoBuilder Suite を効果的に運用するための推奨事項、セキュ�
   "github": {
     "owner": "organization",
     "repo": "production-repo",
-    "checkInterval": 30000  // 30秒
+    "checkInterval": 30000  // 30 seconds
   },
   "claude": {
     "maxConcurrent": 3,
-    "timeout": 86400000,    // 24時間
+    "timeout": 86400000,    // 24 hours
     "retryAttempts": 3,
     "retryDelay": 60000
   },
@@ -85,40 +85,40 @@ PoppoBuilder Suite を効果的に運用するための推奨事項、セキュ�
   },
   "backup": {
     "enabled": true,
-    "schedule": "0 2 * * *",  // 毎日午前2時
+    "schedule": "0 2 * * *",  // Daily at 2 AM
     "retention": 30
   }
 }
 ```
 
-### 環境別の起動方法
+### Environment-Specific Startup Methods
 
 ```bash
-# 開発環境
+# Development environment
 NODE_ENV=development npm start
 
-# ステージング環境
+# Staging environment
 NODE_ENV=staging npm start
 
-# 本番環境
+# Production environment
 NODE_ENV=production npm start
 
-# カスタム設定ファイル
+# Custom configuration file
 CONFIG_PATH=./config/custom.json npm start
 ```
 
-## 🔐 セキュリティガイドライン
+## 🔐 Security Guidelines
 
-### 1. 認証・認可
+### 1. Authentication & Authorization
 
-#### APIキーの管理
+#### API Key Management
 
 ```bash
-# 環境変数で管理（.envファイルは.gitignoreに追加）
+# Manage with environment variables (add .env file to .gitignore)
 GITHUB_TOKEN=ghp_xxxxxxxxxxxx
 CLAUDE_API_KEY=your-claude-api-key
 
-# 本番環境では環境変数を暗号化
+# Encrypt environment variables in production
 # AWS Systems Manager Parameter Store
 aws ssm put-parameter \
   --name "/poppo/github_token" \
@@ -131,7 +131,7 @@ kubectl create secret generic poppo-secrets \
   --from-literal=claude-api-key=your-claude-api-key
 ```
 
-#### ダッシュボードのセキュリティ
+#### Dashboard Security
 
 ```javascript
 // config/security.json
@@ -163,9 +163,9 @@ kubectl create secret generic poppo-secrets \
 }
 ```
 
-### 2. データ保護
+### 2. Data Protection
 
-#### 機密情報のマスキング
+#### Sensitive Information Masking
 
 ```javascript
 // ログ出力時の機密情報マスキング
@@ -257,7 +257,7 @@ server {
 }
 ```
 
-## 📈 スケーリング戦略
+## 📈 Scaling Strategies
 
 ### 1. 垂直スケーリング（スケールアップ）
 
@@ -400,7 +400,7 @@ spec:
 }
 ```
 
-## 🛠️ 保守・運用指針
+## 🛠️ Maintenance & Operations
 
 ### 1. 定期メンテナンス
 
@@ -596,7 +596,7 @@ SAFE_MODE=true npm start
 }
 ```
 
-## ⚡ パフォーマンス最適化
+## ⚡ Performance Optimization
 
 ### 1. コード最適化
 
@@ -707,7 +707,7 @@ const apiClient = axios.create({
 });
 ```
 
-## 🔄 開発ワークフロー
+## 🔄 Development Workflow
 
 ### 1. ブランチ戦略
 
@@ -778,15 +778,15 @@ gh release create "v$VERSION" \
   --notes-file CHANGELOG.md
 ```
 
-## 🎯 まとめ
+## 🎯 Summary
 
-効果的な PoppoBuilder Suite の運用には：
+Effective PoppoBuilder Suite operation requires:
 
-1. **環境に応じた適切な設定** - 開発/本番で異なる設定を使用
-2. **セキュリティの徹底** - 認証、暗号化、監査ログの実装
-3. **スケーラビリティの確保** - 負荷に応じた拡張が可能な構成
-4. **継続的なメンテナンス** - 定期的な保守作業の自動化
-5. **パフォーマンスの最適化** - ボトルネックの特定と改善
-6. **標準化された開発プロセス** - 一貫性のあるワークフロー
+1. **Appropriate Configuration for Each Environment** - Use different settings for development/production
+2. **Thorough Security** - Implementation of authentication, encryption, and audit logs
+3. **Ensuring Scalability** - Configuration that allows expansion according to load
+4. **Continuous Maintenance** - Automation of regular maintenance tasks
+5. **Performance Optimization** - Identification and improvement of bottlenecks
+6. **Standardized Development Process** - Consistent workflow
 
-これらのベストプラクティスを実践することで、安定した効率的なシステム運用が可能になります。
+By implementing these best practices, stable and efficient system operation becomes possible.

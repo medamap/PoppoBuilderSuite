@@ -1,17 +1,17 @@
-# エージェント間通信プロトコル設計
+# Agent Communication Protocol Design
 
-## 概要
+## Overview
 
-PoppoBuilderエージェント間の通信を標準化するプロトコル仕様です。
+A protocol specification that standardizes communication between PoppoBuilder agents.
 
-## プロトコルバージョン
+## Protocol Version
 
-- 現在: v1.0 (Phase 1 - ファイルベース)
-- 将来: v2.0 (Phase 2 - メッセージキュー)
+- Current: v1.0 (Phase 1 - File-based)
+- Future: v2.0 (Phase 2 - Message Queue)
 
-## メッセージタイプ
+## Message Types
 
-### 1. タスク割り当て (TASK_ASSIGNMENT)
+### 1. Task Assignment (TASK_ASSIGNMENT)
 ```json
 {
   "type": "TASK_ASSIGNMENT",
@@ -22,14 +22,14 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
   "taskType": "code-review",
   "deadline": "2025-06-16T12:00:00Z",
   "context": {
-    "issueTitle": "エージェント分離アーキテクチャの実装",
+    "issueTitle": "Agent Separation Architecture Implementation",
     "issueBody": "...",
     "labels": ["task:dogfooding"]
   }
 }
 ```
 
-### 2. タスク受諾 (TASK_ACCEPTED)
+### 2. Task Accepted (TASK_ACCEPTED)
 ```json
 {
   "type": "TASK_ACCEPTED",
@@ -40,7 +40,7 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
 }
 ```
 
-### 3. 進捗報告 (PROGRESS_UPDATE)
+### 3. Progress Update (PROGRESS_UPDATE)
 ```json
 {
   "type": "PROGRESS_UPDATE",
@@ -48,7 +48,7 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
   "agent": "CCPM",
   "progress": 50,
   "status": "processing",
-  "message": "コードレビュー実施中",
+  "message": "Performing code review",
   "details": {
     "filesAnalyzed": 10,
     "issuesFound": 3
@@ -56,7 +56,7 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
 }
 ```
 
-### 4. タスク完了 (TASK_COMPLETED)
+### 4. Task Completed (TASK_COMPLETED)
 ```json
 {
   "type": "TASK_COMPLETED",
@@ -65,7 +65,7 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
   "completionTime": "2025-06-16T11:00:00Z",
   "result": {
     "success": true,
-    "output": "レビュー結果",
+    "output": "Review results",
     "metrics": {
       "codeQuality": 85,
       "suggestions": 5
@@ -74,20 +74,20 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
 }
 ```
 
-### 5. エラー通知 (ERROR_NOTIFICATION)
+### 5. Error Notification (ERROR_NOTIFICATION)
 ```json
 {
   "type": "ERROR_NOTIFICATION",
   "taskId": "issue-27",
   "agent": "CCPM",
   "errorCode": "TIMEOUT",
-  "errorMessage": "処理がタイムアウトしました",
+  "errorMessage": "Processing timed out",
   "retryable": true,
   "timestamp": "2025-06-16T11:00:00Z"
 }
 ```
 
-### 6. ハートビート (HEARTBEAT)
+### 6. Heartbeat (HEARTBEAT)
 ```json
 {
   "type": "HEARTBEAT",
@@ -102,25 +102,25 @@ PoppoBuilderエージェント間の通信を標準化するプロトコル仕�
 }
 ```
 
-## 通信フロー
+## Communication Flow
 
-### 基本的なタスク処理フロー
+### Basic Task Processing Flow
 
 1. **Core → Agent**: TASK_ASSIGNMENT
 2. **Agent → Core**: TASK_ACCEPTED
-3. **Agent → Core**: PROGRESS_UPDATE (複数回)
+3. **Agent → Core**: PROGRESS_UPDATE (multiple times)
 4. **Agent → Core**: TASK_COMPLETED
 
-### エラー処理フロー
+### Error Handling Flow
 
 1. **Core → Agent**: TASK_ASSIGNMENT
 2. **Agent → Core**: TASK_ACCEPTED
 3. **Agent → Core**: ERROR_NOTIFICATION
-4. **Core → Agent**: TASK_ASSIGNMENT (リトライ)
+4. **Core → Agent**: TASK_ASSIGNMENT (retry)
 
-## Phase 1実装詳細（ファイルベース）
+## Phase 1 Implementation Details (File-based)
 
-### ディレクトリ構造
+### Directory Structure
 ```
 messages/
 ├── core/
@@ -134,63 +134,63 @@ messages/
     └── outbox/
 ```
 
-### メッセージファイル命名規則
+### Message File Naming Convention
 ```
 {timestamp}_{messageId}_{type}.json
 
-例: 20250616100000_abc123_TASK_ASSIGNMENT.json
+Example: 20250616100000_abc123_TASK_ASSIGNMENT.json
 ```
 
-### ポーリング間隔
-- 通常: 5秒
-- 高負荷時: 1秒
-- アイドル時: 10秒
+### Polling Intervals
+- Normal: 5 seconds
+- High load: 1 second
+- Idle: 10 seconds
 
-## エラーハンドリング
+## Error Handling
 
-### エラーコード
-- `TIMEOUT`: タイムアウト
-- `INVALID_MESSAGE`: 不正なメッセージフォーマット
-- `AGENT_UNAVAILABLE`: エージェント応答なし
-- `RESOURCE_LIMIT`: リソース制限
-- `INTERNAL_ERROR`: 内部エラー
+### Error Codes
+- `TIMEOUT`: Timeout
+- `INVALID_MESSAGE`: Invalid message format
+- `AGENT_UNAVAILABLE`: Agent not responding
+- `RESOURCE_LIMIT`: Resource limitation
+- `INTERNAL_ERROR`: Internal error
 
-### リトライポリシー
-- 最大リトライ回数: 3回
-- リトライ間隔: 指数バックオフ（1秒、2秒、4秒）
-- リトライ可能なエラー: TIMEOUT, AGENT_UNAVAILABLE
+### Retry Policy
+- Maximum retry count: 3
+- Retry interval: Exponential backoff (1s, 2s, 4s)
+- Retryable errors: TIMEOUT, AGENT_UNAVAILABLE
 
-## セキュリティ
+## Security
 
 ### Phase 1
-- ファイルシステムのアクセス権限による制御
-- エージェントごとに専用ディレクトリ
+- Control through filesystem access permissions
+- Dedicated directory for each agent
 
-### Phase 2以降
-- メッセージ署名
-- 暗号化通信
-- 認証トークン
+### Phase 2 and Beyond
+- Message signatures
+- Encrypted communication
+- Authentication tokens
 
-## パフォーマンス最適化
+## Performance Optimization
 
-### バッチ処理
-- 複数の小さなメッセージを1つにまとめる
-- 最大バッチサイズ: 10メッセージ
-- バッチタイムアウト: 1秒
+### Batch Processing
+- Combine multiple small messages into one
+- Maximum batch size: 10 messages
+- Batch timeout: 1 second
 
-### メッセージ圧縮
-- 1KB以上のペイロードは自動圧縮
-- 圧縮アルゴリズム: gzip
+### Message Compression
+- Auto-compress payloads larger than 1KB
+- Compression algorithm: gzip
 
-## モニタリング
+## Monitoring
 
-### メトリクス
-- メッセージ送信数/秒
-- メッセージ処理時間
-- エラー率
-- キューサイズ（Phase 2）
+### Metrics
+- Messages sent per second
+- Message processing time
+- Error rate
+- Queue size (Phase 2)
 
-### ログ
-- すべてのメッセージ送受信をログ記録
-- エラーの詳細ログ
-- パフォーマンスログ
+### Logging
+- Log all message send/receive operations
+- Detailed error logs
+- Performance logs
