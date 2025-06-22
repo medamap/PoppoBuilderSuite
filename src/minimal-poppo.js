@@ -227,11 +227,28 @@ if (config.configReload?.enabled !== false) {
   }
 }
 
-// GitHub設定を確実に取得（フォールバック付き）
-const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github || {
-  owner: 'medamap',
-  repo: 'PoppoBuilderSuite'
-};
+// GitHub設定を確実に取得
+const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github;
+
+// GitHub設定が見つからない場合のエラーハンドリング
+if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
+  console.error('\n❌ GitHub設定が見つかりません\n');
+  console.log('📁 設定ファイルにGitHub情報を追加してください');
+  console.log('\n解決方法:');
+  console.log('1. .poppo/config.json に以下を追加:');
+  console.log('   {');
+  console.log('     "github": {');
+  console.log('       "owner": "YOUR_GITHUB_USERNAME",');
+  console.log('       "repo": "YOUR_REPO_NAME"');
+  console.log('     }');
+  console.log('   }');
+  console.log('\n2. または環境変数で設定:');
+  console.log('   export POPPO_GITHUB_OWNER=YOUR_USERNAME');
+  console.log('   export POPPO_GITHUB_REPO=YOUR_REPO_NAME\n');
+  console.log('詳細は config/config.example.json を参照してください\n');
+  process.exit(1);
+}
+
 console.log('使用するGitHub設定:', githubConfig);
 const github = new GitHubClient(githubConfig);
 const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
