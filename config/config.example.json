@@ -3,7 +3,7 @@
     "owner": "YOUR_GITHUB_USERNAME",
     "repo": "YOUR_REPO_NAME",
     "checkInterval": 30000,
-    "pollingInterval": 60000,
+    "pollingInterval": 300000,
     "rateLimitBuffer": 100,
     "maxIssuesPerPoll": 1
   },

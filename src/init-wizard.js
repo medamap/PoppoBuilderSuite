@@ -231,11 +231,11 @@ class InitWizard {
           type: 'input',
           name: 'pollingInterval',
           message: 'GitHubポーリング間隔（秒）を入力してください:',
-          default: '60',
+          default: '300',
           validate: (input) => {
             const num = parseInt(input);
-            if (isNaN(num) || num < 10) {
-              return '10秒以上を指定してください';
+            if (isNaN(num) || num < 60) {
+              return '60秒以上を指定してください（GitHub APIレート制限のため）';
             }
             return true;
           }
@@ -255,7 +255,7 @@ class InitWizard {
       github: {
         owner: answers.githubOwner,
         repo: answers.githubRepo,
-        pollingInterval: (parseInt(answers.pollingInterval) || 60) * 1000
+        pollingInterval: (parseInt(answers.pollingInterval) || 300) * 1000
       },
       language: {
         primary: answers.language,
