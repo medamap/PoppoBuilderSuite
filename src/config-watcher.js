@@ -51,11 +51,7 @@ class ConfigWatcher extends EventEmitter {
   _getWatchPaths() {
     const paths = [];
     
-    // システムデフォルト設定
-    paths.push(path.join(__dirname, '..', 'config', 'defaults.json'));
-    paths.push(path.join(__dirname, '..', 'config', 'config.json'));
-    
-    // プロジェクト設定
+    // プロジェクト設定を最優先で監視
     const projectConfigPath = path.join(process.cwd(), '.poppo', 'config.json');
     if (fs.existsSync(projectConfigPath)) {
       paths.push(projectConfigPath);
@@ -64,11 +60,14 @@ class ConfigWatcher extends EventEmitter {
     // グローバル設定
     const homeDir = process.env.HOME || process.env.USERPROFILE;
     if (homeDir) {
-      const globalConfigPath = path.join(homeDir, '.poppo', 'config.json');
+      const globalConfigPath = path.join(homeDir, '.poppobuilder', 'config.json');
       if (fs.existsSync(globalConfigPath)) {
         paths.push(globalConfigPath);
       }
     }
+    
+    // npmパッケージ内の設定は監視しない（読み取り専用のため）
+    // システムデフォルトは ConfigLoader が内部的に処理
     
     return paths;
   }
@@ -114,7 +113,8 @@ class ConfigWatcher extends EventEmitter {
       this.watchers.set(filePath, watcher);
       this.logger.debug(`ファイル監視を開始: ${filePath}`);
     } catch (error) {
-      this.logger.warn(`ファイル監視の設定に失敗: ${filePath}`, error.message);
+      // npmパッケージ内のファイルは読み取り専用なので、監視エラーは想定内
+      this.logger.debug(`ファイル監視をスキップ: ${filePath} (${error.message})`);
     }
   }
 

@@ -233,19 +233,25 @@ const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github;
 // GitHub設定が見つからない場合のエラーハンドリング
 if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
   console.error('\n❌ GitHub設定が見つかりません\n');
-  console.log('📁 設定ファイルにGitHub情報を追加してください');
+  console.log('📁 PoppoBuilderを使用するには、プロジェクトの設定が必要です');
   console.log('\n解決方法:');
-  console.log('1. .poppo/config.json に以下を追加:');
+  console.log('1. プロジェクトの設定ファイルを作成:');
+  console.log('   mkdir -p .poppo');
+  console.log('   cat > .poppo/config.json << EOF');
   console.log('   {');
   console.log('     "github": {');
   console.log('       "owner": "YOUR_GITHUB_USERNAME",');
   console.log('       "repo": "YOUR_REPO_NAME"');
+  console.log('     },');
+  console.log('     "language": {');
+  console.log('       "primary": "ja"');
   console.log('     }');
   console.log('   }');
+  console.log('   EOF');
   console.log('\n2. または環境変数で設定:');
   console.log('   export POPPO_GITHUB_OWNER=YOUR_USERNAME');
   console.log('   export POPPO_GITHUB_REPO=YOUR_REPO_NAME\n');
-  console.log('詳細は config/config.example.json を参照してください\n');
+  console.log('詳細: https://github.com/medamap/PoppoBuilderSuite/blob/main/config/config.example.json\n');
   process.exit(1);
 }
 
