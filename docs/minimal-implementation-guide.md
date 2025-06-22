@@ -1,79 +1,79 @@
-# 最小限実装ガイド
+# Minimal Implementation Guide
 
-## 概要
-PoppoBuilder Suiteの最小限の実装。GitHub Issueを読み取り、Claudeで処理して結果を返します。
+## Overview
+Minimal implementation of PoppoBuilder Suite. Reads GitHub Issues, processes with Claude, and returns results.
 
-## 動作要件
-- Node.js 18以上
-- `gh` CLIがインストール・認証済み
-- `claude` CLIがインストール・認証済み
+## Requirements
+- Node.js 18 or higher
+- `gh` CLI installed and authenticated
+- `claude` CLI installed and authenticated
 
-## 使い方
+## Usage
 
-### 1. 起動
+### 1. Starting
 ```bash
 npm start
-# または
+# or
 node src/minimal-poppo.js
 ```
 
-### 2. Issue作成
-GitHubで以下のようなIssueを作成：
-- **作成者**: リポジトリオーナー（medamap）
-- **ラベル**: `task:misc`
-- **タイトル**: 実行したいタスクの概要
-- **本文**: 詳細な指示
+### 2. Creating Issues
+Create an issue on GitHub with:
+- **Creator**: Repository owner (medamap)
+- **Label**: `task:misc`
+- **Title**: Overview of the task to execute
+- **Body**: Detailed instructions
 
-例：
+Example:
 ```
-Title: package.jsonにlintスクリプトを追加
+Title: Add lint script to package.json
 Labels: task:misc
 
 Body:
-package.jsonのscriptsセクションに以下を追加してください：
+Please add the following to the scripts section of package.json:
 "lint": "eslint src/**/*.js"
 ```
 
-### 3. 処理の流れ
-1. PoppoBuilderがIssueを検出
-2. `processing`ラベルを追加
-3. Claudeで処理を実行（`work/poppo-builder`ブランチで作業）
-4. 結果をIssueコメントで報告
-5. `completed`ラベルを追加
+### 3. Processing Flow
+1. PoppoBuilder detects the issue
+2. Adds `processing` label
+3. Executes processing with Claude (works on `work/poppo-builder` branch)
+4. Reports results as issue comment
+5. Adds `completed` label
 
-### 4. ブランチ戦略
-すべての自動処理は `work/poppo-builder` ブランチで実行されます。
+### 4. Branch Strategy
+All automated processing runs on the `work/poppo-builder` branch.
 
-#### マージの例
+#### Merge Examples
 ```
-# Issue例1
-Title: developにマージして
-Body: 最小限実装をマージしてください
-→ work/poppo-builder から develop へマージ
+# Example Issue 1
+Title: Merge to develop
+Body: Please merge the minimal implementation
+→ Merges from work/poppo-builder to develop
 
-# Issue例2  
-Title: mainにPR作成
-Body: リリース準備のPRを作成してください
-→ work/poppo-builder から main へのPR作成
+# Example Issue 2  
+Title: Create PR to main
+Body: Please create a PR for release preparation
+→ Creates PR from work/poppo-builder to main
 ```
 
-## 設定
-`config/config.json`で設定変更可能：
-- `claude.maxConcurrent`: 最大同時実行数（デフォルト: 2）
-- `claude.timeout`: タイムアウト時間（デフォルト: 300000ms = 5分）
-- `polling.interval`: ポーリング間隔（デフォルト: 30000ms = 30秒）
+## Configuration
+Configurable in `config/config.json`:
+- `claude.maxConcurrent`: Maximum concurrent executions (default: 2)
+- `claude.timeout`: Timeout duration (default: 300000ms = 5 minutes)
+- `polling.interval`: Polling interval (default: 30000ms = 30 seconds)
 
-## 制限事項
-- 作者のIssueのみ処理
-- `task:misc`ラベルが必要
-- フェーズ管理なし（即実行）
-- ブランチ管理なし
-- PR作成なし
+## Limitations
+- Only processes issues from the author
+- Requires `task:misc` label
+- No phase management (immediate execution)
+- No branch management
+- No PR creation
 
-## トラブルシューティング
+## Troubleshooting
 
-### レート制限エラー
-Claudeのレート制限に達した場合、自動的に制限解除時刻まで待機します。
+### Rate Limit Errors
+When Claude's rate limit is reached, automatically waits until the limit resets.
 
-### プロセスが終了しない
-Ctrl+Cで終了。実行中のClaudeプロセスも自動的に終了します。
+### Process Won't Terminate
+Use Ctrl+C to exit. Running Claude processes will also terminate automatically.

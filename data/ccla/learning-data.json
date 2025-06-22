@@ -1,0 +1,120 @@
+{
+  "patterns": {
+    "EP001": {
+      "pattern": "EP001",
+      "successCount": 8,
+      "failureCount": 2,
+      "totalCount": 10,
+      "successRate": 0.8,
+      "averageRepairTime": 148,
+      "totalRepairTime": 1480,
+      "firstSeen": "2025-06-21T22:52:36.677Z",
+      "lastUpdated": "2025-06-21T22:52:36.678Z",
+      "disabled": false,
+      "disabledReason": null
+    }
+  },
+  "history": [
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 100,
+        "errorHash": "hash0",
+        "file": "file0.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 110,
+        "errorHash": "hash1",
+        "file": "file1.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 120,
+        "errorHash": "hash2",
+        "file": "file2.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 130,
+        "errorHash": "hash3",
+        "file": "file3.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 140,
+        "errorHash": "hash4",
+        "file": "file4.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 150,
+        "errorHash": "hash5",
+        "file": "file5.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 160,
+        "errorHash": "hash6",
+        "file": "file6.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": true,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 170,
+        "errorHash": "hash7",
+        "file": "file7.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": false,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 200,
+        "errorHash": "fail0",
+        "file": "fail0.js"
+      }
+    },
+    {
+      "pattern": "EP001",
+      "success": false,
+      "timestamp": "2025-06-21T22:52:36.678Z",
+      "details": {
+        "repairTime": 200,
+        "errorHash": "fail1",
+        "file": "fail1.js"
+      }
+    }
+  ],
+  "lastUpdated": "2025-06-21T22:52:36.680Z"
+}

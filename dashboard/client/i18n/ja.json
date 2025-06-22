@@ -1,0 +1,97 @@
+{
+  "title": "PoppoBuilder Process Dashboard",
+  "header": {
+    "title": "🤖 PoppoBuilder Process Dashboard",
+    "refresh": "更新",
+    "stopAll": "全プロセス停止"
+  },
+  "systemStatus": {
+    "title": "システム状態",
+    "running": "正常稼働中",
+    "stats": {
+      "running": "実行中",
+      "completed": "完了",
+      "error": "エラー",
+      "total": "合計"
+    }
+  },
+  "processList": {
+    "title": "プロセス一覧",
+    "loading": "読み込み中..."
+  },
+  "logSearch": {
+    "title": "ログ検索",
+    "placeholder": "キーワードを入力...",
+    "allLevels": "全レベル",
+    "issueNumber": "Issue番号",
+    "search": "検索",
+    "clear": "クリア",
+    "export": "エクスポート"
+  },
+  "analytics": {
+    "title": "パフォーマンス分析",
+    "tabs": {
+      "statistics": "統計情報",
+      "trends": "トレンド",
+      "history": "実行履歴"
+    },
+    "taskTypes": {
+      "claudeCli": "claude-cli",
+      "issueProcess": "issue-process",
+      "commentProcess": "comment-process"
+    },
+    "metrics": {
+      "duration": "実行時間",
+      "memory": "メモリ使用量",
+      "cpu": "CPU使用率"
+    },
+    "timeRanges": {
+      "7days": "過去7日間",
+      "14days": "過去14日間",
+      "30days": "過去30日間"
+    },
+    "status": {
+      "all": "全ステータス",
+      "success": "成功",
+      "error": "エラー",
+      "timeout": "タイムアウト"
+    },
+    "loading": {
+      "stats": "統計データを読み込み中...",
+      "history": "実行履歴を読み込み中..."
+    }
+  },
+  "realtimeLogs": {
+    "title": "リアルタイムログ",
+    "connecting": "ダッシュボードに接続中..."
+  },
+  "processDetail": {
+    "title": "プロセス詳細"
+  },
+  "common": {
+    "close": "×",
+    "refresh": "更新",
+    "allTypes": "全タスクタイプ"
+  },
+  "multiProject": {
+    "title": "PoppoBuilder マルチプロジェクトダッシュボード",
+    "stats": {
+      "totalProjects": "📊 総プロジェクト数",
+      "registeredProjects": "登録済みプロジェクト",
+      "activeWorkers": "🔄 アクティブワーカー",
+      "runningWorkers": "実行中のワーカー",
+      "completedTasks": "✅ 完了タスク",
+      "todayCompleted": "本日の完了数"
+    },
+    "projectList": {
+      "title": "🗂️ プロジェクト一覧",
+      "loading": "プロジェクト情報を読み込み中...",
+      "noProjects": "プロジェクトが登録されていません",
+      "completed": "完了"
+    },
+    "errors": {
+      "websocketError": "WebSocket接続エラーが発生しました",
+      "parseError": "WebSocketメッセージの解析エラー:"
+    }
+  }
+}

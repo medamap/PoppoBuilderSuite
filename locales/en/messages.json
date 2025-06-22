@@ -1,0 +1,166 @@
+{
+  "startup": {
+    "welcome": "Welcome to PoppoBuilder Suite v{{version}}",
+    "initializing": "Initializing system...",
+    "loadingConfig": "Loading configuration...",
+    "connectingGithub": "Connecting to GitHub...",
+    "startingAgents": "Starting agents...",
+    "ready": "PoppoBuilder is ready!",
+    "shutdownInitiated": "Shutdown initiated...",
+    "shutdownComplete": "Shutdown complete"
+  },
+  "issue": {
+    "processing": "Processing issue #{{number}}: {{title}}",
+    "analyzing": "Analyzing issue content...",
+    "generatingResponse": "Generating response...",
+    "postingComment": "Posting comment to issue #{{number}}",
+    "completed": "Successfully processed issue #{{number}}",
+    "failed": "Failed to process issue #{{number}}: {{error}}",
+    "skipped": "Skipped issue #{{number}} ({{reason}})",
+    "alreadyProcessed": "Issue #{{number}} has already been processed"
+  },
+  "pr": {
+    "processing": "Processing pull request #{{number}}: {{title}}",
+    "reviewing": "Reviewing code changes...",
+    "checkingTests": "Checking test results...",
+    "approved": "Approved pull request #{{number}}",
+    "changesRequested": "Requested changes for pull request #{{number}}",
+    "commented": "Added comment to pull request #{{number}}",
+    "merged": "Merged pull request #{{number}}",
+    "closed": "Closed pull request #{{number}}"
+  },
+  "task": {
+    "created": "Created task: {{id}}",
+    "started": "Started task: {{id}}",
+    "progress": "Task {{id}} progress: {{percent}}%",
+    "completed": "Completed task: {{id}}",
+    "failed": "Task {{id}} failed: {{error}}",
+    "cancelled": "Cancelled task: {{id}}",
+    "retrying": "Retrying task {{id}} (attempt {{attempt}}/{{maxAttempts}})"
+  },
+  "agent": {
+    "started": "Agent {{name}} started",
+    "stopped": "Agent {{name}} stopped",
+    "healthy": "Agent {{name}} is healthy",
+    "unhealthy": "Agent {{name}} is unhealthy: {{reason}}",
+    "taskAssigned": "Assigned task {{taskId}} to agent {{name}}",
+    "taskCompleted": "Agent {{name}} completed task {{taskId}}",
+    "error": "Agent {{name}} error: {{error}}"
+  },
+  "github": {
+    "connected": "Connected to GitHub",
+    "authenticated": "Authenticated as {{user}}",
+    "rateLimit": "GitHub API rate limit: {{remaining}}/{{limit}} (resets at {{reset}})",
+    "webhook": "Received webhook event: {{event}} for {{repo}}"
+  },
+  "claude": {
+    "connected": "Connected to Claude API",
+    "modelLoaded": "Loaded model: {{model}}",
+    "generating": "Generating response...",
+    "tokensUsed": "Tokens used: {{input}} input, {{output}} output",
+    "contextWarning": "Approaching context limit ({{percent}}% used)"
+  },
+  "system": {
+    "memoryUsage": "Memory usage: {{used}}/{{total}} ({{percent}}%)",
+    "cpuUsage": "CPU usage: {{percent}}%",
+    "diskSpace": "Disk space: {{free}} free of {{total}}",
+    "uptime": "System uptime: {{time}}",
+    "healthCheck": "Health check: {{status}}",
+    "queue_enqueued": "Task {{taskId}} enqueued with priority {{priority}}",
+    "queue_task_started": "Task {{taskId}} started",
+    "queue_task_completed": "Task {{taskId}} completed",
+    "queue_task_failed": "Task {{taskId}} failed",
+    "starting": "Starting PoppoBuilder...",
+    "started": "PoppoBuilder started successfully",
+    "stopping": "Stopping PoppoBuilder...",
+    "stopped": "PoppoBuilder stopped",
+    "rate_limit_checking": "Checking GitHub rate limit...",
+    "rate_limit_status": "Rate limit: {{remaining}}/{{limit}} (resets at {{reset}})",
+    "processing_issues": "Processing {{count}} issues...",
+    "no_issues_found": "No issues found to process",
+    "shutdown_signal": "Received {{signal}} signal, shutting down gracefully...",
+    "cleanup_complete": "Cleanup complete"
+  },
+  "backup": {
+    "starting": "Starting backup...",
+    "progress": "Backup progress: {{percent}}%",
+    "completed": "Backup completed: {{size}} in {{time}}",
+    "failed": "Backup failed: {{error}}",
+    "restoring": "Restoring from backup...",
+    "restored": "Successfully restored from backup"
+  },
+  "notification": {
+    "info": "ℹ️ {{message}}",
+    "success": "✅ {{message}}",
+    "warning": "⚠️ {{message}}",
+    "error": "❌ {{message}}"
+  },
+  "notInitialized": "PoppoBuilder is not initialized in this project.",
+  "runInit": "Run {{command}} to get started.",
+  "process": {
+    "starting": "Starting process {{pid}}...",
+    "started": "Process {{pid}} started successfully",
+    "stopping": "Stopping process {{pid}}...",
+    "stopped": "Process {{pid}} stopped",
+    "failed": "Process {{pid}} failed: {{error}}",
+    "timeout": "Process {{pid}} timed out after {{timeout}}ms",
+    "killed": "Process {{pid}} was killed (signal: {{signal}})",
+    "exited": "Process {{pid}} exited with code {{code}}",
+    "error": "Process {{pid}} error: {{error}}"
+  },
+  "log": {
+    "levels": {
+      "DEBUG": "DEBUG",
+      "INFO": "INFO",
+      "WARN": "WARN",
+      "ERROR": "ERROR",
+      "FATAL": "FATAL"
+    },
+    "categories": {
+      "system": "System",
+      "task": "Task",
+      "api": "API",
+      "database": "Database",
+      "file": "File",
+      "performance": "Performance",
+      "security": "Security",
+      "agent": "Agent"
+    },
+    "messages": {
+      "processingIssue": "Processing issue #{{number}}",
+      "processedIssue": "Processed issue #{{number}}",
+      "errorProcessingIssue": "Error processing issue #{{number}}",
+      "taskQueued": "Task queued: {{taskId}}",
+      "taskStarted": "Task {{taskId}} started",
+      "taskCompleted": "Task {{taskId}} completed",
+      "taskFailed": "Task {{taskId}} failed",
+      "connectingGitHub": "Connecting to GitHub...",
+      "connectedGitHub": "Connected to GitHub",
+      "connectingClaude": "Connecting to Claude API...",
+      "connectedClaude": "Connected to Claude API",
+      "rateLimitExceeded": "Rate limit exceeded. Retrying in {{seconds}} seconds",
+      "retrying": "Retrying... ({{attempt}}/{{maxAttempts}})",
+      "configLoaded": "Configuration loaded",
+      "configError": "Failed to load configuration",
+      "databaseConnected": "Database connected",
+      "databaseError": "Database error occurred",
+      "serverStarted": "Server started on port {{port}}",
+      "serverStopped": "Server stopped",
+      "agentStarted": "Agent {{name}} started",
+      "agentStopped": "Agent {{name}} stopped",
+      "fileCreated": "File created: {{path}}",
+      "fileUpdated": "File updated: {{path}}",
+      "fileDeleted": "File deleted: {{path}}",
+      "memoryUsage": "Memory usage: {{used}}MB / {{total}}MB ({{percentage}}%)",
+      "cpuUsage": "CPU usage: {{percentage}}%",
+      "tokenUsage": "Token usage: {{used}} / {{limit}} ({{percentage}}%)"
+    }
+  },
+  "setupWizard": {
+    "welcome": "Welcome to PoppoBuilder Setup Wizard",
+    "configuring": "Let's configure PoppoBuilder for your project:",
+    "checking": "Checking prerequisites...",
+    "complete": "Setup complete!",
+    "failed": "Setup failed: {{error}}"
+  }
+}

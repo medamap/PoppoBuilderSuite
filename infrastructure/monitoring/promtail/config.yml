@@ -1,0 +1,88 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # PoppoBuilder メインログ
+  - job_name: poppo-main
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: poppo-main
+          __path__: /var/log/poppo/poppo-*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+(?P<level>\w+)\s+(?P<message>.*)'
+      - labels:
+          level:
+          timestamp:
+
+  # エージェントログ
+  - job_name: poppo-agents
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: poppo-agents
+          __path__: /var/log/poppo/agents/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+(?P<level>\w+)\s+\[(?P<agent>\w+)\]\s+(?P<message>.*)'
+      - labels:
+          level:
+          agent:
+          timestamp:
+
+  # エラーログ
+  - job_name: poppo-errors
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: poppo-errors
+          __path__: /var/log/poppo/error-*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\s+(?P<level>ERROR)\s+(?P<component>\w+)\s+(?P<message>.*)'
+      - labels:
+          level:
+          component:
+          timestamp:
+
+  # システムログ
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system
+          __path__: /var/log/messages
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\s+(?P<host>\S+)\s+(?P<process>\S+):\s*(?P<message>.*)'
+      - labels:
+          host:
+          process:
+
+  # アクセスログ（将来のWebUI用）
+  - job_name: access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: access
+          __path__: /var/log/poppo/access-*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<remote_addr>\S+)\s+\S+\s+\S+\s+\[(?P<timestamp>[^\]]+)\]\s+"(?P<method>\S+)\s+(?P<path>\S+)\s+(?P<protocol>\S+)"\s+(?P<status>\d+)\s+(?P<size>\d+)'
+      - labels:
+          method:
+          status:
+          remote_addr:

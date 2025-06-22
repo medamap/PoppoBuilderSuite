@@ -1,0 +1,113 @@
+# Development files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Documentation source
+docs/
+*.md
+!README.md
+!LICENSE.md
+
+# Configuration
+.poppo/
+.poppobuilder/
+config/config.json
+.env
+.env.*
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# Build and coverage
+coverage/
+.nyc_output/
+.coverage/
+*.lcov
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Infrastructure (not needed for npm package)
+infrastructure/
+systemd/
+docker-compose*.yml
+Dockerfile*
+
+# Scripts not needed in package
+scripts/test-*.js
+scripts/setup-*.js
+scripts/dangerous/
+
+# State and data files
+state/
+data/
+*.sqlite
+*.db
+
+# Reports
+reports/
+test-reports/
+performance-reports/
+
+# Examples (keep for documentation)
+!examples/
+
+# Backup files
+*.backup
+*.bak
+backup/
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# npm files (automatically excluded)
+# node_modules/
+# package-lock.json
+
+# TypeScript files (if any)
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Build artifacts
+dist/
+build/
+out/
+
+# OS files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# Editor files
+*.sublime-*
+*.code-workspace
+
+# Monitoring and metrics
+monitoring/
+prometheus/
+grafana/
+
+# Keep important configs
+!config/defaults.json
+!lib/
+!bin/
+!agents/shared/

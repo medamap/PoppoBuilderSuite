@@ -1,0 +1,218 @@
+{
+  "commands": {
+    "init": {
+      "description": "現在のディレクトリでPoppoBuilderを初期化",
+      "alreadyExists": "このディレクトリにはすでにPoppoBuilderが初期化されています",
+      "creating": "PoppoBuilder設定を作成しています...",
+      "githubToken": "GitHubトークンを入力してください:",
+      "repoOwner": "リポジトリオーナーを入力してください:",
+      "repoName": "リポジトリ名を入力してください:",
+      "language": "言語を選択してください:",
+      "success": "✅ PoppoBuilderの初期化が完了しました！",
+      "nextSteps": "次のステップ:",
+      "nextStep1": "1. .poppo/config.jsonで設定を調整してください",
+      "nextStep2": "2. 'poppobuilder start'を実行してIssue処理を開始してください"
+    },
+    "start": {
+      "description": "PoppoBuilderを起動",
+      "starting": "PoppoBuilderを起動しています...",
+      "alreadyRunning": "PoppoBuilderはすでに起動しています (PID: {{pid}})"
+    },
+    "stop": {
+      "description": "PoppoBuilderを停止",
+      "stopping": "PoppoBuilderを停止しています...",
+      "stopped": "PoppoBuilderが停止しました",
+      "notRunning": "PoppoBuilderは起動していません"
+    },
+    "status": {
+      "description": "PoppoBuilderのステータスを表示",
+      "running": "PoppoBuilderは起動しています (PID: {{pid}})",
+      "notRunning": "PoppoBuilderは起動していません",
+      "uptime": "稼働時間: {{uptime}}",
+      "processedIssues": "処理済みIssue: {{count}}件",
+      "runningTasks": "実行中タスク: {{count}}件"
+    },
+    "config": {
+      "description": "PoppoBuilderの設定を管理",
+      "show": "現在の設定を表示",
+      "set": "{{key}}を{{value}}に設定",
+      "get": "{{key}}: {{value}}"
+    },
+    "logs": {
+      "description": "PoppoBuilderのログを表示",
+      "follow": "ログを追跡中 (Ctrl+Cで停止)...",
+      "noLogs": "ログが見つかりません"
+    },
+    "doctor": {
+      "description": "PoppoBuilderのセットアップと依存関係をチェック",
+      "checking": "PoppoBuilderのセットアップをチェック中...",
+      "nodeVersion": "Node.jsバージョン: {{version}}",
+      "githubAuth": "GitHub認証: {{status}}",
+      "claudeCli": "Claude CLI: {{status}}",
+      "configFile": "設定ファイル: {{status}}"
+    },
+    "upgrade": {
+      "description": "PoppoBuilderを最新バージョンにアップグレード",
+      "checking": "アップデートを確認中...",
+      "current": "現在のバージョン: {{version}}",
+      "latest": "最新バージョン: {{version}}",
+      "upToDate": "PoppoBuilderは最新です",
+      "upgrading": "バージョン{{version}}にアップグレード中..."
+    },
+    "globalConfig": {
+      "description": "PoppoBuilderグローバル設定を管理",
+      "show": {
+        "description": "グローバル設定を表示",
+        "title": "グローバル設定",
+        "notFound": "設定パス '{{path}}' が見つかりません"
+      },
+      "set": {
+        "description": "設定値を変更",
+        "success": "{{path}} = {{value}} に設定しました"
+      },
+      "reset": {
+        "description": "設定をデフォルトにリセット",
+        "skipConfirmation": "確認プロンプトをスキップ",
+        "confirm": "すべてのグローバル設定をリセットしてもよろしいですか？",
+        "success": "設定をデフォルトにリセットしました"
+      },
+      "path": {
+        "description": "設定ファイルのパスを表示",
+        "title": "設定パス"
+      },
+      "export": {
+        "description": "設定をファイルにエクスポート",
+        "success": "設定を {{file}} にエクスポートしました"
+      },
+      "import": {
+        "description": "ファイルから設定をインポート",
+        "success": "{{file}} から設定をインポートしました"
+      },
+      "validate": {
+        "description": "設定を検証",
+        "valid": "設定は有効です",
+        "invalid": "設定が無効です:"
+      },
+      "init": {
+        "description": "グローバル設定を初期化",
+        "exists": "グローバル設定はすでに存在します",
+        "success": "グローバル設定を {{path}} に作成しました"
+      }
+    },
+    "common": {
+      "cancelled": "操作がキャンセルされました"
+    },
+    "daemon": {
+      "description": "PoppoBuilderデーモンプロセスを管理",
+      "start": {
+        "description": "デーモンを起動",
+        "foreground": "フォアグラウンドで実行（デタッチしない）",
+        "starting": "PoppoBuilderデーモンを起動しています..."
+      },
+      "stop": {
+        "description": "デーモンを停止",
+        "notRunning": "デーモンは起動していません",
+        "stopping": "デーモンを停止しています (PID: {{pid}})...",
+        "stopped": "デーモンが停止しました",
+        "timeout": "デーモンの停止がタイムアウトしました",
+        "error": "デーモン停止エラー:"
+      },
+      "restart": {
+        "description": "デーモンを再起動",
+        "stopping": "デーモンを停止しています...",
+        "started": "デーモンを再起動しました"
+      },
+      "status": {
+        "description": "デーモンの状態を表示",
+        "json": "JSON形式で出力",
+        "running": "デーモンは起動しています (PID: {{pid}})",
+        "notRunning": "デーモンは起動していません",
+        "workers": "ワーカー:"
+      },
+      "reload": {
+        "description": "デーモンの設定を再読み込み",
+        "notRunning": "デーモンは起動していません",
+        "sent": "再読み込みシグナルを送信しました",
+        "error": "再読み込みシグナル送信エラー:"
+      }
+    },
+    "template": {
+      "description": "プロジェクトテンプレートを管理",
+      "list": {
+        "description": "利用可能なテンプレートを一覧表示",
+        "jsonOption": "JSON形式で出力",
+        "noTemplates": "テンプレートが見つかりません",
+        "name": "名前",
+        "type": "タイプ",
+        "tags": "タグ",
+        "total": "合計: {{count}}個のテンプレート"
+      },
+      "create": {
+        "description": "カスタムテンプレートを作成",
+        "fromOption": "既存プロジェクトからテンプレートを作成",
+        "interactiveOption": "対話モード",
+        "creating": "テンプレート「{{name}}」を作成中...",
+        "success": "テンプレート「{{name}}」が正常に作成されました！",
+        "location": "場所: {{path}}",
+        "descriptionPrompt": "テンプレートの説明:",
+        "tagsPrompt": "タグ（カンマ区切り）:",
+        "fromProjectPrompt": "既存プロジェクトから作成しますか？",
+        "projectPathPrompt": "プロジェクトパス:"
+      },
+      "delete": {
+        "description": "カスタムテンプレートを削除",
+        "forceOption": "確認をスキップ",
+        "confirmPrompt": "テンプレート「{{name}}」を削除してもよろしいですか？",
+        "cancelled": "削除がキャンセルされました",
+        "deleting": "テンプレート「{{name}}」を削除中...",
+        "success": "テンプレート「{{name}}」が正常に削除されました！"
+      },
+      "info": {
+        "description": "テンプレートの詳細を表示",
+        "title": "テンプレート情報",
+        "name": "名前:",
+        "type": "タイプ:",
+        "version": "バージョン:",
+        "author": "作成者:",
+        "created": "作成日時:",
+        "contents": "テンプレート内容"
+      }
+    },
+    "project": {
+      "disable": {
+        "not_found": "プロジェクト '{{name}}' が見つかりません",
+        "already_disabled": "プロジェクト '{{name}}' は既に無効化されています",
+        "running_tasks": "プロジェクト '{{name}}' には {{count}} 個の実行中タスクがあります",
+        "running_tasks_warning": "これらのタスクは引き続き実行されますが、新しいタスクは開始されません。",
+        "force_hint": "--force フラグを使用して強制的に無効化してください",
+        "success": "プロジェクト '{{name}}' を正常に無効化しました",
+        "tasks_note": "注意: 既存のタスクは引き続き実行されます。必要に応じてデーモンコマンドで停止してください。",
+        "error": "プロジェクトの無効化に失敗しました"
+      },
+      "remove": {
+        "not_found": "プロジェクト '{{name}}' が見つかりません",
+        "running_tasks": "プロジェクト '{{name}}' には {{count}} 個の実行中タスクがあります",
+        "running_tasks_warning": "プロジェクトを削除する前にすべてのタスクを停止してください。",
+        "confirm": "プロジェクト '{{name}}' を削除してもよろしいですか？",
+        "cancelled": "削除がキャンセルされました",
+        "success": "プロジェクト '{{name}}' を正常に削除しました",
+        "error": "プロジェクトの削除に失敗しました",
+        "cleaning": "プロジェクトファイルをクリーンアップ中...",
+        "clean_warnings": "一部のファイルをクリーンアップできませんでした:",
+        "clean_success": "プロジェクトファイルを正常にクリーンアップしました",
+        "clean_summary": "{{files}} ファイルをクリーンアップ、{{bytes}} バイトを解放しました",
+        "clean_error": "プロジェクトファイルのクリーンアップエラー:"
+      }
+    }
+  },
+  "options": {
+    "daemon": "デーモンとして実行",
+    "verbose": "詳細出力",
+    "config": "設定ファイルのパス",
+    "help": "ヘルプを表示",
+    "version": "バージョンを表示"
+  },
+  "errors": {
+    "commandFailed": "コマンドが失敗しました:"
+  }
+}

@@ -1,15 +1,15 @@
 # PoppoBuilder Suite Installation Guide
 
-PoppoBuilder is a system that automatically processes tasks by integrating GitHub Issues with Claude CLI. It features continuous dialogue through comment threads and self-improvement capabilities (Dogfooding). This guide explains how to install and configure PoppoBuilder.
+PoppoBuilder is an advanced automated task processing system that integrates GitHub Issues with Claude CLI. It features continuous dialogue through comment threads, self-improvement capabilities (Dogfooding), comprehensive internationalization support, and advanced error handling. This guide explains how to install and configure PoppoBuilder.
 
 ## Prerequisites
 
 ### Required Components
-- **Node.js** (v18 or higher)
-- **npm** or **yarn**
-- **Claude CLI** (installed)
-- **GitHub CLI (`gh`)** (installed)
-- **Git**
+- **Node.js** (v14 or higher, v18+ recommended)
+- **npm** (6.0.0 or higher) or **yarn**
+- **Claude CLI** (installed and configured)
+- **GitHub CLI (`gh`)** (installed and authenticated)
+- **Git** (2.0.0 or higher)
 
 ### Claude CLI Setup
 Ensure Claude CLI is installed and API key is configured:
@@ -36,7 +36,29 @@ cd PoppoBuilderSuite
 npm install
 ```
 
-### 3. Configure Environment Variables
+### 3. Run Setup Wizard (Recommended)
+PoppoBuilder includes an interactive setup wizard to assist with environment configuration:
+
+```bash
+# Run the setup wizard
+npm run setup:wizard
+
+# Or run directly
+node lib/commands/setup-wizard.js
+
+# Check dependencies only
+npm run deps:check
+```
+
+Setup wizard features:
+- ✅ Automatic checking of required dependencies (Node.js, npm, Git, Claude CLI)
+- ✅ Detection of missing dependencies with installation guidance
+- ✅ Git repository initialization and configuration
+- ✅ GitHub CLI authentication verification
+- ✅ Automatic working branch creation
+- ✅ Interactive Claude CLI setup (when available)
+
+### 4. Configure Environment Variables
 Create a `.env` file and set the required environment variables:
 ```bash
 cp .env.example .env
@@ -52,7 +74,7 @@ GITHUB_REPO=your-repo-name
 LOG_LEVEL=info
 ```
 
-### 4. GitHub Repository Setup
+### 5. GitHub Repository Setup
 
 #### Create Required Labels
 PoppoBuilder requires specific labels in your GitHub repository to function properly:
@@ -69,13 +91,15 @@ Or manually create the following labels:
 - `awaiting-response` - Indicates waiting for comments
 - `completed` - Indicates task completion
 
-### 5. Language Configuration (Optional)
-You can configure PoppoBuilder's response language. Default is Japanese.
+### 6. Language Configuration (Optional)
+PoppoBuilder features comprehensive internationalization support. You can configure the response language and localization settings.
 
 Create `.poppo/config.json`:
 ```json
 {
-  "language": "en"
+  "language": "en",           
+  "fallbackLanguage": "en",   
+  "autoDetect": false         
 }
 ```
 
@@ -83,7 +107,14 @@ Available languages:
 - `ja` - Japanese (default)
 - `en` - English
 
-### 6. System Configuration (Required)
+Internationalization features:
+- **Automatic Language Detection**: Based on system locale or configuration
+- **Dynamic Message Translation**: Real-time translation of all system messages
+- **Error Message Localization**: Comprehensive error messages in both languages
+- **Log Message Translation**: Multilingual logging with structured error codes
+- **CLI Internationalization**: Command-line interface in multiple languages
+
+### 7. System Configuration (Required)
 Review and adjust `config/config.json` as needed:
 ```json
 {
@@ -100,6 +131,34 @@ Review and adjust `config/config.json` as needed:
   }
 }
 ```
+
+## CLI Commands
+
+PoppoBuilder provides various CLI commands for enhanced management:
+
+```bash
+# Project initialization
+poppobuilder init
+
+# Service startup
+poppobuilder start
+poppobuilder start --daemon  # Start in daemon mode
+
+# Status check
+poppobuilder status
+
+# PR creation guide (NEW!)
+poppobuilder pr              # Interactive PR creation guide
+poppobuilder pr --draft      # Create draft PR
+poppobuilder pr --base develop  # PR to specific branch
+
+# Other commands
+poppobuilder config --list   # List configuration
+poppobuilder logs -f         # Real-time log display
+poppobuilder doctor          # Environment diagnostics
+```
+
+See `poppobuilder --help` for details.
 
 ## Verification
 
@@ -198,12 +257,32 @@ tail -f logs/processes-$(date +%Y-%m-%d).log
   - Verify `restart-scheduler.js` is properly placed
   - Check log files `logs/restart-*.log` for any errors
 
+## Testing
+
+PoppoBuilder Suite includes comprehensive testing capabilities:
+
+```bash
+# Run all tests
+npm test
+
+# Specific test suites
+npm run test:i18n          # Internationalization tests
+npm run test:errors        # Error system tests
+npm run test:integration   # Integration tests
+
+# Dependency check
+npm run deps:check
+```
+
 ## Next Steps
 
 After installation is complete, refer to these guides:
 - [Quick Start Guide](guides/quick-start.md) - Basic usage
-- [Setup Guide](setup-guide_en.md) - Detailed configuration options
+- [Setup Guide](setup-guide.md) - Detailed configuration options
+- [Internationalization Guide](features/i18n-system.md) - I18n system details
+- [Error Handling Guide](features/error-system.md) - Error system documentation
 - [Requirements](requirements/) - Detailed specifications
+- [Architecture](architecture/) - System architecture documentation
 
 ## Support
 

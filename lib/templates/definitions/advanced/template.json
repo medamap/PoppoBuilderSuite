@@ -1,0 +1,11 @@
+{
+  "name": "advanced",
+  "description": "高度な機能を含むPoppoBuilderテンプレート",
+  "version": "1.0.0",
+  "author": "PoppoBuilder Team",
+  "tags": [
+    "advanced",
+    "full-featured",
+    "enterprise"
+  ]
+}

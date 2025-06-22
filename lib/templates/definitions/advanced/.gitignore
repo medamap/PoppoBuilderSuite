@@ -1,0 +1,14 @@
+node_modules/
+logs/
+*.log
+.env
+.env.local
+state/
+data/
+temp/
+messages/
+.poppo/locks/
+config/config-auth.json
+backups/
+*.sqlite
+dump.rdb

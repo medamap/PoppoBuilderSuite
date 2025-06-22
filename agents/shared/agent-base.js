@@ -3,10 +3,11 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Logger = require('../../src/logger');
+const { createAgentI18n } = require('./agent-i18n');
 
 /**
- * エージェント基盤クラス
- * すべてのエージェントはこのクラスを継承して実装する
+ * Agent Base Class
+ * All agents should inherit from this class
  */
 class AgentBase extends EventEmitter {
   constructor(agentName, config = {}) {
@@ -17,12 +18,15 @@ class AgentBase extends EventEmitter {
     this.config = config;
     this.logger = new Logger(agentName);
     
-    // メッセージディレクトリ
+    // Initialize i18n system
+    this.i18n = createAgentI18n(agentName, config.language || process.env.POPPO_LANGUAGE_PRIMARY || 'ja');
+    
+    // Message directories
     this.messageDir = path.join(__dirname, '../../messages', agentName.toLowerCase());
     this.inboxDir = path.join(this.messageDir, 'inbox');
     this.outboxDir = path.join(this.messageDir, 'outbox');
     
-    // エージェント状態
+    // Agent state
     this.status = 'initializing';
     this.activeTasks = new Map();
     this.metrics = {
@@ -32,47 +36,50 @@ class AgentBase extends EventEmitter {
       startTime: new Date()
     };
     
-    // ポーリング設定
-    this.pollingInterval = config.pollingInterval || 5000; // 5秒
+    // Polling configuration
+    this.pollingInterval = config.pollingInterval || 5000; // 5 seconds
     this.pollingTimer = null;
     
-    // ハートビート設定
-    this.heartbeatInterval = config.heartbeatInterval || 30000; // 30秒
+    // Heartbeat configuration
+    this.heartbeatInterval = config.heartbeatInterval || 30000; // 30 seconds
     this.heartbeatTimer = null;
   }
   
   /**
-   * エージェントの初期化
+   * Initialize agent
    */
   async initialize() {
     try {
-      this.logger.info(`エージェント ${this.agentName} を初期化中...`);
+      // Initialize i18n first
+      await this.i18n.init();
       
-      // メッセージディレクトリの確認
+      this.logger.info(this.i18n.t('common.initializing', { agentName: this.agentName }));
+      
+      // Ensure message directories exist
       await this.ensureDirectories();
       
-      // サブクラスの初期化処理
+      // Subclass initialization
       await this.onInitialize();
       
-      // メッセージポーリング開始
+      // Start message polling
       this.startPolling();
       
-      // ハートビート開始
+      // Start heartbeat
       this.startHeartbeat();
       
       this.status = 'running';
-      this.logger.info(`エージェント ${this.agentName} の初期化完了`);
+      this.logger.info(this.i18n.t('common.initialized', { agentName: this.agentName }));
       
       return true;
     } catch (error) {
-      this.logger.error(`エージェント初期化エラー: ${error.message}`);
+      this.logger.error(this.i18n.t('common.error', { agentName: this.agentName, error: error.message }));
       this.status = 'error';
       throw error;
     }
   }
   
   /**
-   * メッセージディレクトリの確認・作成
+   * Ensure message directories exist
    */
   async ensureDirectories() {
     await fs.mkdir(this.inboxDir, { recursive: true });
@@ -80,19 +87,19 @@ class AgentBase extends EventEmitter {
   }
   
   /**
-   * メッセージポーリングの開始
+   * Start message polling
    */
   startPolling() {
     this.pollingTimer = setInterval(async () => {
       await this.checkMessages();
     }, this.pollingInterval);
     
-    // 即座に最初のチェック
+    // Immediately perform first check
     this.checkMessages();
   }
   
   /**
-   * ハートビートの開始
+   * Start heartbeat
    */
   startHeartbeat() {
     this.heartbeatTimer = setInterval(async () => {

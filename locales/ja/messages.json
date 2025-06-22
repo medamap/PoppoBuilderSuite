@@ -1,0 +1,166 @@
+{
+  "startup": {
+    "welcome": "PoppoBuilder Suite v{{version}}へようこそ",
+    "initializing": "システムを初期化しています...",
+    "loadingConfig": "設定を読み込んでいます...",
+    "connectingGithub": "GitHubに接続しています...",
+    "startingAgents": "エージェントを起動しています...",
+    "ready": "PoppoBuilderの準備が完了しました！",
+    "shutdownInitiated": "シャットダウンを開始しました...",
+    "shutdownComplete": "シャットダウンが完了しました"
+  },
+  "issue": {
+    "processing": "Issue #{{number}}を処理中: {{title}}",
+    "analyzing": "Issueの内容を分析しています...",
+    "generatingResponse": "応答を生成しています...",
+    "postingComment": "Issue #{{number}}にコメントを投稿しています",
+    "completed": "Issue #{{number}}の処理が正常に完了しました",
+    "failed": "Issue #{{number}}の処理に失敗しました: {{error}}",
+    "skipped": "Issue #{{number}}をスキップしました ({{reason}})",
+    "alreadyProcessed": "Issue #{{number}}は既に処理済みです"
+  },
+  "pr": {
+    "processing": "プルリクエスト #{{number}}を処理中: {{title}}",
+    "reviewing": "コード変更をレビューしています...",
+    "checkingTests": "テスト結果を確認しています...",
+    "approved": "プルリクエスト #{{number}}を承認しました",
+    "changesRequested": "プルリクエスト #{{number}}に変更を要求しました",
+    "commented": "プルリクエスト #{{number}}にコメントを追加しました",
+    "merged": "プルリクエスト #{{number}}をマージしました",
+    "closed": "プルリクエスト #{{number}}をクローズしました"
+  },
+  "task": {
+    "created": "タスクを作成しました: {{id}}",
+    "started": "タスクを開始しました: {{id}}",
+    "progress": "タスク {{id}} の進捗: {{percent}}%",
+    "completed": "タスクが完了しました: {{id}}",
+    "failed": "タスク {{id}} が失敗しました: {{error}}",
+    "cancelled": "タスクをキャンセルしました: {{id}}",
+    "retrying": "タスク {{id}} を再試行しています ({{attempt}}/{{maxAttempts}}回目)"
+  },
+  "agent": {
+    "started": "エージェント {{name}} を起動しました",
+    "stopped": "エージェント {{name}} を停止しました",
+    "healthy": "エージェント {{name}} は正常です",
+    "unhealthy": "エージェント {{name}} に異常があります: {{reason}}",
+    "taskAssigned": "タスク {{taskId}} をエージェント {{name}} に割り当てました",
+    "taskCompleted": "エージェント {{name}} がタスク {{taskId}} を完了しました",
+    "error": "エージェント {{name}} エラー: {{error}}"
+  },
+  "github": {
+    "connected": "GitHubに接続しました",
+    "authenticated": "{{user}}として認証されました",
+    "rateLimit": "GitHub APIレート制限: {{remaining}}/{{limit}} ({{reset}}にリセット)",
+    "webhook": "Webhookイベントを受信しました: {{repo}}の{{event}}"
+  },
+  "claude": {
+    "connected": "Claude APIに接続しました",
+    "modelLoaded": "モデルを読み込みました: {{model}}",
+    "generating": "応答を生成しています...",
+    "tokensUsed": "使用トークン数: 入力{{input}}、出力{{output}}",
+    "contextWarning": "コンテキスト制限に近づいています ({{percent}}%使用)"
+  },
+  "system": {
+    "memoryUsage": "メモリ使用量: {{used}}/{{total}} ({{percent}}%)",
+    "cpuUsage": "CPU使用率: {{percent}}%",
+    "diskSpace": "ディスク容量: {{total}}中{{free}}空き",
+    "uptime": "システム稼働時間: {{time}}",
+    "healthCheck": "ヘルスチェック: {{status}}",
+    "queue_enqueued": "タスク{{taskId}}を優先度{{priority}}でキューに追加しました",
+    "queue_task_started": "タスク{{taskId}}を開始しました",
+    "queue_task_completed": "タスク{{taskId}}が完了しました",
+    "queue_task_failed": "タスク{{taskId}}が失敗しました",
+    "starting": "PoppoBuilderを起動しています...",
+    "started": "PoppoBuilderが正常に起動しました",
+    "stopping": "PoppoBuilderを停止しています...",
+    "stopped": "PoppoBuilderが停止しました",
+    "rate_limit_checking": "GitHubレート制限を確認しています...",
+    "rate_limit_status": "レート制限: {{remaining}}/{{limit}} (リセット: {{reset}})",
+    "processing_issues": "{{count}}件のイシューを処理しています...",
+    "no_issues_found": "処理するイシューが見つかりませんでした",
+    "shutdown_signal": "{{signal}}シグナルを受信しました。正常にシャットダウンしています...",
+    "cleanup_complete": "クリーンアップが完了しました"
+  },
+  "backup": {
+    "starting": "バックアップを開始しています...",
+    "progress": "バックアップ進捗: {{percent}}%",
+    "completed": "バックアップが完了しました: {{time}}で{{size}}",
+    "failed": "バックアップが失敗しました: {{error}}",
+    "restoring": "バックアップから復元しています...",
+    "restored": "バックアップから正常に復元しました"
+  },
+  "notification": {
+    "info": "ℹ️ {{message}}",
+    "success": "✅ {{message}}",
+    "warning": "⚠️ {{message}}",
+    "error": "❌ {{message}}"
+  },
+  "notInitialized": "PoppoBuilderはこのプロジェクトで初期化されていません。",
+  "runInit": "{{command}}を実行して開始してください。",
+  "process": {
+    "starting": "プロセス{{pid}}を起動しています...",
+    "started": "プロセス{{pid}}が正常に起動しました",
+    "stopping": "プロセス{{pid}}を停止しています...",
+    "stopped": "プロセス{{pid}}が停止しました",
+    "failed": "プロセス{{pid}}が失敗しました: {{error}}",
+    "timeout": "プロセス{{pid}}が{{timeout}}ms後にタイムアウトしました",
+    "killed": "プロセス{{pid}}が強制終了されました (シグナル: {{signal}})",
+    "exited": "プロセス{{pid}}が終了コード{{code}}で終了しました",
+    "error": "プロセス{{pid}}エラー: {{error}}"
+  },
+  "log": {
+    "levels": {
+      "DEBUG": "デバッグ",
+      "INFO": "情報",
+      "WARN": "警告",
+      "ERROR": "エラー",
+      "FATAL": "致命的"
+    },
+    "categories": {
+      "system": "システム",
+      "task": "タスク",
+      "api": "API",
+      "database": "データベース",
+      "file": "ファイル",
+      "performance": "パフォーマンス",
+      "security": "セキュリティ",
+      "agent": "エージェント"
+    },
+    "messages": {
+      "processingIssue": "Issue #{{number}} を処理しています",
+      "processedIssue": "Issue #{{number}} の処理が完了しました",
+      "errorProcessingIssue": "Issue #{{number}} の処理中にエラーが発生しました",
+      "taskQueued": "タスクをキューに追加しました: {{taskId}}",
+      "taskStarted": "タスク {{taskId}} を開始しました",
+      "taskCompleted": "タスク {{taskId}} が完了しました",
+      "taskFailed": "タスク {{taskId}} が失敗しました",
+      "connectingGitHub": "GitHubに接続しています...",
+      "connectedGitHub": "GitHubに接続しました",
+      "connectingClaude": "Claude APIに接続しています...",
+      "connectedClaude": "Claude APIに接続しました",
+      "rateLimitExceeded": "レート制限に達しました。{{seconds}}秒後に再試行します",
+      "retrying": "再試行しています... ({{attempt}}/{{maxAttempts}})",
+      "configLoaded": "設定ファイルを読み込みました",
+      "configError": "設定ファイルの読み込みに失敗しました",
+      "databaseConnected": "データベースに接続しました",
+      "databaseError": "データベースエラーが発生しました",
+      "serverStarted": "サーバーがポート {{port}} で起動しました",
+      "serverStopped": "サーバーが停止しました",
+      "agentStarted": "エージェント {{name}} が起動しました",
+      "agentStopped": "エージェント {{name}} が停止しました",
+      "fileCreated": "ファイルを作成しました: {{path}}",
+      "fileUpdated": "ファイルを更新しました: {{path}}",
+      "fileDeleted": "ファイルを削除しました: {{path}}",
+      "memoryUsage": "メモリ使用量: {{used}}MB / {{total}}MB ({{percentage}}%)",
+      "cpuUsage": "CPU使用率: {{percentage}}%",
+      "tokenUsage": "トークン使用量: {{used}} / {{limit}} ({{percentage}}%)"
+    }
+  },
+  "setupWizard": {
+    "welcome": "PoppoBuilderセットアップウィザードへようこそ",
+    "configuring": "プロジェクトのPoppoBuilderを設定しましょう：",
+    "checking": "前提条件を確認しています...",
+    "complete": "セットアップが完了しました！",
+    "failed": "セットアップに失敗しました: {{error}}"
+  }
+}

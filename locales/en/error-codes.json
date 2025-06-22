@@ -1,0 +1,157 @@
+{
+  "E001": {
+    "message": "GitHub authentication failed",
+    "description": "The GitHub API token is invalid or has expired.",
+    "solution": "Check the GITHUB_TOKEN environment variable and ensure a valid token is set.",
+    "link": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token",
+    "category": "auth"
+  },
+  "E002": {
+    "message": "Project not found: {{name}}",
+    "description": "The specified project '{{name}}' does not exist or you don't have access permissions.",
+    "solution": "Verify the project name and ensure you have the correct permissions.",
+    "category": "api"
+  },
+  "E003": {
+    "message": "Rate limit exceeded",
+    "description": "GitHub API rate limit has been reached. Reset time: {{reset}}",
+    "solution": "Wait until the rate limit resets or use a different token.",
+    "link": "https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting",
+    "category": "api"
+  },
+  "E101": {
+    "message": "Claude API authentication failed",
+    "description": "The Claude API key is invalid or not configured.",
+    "solution": "Check the CLAUDE_API_KEY environment variable and ensure a valid API key is set.",
+    "category": "auth"
+  },
+  "E102": {
+    "message": "Claude API request failed: {{error}}",
+    "description": "An error occurred during the Claude API request.",
+    "solution": "Check the error message and verify the API status and parameters.",
+    "category": "api"
+  },
+  "E103": {
+    "message": "Token limit exceeded",
+    "description": "Exceeded the Claude API token limit ({{limit}} tokens). Usage: {{used}} tokens",
+    "solution": "Reduce the input size or use a model with a larger context window.",
+    "category": "api"
+  },
+  "E201": {
+    "message": "Configuration file not found: {{path}}",
+    "description": "The required configuration file does not exist.",
+    "solution": "Run 'poppo init' command to perform initial setup.",
+    "category": "config"
+  },
+  "E202": {
+    "message": "Failed to parse configuration file: {{error}}",
+    "description": "The configuration file has invalid JSON format.",
+    "solution": "Fix the syntax errors in the configuration file.",
+    "category": "config"
+  },
+  "E203": {
+    "message": "Missing required configuration field: {{field}}",
+    "description": "The configuration file is missing the required field '{{field}}'.",
+    "solution": "Add the required field to the configuration file.",
+    "category": "config"
+  },
+  "E301": {
+    "message": "Failed to read file: {{path}}",
+    "description": "The file does not exist or you don't have read permissions.",
+    "solution": "Check the file path and permissions.",
+    "category": "file"
+  },
+  "E302": {
+    "message": "Failed to write file: {{path}}",
+    "description": "You don't have write permissions or disk space is insufficient.",
+    "solution": "Check write permissions and available disk space.",
+    "category": "file"
+  },
+  "E303": {
+    "message": "Failed to create directory: {{path}}",
+    "description": "Could not create the directory.",
+    "solution": "Check permissions on the parent directory.",
+    "category": "file"
+  },
+  "E401": {
+    "message": "Failed to start process: {{command}}",
+    "description": "Could not start the external process.",
+    "solution": "Ensure the command exists and has execute permissions.",
+    "category": "system"
+  },
+  "E402": {
+    "message": "Process timed out: {{taskId}}",
+    "description": "The process did not complete within {{timeout}} milliseconds.",
+    "solution": "Increase the timeout value or optimize the process.",
+    "category": "system"
+  },
+  "E403": {
+    "message": "Out of memory error",
+    "description": "Insufficient available memory.",
+    "solution": "Close unnecessary processes or add more memory.",
+    "category": "system"
+  },
+  "E501": {
+    "message": "Network connection error: {{host}}",
+    "description": "Could not connect to host '{{host}}'.",
+    "solution": "Check network connection and firewall settings.",
+    "category": "network"
+  },
+  "E502": {
+    "message": "Timeout error: {{url}}",
+    "description": "The request timed out.",
+    "solution": "Check network speed or increase timeout value.",
+    "category": "network"
+  },
+  "E601": {
+    "message": "Validation error: {{field}}",
+    "description": "The input value '{{value}}' is invalid.",
+    "solution": "Enter a value in the correct format. Expected format: {{format}}",
+    "category": "validation"
+  },
+  "E602": {
+    "message": "Missing required parameter: {{param}}",
+    "description": "The required parameter '{{param}}' was not specified.",
+    "solution": "Specify the required parameter.",
+    "category": "validation"
+  },
+  "E701": {
+    "message": "Failed to start agent '{{name}}'",
+    "description": "Could not start the agent process.",
+    "solution": "Check the agent configuration and logs.",
+    "category": "agent"
+  },
+  "E702": {
+    "message": "Agent '{{name}}' is not responding",
+    "description": "The agent response timed out.",
+    "solution": "Check the agent status and restart if necessary.",
+    "category": "agent"
+  },
+  "E703": {
+    "message": "Agent communication error",
+    "description": "Communication from agent '{{from}}' to '{{to}}' failed.",
+    "solution": "Check the message queue status.",
+    "category": "agent"
+  },
+  "E901": {
+    "message": "An unexpected error occurred",
+    "description": "An unexpected error occurred in the system.",
+    "solution": "Check the error logs and contact support if the problem persists.",
+    "category": "general"
+  },
+  "E902": {
+    "message": "Feature not implemented: {{feature}}",
+    "description": "The requested feature is not yet implemented.",
+    "solution": "Use an alternative feature or wait for future updates.",
+    "category": "general"
+  },
+  "errorCode": "Error Code",
+  "description": "Description",
+  "solution": "Solution",
+  "moreInfo": "More Information",
+  "clickHere": "Click here",
+  "errorOccurred": "Error Occurred",
+  "message": "Message",
+  "stackTrace": "Stack Trace",
+  "unknown": "Unknown error: {{code}}"
+}

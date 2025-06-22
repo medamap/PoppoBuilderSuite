@@ -1,0 +1,42 @@
+{
+  "general": {
+    "unknown": "不明なエラーが発生しました",
+    "timeout": "操作がタイムアウトしました",
+    "notFound": "見つかりません",
+    "forbidden": "アクセスが禁止されています",
+    "unauthorized": "認証されていません"
+  },
+  "process": {
+    "cannotExecute": "実行できません: レート制限または最大同時実行数に到達",
+    "exitCode": "プロセスが終了コード {{code}} で終了しました: {{message}}"
+  },
+  "github": {
+    "rateLimit": "GitHub APIのレート制限を超えました",
+    "notFound": "GitHubリソースが見つかりません",
+    "unauthorized": "GitHub認証に失敗しました"
+  },
+  "claude": {
+    "rateLimit": "Claude APIのレート制限を超えました",
+    "timeout": "Claude実行タイムアウト",
+    "invalidApiKey": "無効なClaude APIキー"
+  },
+  "config": {
+    "notFound": "設定ファイルが見つかりません",
+    "invalid": "無効な設定フォーマット",
+    "missingRequired": "必須設定がありません: {{field}}"
+  },
+  "agent": {
+    "notEnabled": "エージェントモードが有効ではありません",
+    "taskTypeMissing": "適切なタスクタイプが見つかりません"
+  },
+  "template": {
+    "listFailed": "テンプレートの一覧表示に失敗しました: {{error}}",
+    "createFailed": "テンプレートの作成に失敗しました: {{error}}",
+    "deleteFailed": "テンプレートの削除に失敗しました: {{error}}",
+    "infoFailed": "テンプレート情報の表示に失敗しました: {{error}}",
+    "notFound": "テンプレート「{{name}}」が見つかりません",
+    "alreadyExists": "テンプレート「{{name}}」は既に存在します",
+    "cannotDeleteSystem": "システムテンプレートは削除できません",
+    "cannotReadContents": "テンプレート内容を読み込めません"
+  }
+}

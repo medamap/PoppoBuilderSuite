@@ -89,11 +89,18 @@ class NotificationManager {
     
     const promises = Array.from(this.providers.values()).map(provider => 
       this.sendWithTimeout(provider, notification, timeout)
-        .catch(error => ({
-          provider: provider.getName(),
-          success: false,
-          error: error.message
-        }))
+        .catch(error => {
+          // エラーオブジェクトの場合
+          if (error && typeof error === 'object' && error.provider) {
+            return error
+          }
+          // 通常のエラーの場合
+          return {
+            provider: provider.getName(),
+            success: false,
+            error: error.message || error
+          }
+        })
     )
 
     return Promise.all(promises)
@@ -104,21 +111,40 @@ class NotificationManager {
    * @private
    */
   async sendWithTimeout(provider, notification, timeout) {
+    // sendメソッドの存在確認
+    if (typeof provider.send !== 'function') {
+      const error = new Error(`Provider ${provider.getName()} does not have a send method`)
+      this.logger.error(`[${provider.getName()}] ${error.message}`)
+      throw {
+        provider: provider.getName(),
+        success: false,
+        error: 'send is not a function'
+      }
+    }
+
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('通知送信タイムアウト')), timeout)
+      setTimeout(() => reject(new Error('Timeout')), timeout)
     })
 
-    const sendPromise = provider.send(notification)
-
     try {
-      const result = await Promise.race([sendPromise, timeoutPromise])
-      return {
-        provider: provider.getName(),
+      const result = await Promise.race([
+        provider.send(notification),
+        timeoutPromise
+      ])
+      
+      this.logger.info(`[${provider.getName()}] 通知送信成功`)
+      return { 
+        provider: provider.getName(), 
         success: true,
         response: result
       }
     } catch (error) {
-      throw error
+      this.logger.error(`[${provider.getName()}] 通知送信失敗: ${error.message}`)
+      throw {
+        provider: provider.getName(),
+        success: false,
+        error: error.message
+      }
     }
   }
 
@@ -129,11 +155,8 @@ class NotificationManager {
   async validateProviders() {
     const validationPromises = Array.from(this.providers.values()).map(async provider => {
       try {
-        const isValid = await provider.validate()
-        if (!isValid) {
-          this.logger.warn(`[NotificationManager] プロバイダ ${provider.getName()} の検証に失敗しました`)
-          this.providers.delete(provider.getName())
-        }
+        await provider.validate()
+        this.logger.info(`[NotificationManager] プロバイダ ${provider.getName()} の検証成功`)
       } catch (error) {
         this.logger.error(`[NotificationManager] プロバイダ ${provider.getName()} の検証エラー: ${error.message}`)
         this.providers.delete(provider.getName())
@@ -160,17 +183,64 @@ class NotificationManager {
    * @private
    */
   formatMessage(template, data) {
-    let title = template.title
-    let body = template.body
+    if (typeof template === 'string') {
+      let message = template
+      
+      // 基本的な置換
+      message = message.replace(/{{issueNumber}}/g, data?.issueNumber || '')
+      message = message.replace(/{{title}}/g, data?.title || '')
+      message = message.replace(/{{error}}/g, data?.error || '')
+      message = message.replace(/{{message}}/g, data?.message || '')
+      
+      // 実行時間の整形
+      if (data?.executionTime && this.config.notifications?.options?.includeExecutionTime) {
+        const time = this.formatExecutionTime(data.executionTime)
+        message = message.replace(/{{executionTime}}/g, time)
+      }
+      
+      // ラベルの整形
+      if (data?.labels && this.config.notifications?.options?.includeLabels) {
+        const labels = data.labels.join(', ')
+        message = message.replace(/{{labels}}/g, labels)
+      }
+      
+      return message
+    } else if (typeof template === 'object') {
+      // オブジェクト形式のテンプレート
+      let title = template.title || ''
+      let body = template.body || ''
 
-    // プレースホルダーの置換
-    Object.entries(data).forEach(([key, value]) => {
-      const placeholder = `{{${key}}}`
-      title = title.replace(new RegExp(placeholder, 'g'), value)
-      body = body.replace(new RegExp(placeholder, 'g'), value)
-    })
+      // プレースホルダーの置換
+      if (data && typeof data === 'object') {
+        Object.entries(data).forEach(([key, value]) => {
+          const placeholder = `{{${key}}}`
+          title = title.replace(new RegExp(placeholder, 'g'), value || '')
+          body = body.replace(new RegExp(placeholder, 'g'), value || '')
+        })
+      }
 
-    return { title, body }
+      return { title, body }
+    }
+    
+    return template || ''
+  }
+
+  /**
+   * 実行時間のフォーマット
+   * @private
+   */
+  formatExecutionTime(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    
+    if (hours > 0) {
+      return `${hours}時間${minutes % 60}分${seconds % 60}秒`
+    } else if (minutes > 0) {
+      return `${minutes}分${seconds % 60}秒`
+    } else {
+      return `${seconds}秒`
+    }
   }
 
   /**
@@ -181,18 +251,30 @@ class NotificationManager {
     const summary = {
       sent: 0,
       failed: 0,
-      errors: []
+      errors: [],
+      providers: {}
     }
 
     results.forEach(result => {
-      if (result.success) {
+      if (result && result.success) {
         summary.sent++
-      } else {
+        if (result.provider) {
+          summary.providers[result.provider] = { success: true }
+        }
+      } else if (result) {
         summary.failed++
-        summary.errors.push({
-          provider: result.provider,
-          error: result.error
-        })
+        if (result.provider && result.error) {
+          summary.errors.push(`${result.provider}: ${result.error}`)
+          summary.providers[result.provider] = { 
+            success: false, 
+            error: result.error 
+          }
+        } else {
+          summary.errors.push({
+            provider: result.provider,
+            error: result.error
+          })
+        }
       }
     })
 

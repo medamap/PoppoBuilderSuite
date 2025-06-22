@@ -1,0 +1,10 @@
+{
+  "name": "default",
+  "description": "PoppoBuilder標準テンプレート",
+  "version": "1.0.0",
+  "author": "PoppoBuilder Team",
+  "tags": [
+    "standard",
+    "recommended"
+  ]
+}

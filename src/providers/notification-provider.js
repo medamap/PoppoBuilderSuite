@@ -2,72 +2,71 @@
  * 通知プロバイダの基底クラス
  */
 class NotificationProvider {
-  /**
-   * @param {Object} config - プロバイダ設定
-   * @param {Logger} logger - ロガーインスタンス
-   */
-  constructor(config, logger) {
+  constructor(name, config, logger) {
+    this.name = name
     this.config = config
     this.logger = logger
-    this.retryCount = config.retryCount || 3
+    this.maxRetries = config.maxRetries || 3
     this.retryDelay = config.retryDelay || 1000
   }
 
   /**
-   * プロバイダ名を取得（サブクラスで実装必須）
-   * @returns {string}
-   */
-  getName() {
-    throw new Error('getName() must be implemented by subclass')
-  }
-
-  /**
-   * プロバイダタイプを取得（サブクラスで実装必須）
-   * @returns {string}
-   */
-  getType() {
-    throw new Error('getType() must be implemented by subclass')
-  }
-
-  /**
    * 通知送信（サブクラスで実装必須）
+   * @abstract
    * @param {Object} notification
-   * @returns {Promise<Object>}
+   * @returns {Promise<void>}
    */
   async send(notification) {
     throw new Error('send() must be implemented by subclass')
   }
 
   /**
-   * 検証（サブクラスで実装必須）
-   * @returns {Promise<boolean>}
+   * 設定の検証（サブクラスで実装必須）
+   * @abstract
+   * @returns {Promise<void>}
    */
   async validate() {
     throw new Error('validate() must be implemented by subclass')
   }
 
   /**
-   * リトライ付き送信
-   * @protected
-   * @param {Function} sendFunction - 送信関数
-   * @param {Object} notification - 通知データ
-   * @returns {Promise<Object>}
+   * プロバイダ名の取得
    */
-  async sendWithRetry(sendFunction, notification) {
+  getName() {
+    return this.name
+  }
+
+  /**
+   * プロバイダタイプの取得
+   */
+  getType() {
+    return this.name.toLowerCase()
+  }
+
+  /**
+   * 有効状態の確認
+   */
+  isEnabled() {
+    return this.config.enabled === true
+  }
+
+  /**
+   * リトライ付き実行
+   * @protected
+   */
+  async retry(fn, retries = this.maxRetries) {
     let lastError
     
-    for (let attempt = 1; attempt <= this.retryCount; attempt++) {
+    for (let i = 0; i <= retries; i++) {
       try {
-        this.logger.debug(`[${this.getName()}] 送信試行 ${attempt}/${this.retryCount}`)
-        const result = await sendFunction(notification)
-        this.logger.info(`[${this.getName()}] 送信成功`)
-        return result
+        return await fn()
       } catch (error) {
         lastError = error
-        this.logger.warn(`[${this.getName()}] 送信失敗 (試行 ${attempt}/${this.retryCount}): ${error.message}`)
         
-        if (attempt < this.retryCount) {
-          await this.delay(this.retryDelay * attempt)
+        if (i < retries) {
+          const delay = this.retryDelay * Math.pow(2, i) // 指数バックオフ
+          this.logger.warn(`[${this.name}] リトライ ${i + 1}/${retries} (${delay}ms待機)`)
+          await new Promise(resolve => setTimeout(resolve, delay))
         }
       }
     }
@@ -76,47 +75,20 @@ class NotificationProvider {
   }
 
   /**
-   * 遅延処理
+   * 環境変数の解決
    * @protected
-   * @param {number} ms - ミリ秒
-   * @returns {Promise<void>}
    */
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms))
-  }
-
-  /**
-   * 環境変数から認証情報を取得
-   * @protected
-   * @param {string} key - 環境変数名
-   * @param {string} defaultValue - デフォルト値
-   * @returns {string}
-   */
-  getEnvOrConfig(key, defaultValue = '') {
-    return process.env[key] || this.config[key.toLowerCase()] || defaultValue
-  }
-
-  /**
-   * レート制限のチェック
-   * @protected
-   * @returns {boolean}
-   */
-  checkRateLimit() {
-    // サブクラスでオーバーライド可能
-    return true
-  }
-
-  /**
-   * エラーログ出力
-   * @protected
-   * @param {Error} error
-   * @param {string} context
-   */
-  logError(error, context = '') {
-    this.logger.error(`[${this.getName()}] ${context} エラー: ${error.message}`)
-    if (error.stack) {
-      this.logger.debug(`[${this.getName()}] スタックトレース: ${error.stack}`)
-    }
+  resolveEnvVar(value) {
+    if (typeof value !== 'string') return value
+    
+    const envPattern = /\${([^}]+)}/g
+    return value.replace(envPattern, (match, envName) => {
+      const envValue = process.env[envName]
+      if (!envValue) {
+        throw new Error(`環境変数 ${envName} が設定されていません`)
+      }
+      return envValue
+    })
   }
 
   /**
@@ -125,7 +97,7 @@ class NotificationProvider {
    */
   async shutdown() {
     // サブクラスで必要に応じてオーバーライド
-    this.logger.debug(`[${this.getName()}] シャットダウン`)
+    this.logger.debug(`[${this.name}] シャットダウン`)
   }
 }
 

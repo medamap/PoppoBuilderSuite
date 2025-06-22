@@ -1,0 +1,563 @@
+/**
+ * Internationalization CSS - Issue #127
+ * Language-specific styling and RTL support
+ */
+
+/* Language-specific font stacks */
+:root {
+  --font-japanese: "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", "メイリオ", "Meiryo", "MS Pゴシック", sans-serif;
+  --font-korean: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+  --font-chinese-simplified: "PingFang SC", "Microsoft YaHei", "微软雅黑", "SimSun", "宋体", sans-serif;
+  --font-chinese-traditional: "PingFang TC", "Microsoft JhengHei", "微軟正黑體", "PMingLiU", "新細明體", sans-serif;
+  --font-arabic: "Tahoma", "Arabic Typesetting", "Geeza Pro", sans-serif;
+  --font-hebrew: "Arial Hebrew", "Lucida Grande", sans-serif;
+  --font-thai: "Thonburi", "Leelawadee UI", "Cordia New", sans-serif;
+}
+
+/* Language-specific font applications */
+[lang="ja"],
+[lang="ja-JP"],
+.lang-ja {
+  font-family: var(--font-japanese), var(--font-family);
+}
+
+[lang="ko"],
+[lang="ko-KR"],
+.lang-ko {
+  font-family: var(--font-korean), var(--font-family);
+}
+
+[lang="zh"],
+[lang="zh-CN"],
+.lang-zh-cn {
+  font-family: var(--font-chinese-simplified), var(--font-family);
+}
+
+[lang="zh-TW"],
+[lang="zh-HK"],
+.lang-zh-tw {
+  font-family: var(--font-chinese-traditional), var(--font-family);
+}
+
+[lang="ar"],
+.lang-ar {
+  font-family: var(--font-arabic), var(--font-family);
+  direction: rtl;
+}
+
+[lang="he"],
+.lang-he {
+  font-family: var(--font-hebrew), var(--font-family);
+  direction: rtl;
+}
+
+[lang="th"],
+.lang-th {
+  font-family: var(--font-thai), var(--font-family);
+}
+
+/* RTL (Right-to-Left) Support */
+[dir="rtl"] {
+  direction: rtl;
+}
+
+/* RTL Layout Adjustments */
+[dir="rtl"] .dashboard-container {
+  direction: rtl;
+}
+
+[dir="rtl"] .header-main {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .nav-tabs {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .header-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .section-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .section-controls {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .control-group {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .search-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .search-actions {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .status-indicator {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .metric-card {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dashboard-title {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .section-title {
+  flex-direction: row-reverse;
+}
+
+/* RTL Text Alignment */
+[dir="rtl"] .nav-tab,
+[dir="rtl"] .btn,
+[dir="rtl"] .control-label,
+[dir="rtl"] .search-label,
+[dir="rtl"] .form-label {
+  text-align: right;
+}
+
+[dir="rtl"] .metric-label,
+[dir="rtl"] .detail-label {
+  text-align: right;
+}
+
+[dir="rtl"] .section-title,
+[dir="rtl"] .subsection-title {
+  text-align: right;
+}
+
+/* RTL Positioning Adjustments */
+[dir="rtl"] .dropdown-menu {
+  left: 0;
+  right: auto;
+}
+
+[dir="rtl"] .toast-container {
+  left: var(--spacing-lg);
+  right: auto;
+}
+
+[dir="rtl"] .skip-link {
+  left: auto;
+  right: 6px;
+}
+
+[dir="rtl"] .modal-close {
+  left: var(--spacing-lg);
+  right: auto;
+}
+
+/* RTL Border and Padding Adjustments */
+[dir="rtl"] .status-card {
+  border-left: none;
+  border-right: 4px solid var(--success-color);
+}
+
+[dir="rtl"] .status-card.primary {
+  border-right-color: var(--primary-color);
+}
+
+[dir="rtl"] .toast.success {
+  border-left: none;
+  border-right: 4px solid var(--success-color);
+}
+
+[dir="rtl"] .toast.error {
+  border-left: none;
+  border-right: 4px solid var(--error-color);
+}
+
+[dir="rtl"] .toast.warning {
+  border-left: none;
+  border-right: 4px solid var(--warning-color);
+}
+
+[dir="rtl"] .toast.info {
+  border-left: none;
+  border-right: 4px solid var(--info-color);
+}
+
+/* RTL Icon Adjustments */
+[dir="rtl"] .title-icon {
+  order: 2;
+}
+
+[dir="rtl"] .tab-icon {
+  order: 2;
+}
+
+[dir="rtl"] .btn-icon {
+  order: 2;
+}
+
+/* Enhanced Language Switcher Styles */
+.language-switcher {
+  display: flex;
+  gap: 2px;
+  margin-right: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+  min-width: 44px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lang-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lang-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.lang-btn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Language Toggle (modern button style) */
+.language-toggle {
+  position: relative;
+}
+
+.language-options {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-medium);
+  list-style: none;
+  margin: 0;
+  padding: var(--spacing-xs);
+  min-width: 120px;
+  z-index: var(--z-dropdown);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: all var(--transition-fast);
+}
+
+.language-options.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.language-option {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  min-height: 36px;
+}
+
+.language-option:hover {
+  background: var(--bg-secondary);
+}
+
+.language-option.active {
+  background: var(--primary-color);
+  color: var(--text-inverse);
+}
+
+/* Language indicator in header */
+.lang-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.lang-indicator::before {
+  content: '🌐';
+  font-size: var(--font-size-sm);
+}
+
+/* Japanese-specific adjustments */
+.lang-ja .nav-tab,
+.lang-ja .btn {
+  letter-spacing: 0.02em;
+}
+
+.lang-ja .dashboard-title {
+  letter-spacing: 0.05em;
+}
+
+.lang-ja .section-title {
+  letter-spacing: 0.03em;
+}
+
+/* Chinese-specific adjustments */
+.lang-zh-cn .dashboard-title,
+.lang-zh-tw .dashboard-title {
+  letter-spacing: 0.1em;
+}
+
+.lang-zh-cn .nav-tab,
+.lang-zh-tw .nav-tab {
+  letter-spacing: 0.05em;
+}
+
+/* Arabic-specific adjustments */
+.lang-ar .dashboard-title {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.lang-ar .nav-tab,
+.lang-ar .btn {
+  font-weight: 500;
+}
+
+.lang-ar .metric-value,
+.lang-ar .status-text {
+  font-weight: 600;
+}
+
+/* Korean-specific adjustments */
+.lang-ko .dashboard-title {
+  letter-spacing: 0.03em;
+}
+
+.lang-ko .nav-tab {
+  letter-spacing: 0.01em;
+}
+
+/* Thai-specific adjustments */
+.lang-th .nav-tab,
+.lang-th .btn {
+  line-height: 1.7; /* Better line height for Thai script */
+}
+
+.lang-th .dashboard-title {
+  line-height: 1.6;
+}
+
+/* Numbers and dates localization support */
+.number-ltr {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+.date-time {
+  direction: ltr;
+  unicode-bidi: embed;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Text direction utilities */
+.text-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.text-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Bidirectional text support */
+.bidi-isolate {
+  unicode-bidi: isolate;
+}
+
+.bidi-embed {
+  unicode-bidi: embed;
+}
+
+.bidi-override {
+  unicode-bidi: bidi-override;
+}
+
+/* Language-specific number formatting */
+.lang-ar .metric-value,
+.lang-he .metric-value {
+  font-family: 'Courier New', monospace; /* Use monospace for Arabic numerals */
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .language-switcher {
+    margin-right: 10px;
+  }
+  
+  .lang-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    min-width: 36px;
+    min-height: 28px;
+  }
+  
+  .lang-ja .dashboard-title,
+  .lang-ko .dashboard-title,
+  .lang-zh-cn .dashboard-title,
+  .lang-zh-tw .dashboard-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .lang-ar .dashboard-title,
+  .lang-he .dashboard-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .lang-th .dashboard-title {
+    font-size: var(--font-size-lg);
+    line-height: 1.4;
+  }
+}
+
+/* Dark theme support */
+.theme-dark .lang-btn {
+  color: var(--text-secondary);
+}
+
+.theme-dark .lang-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.theme-dark .lang-btn.active {
+  background: var(--primary-color);
+  color: var(--text-inverse);
+}
+
+.theme-dark .language-options {
+  background: var(--bg-elevated);
+  border-color: var(--border-color);
+}
+
+.theme-dark .language-option {
+  color: var(--text-primary);
+}
+
+.theme-dark .language-option:hover {
+  background: var(--bg-tertiary);
+}
+
+/* Smooth transitions for language changes */
+.i18n-transition {
+  transition: opacity 0.2s ease;
+}
+
+.i18n-fade-out {
+  opacity: 0;
+}
+
+.i18n-fade-in {
+  opacity: 1;
+}
+
+/* Transition effects for language switching */
+.lang-transition {
+  transition: all 300ms ease-in-out;
+}
+
+/* Language-specific loading messages */
+[data-loading-text]:empty::after {
+  content: attr(data-loading-text);
+}
+
+.lang-ja [data-loading-text]:empty::after {
+  content: '読み込み中...';
+}
+
+.lang-ko [data-loading-text]:empty::after {
+  content: '로딩 중...';
+}
+
+.lang-zh-cn [data-loading-text]:empty::after {
+  content: '加载中...';
+}
+
+.lang-zh-tw [data-loading-text]:empty::after {
+  content: '載入中...';
+}
+
+.lang-ar [data-loading-text]:empty::after {
+  content: 'جاري التحميل...';
+}
+
+.lang-he [data-loading-text]:empty::after {
+  content: 'טוען...';
+}
+
+.lang-th [data-loading-text]:empty::after {
+  content: 'กำลังโหลด...';
+}
+
+/* Print styles for different languages */
+@media print {
+  .lang-ja,
+  .lang-ko,
+  .lang-zh-cn,
+  .lang-zh-tw {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+  
+  .lang-ar,
+  .lang-he {
+    font-size: 13pt;
+    line-height: 1.8;
+  }
+  
+  .lang-th {
+    font-size: 12pt;
+    line-height: 1.7;
+  }
+}
+
+/* High contrast mode for different scripts */
+@media (prefers-contrast: high) {
+  .lang-ar,
+  .lang-he {
+    font-weight: 600;
+  }
+  
+  .lang-ja .nav-tab,
+  .lang-ko .nav-tab,
+  .lang-zh-cn .nav-tab,
+  .lang-zh-tw .nav-tab {
+    font-weight: 500;
+  }
+}

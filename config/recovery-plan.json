@@ -1,0 +1,202 @@
+{
+  "name": "PoppoBuilder Standard Recovery Plan",
+  "version": "1.0.0",
+  "description": "Standard disaster recovery plan for PoppoBuilder Suite",
+  "rto": 3600000,
+  "rpo": 86400000,
+  "steps": [
+    {
+      "id": "pre-checks",
+      "name": "Pre-recovery validation",
+      "critical": true,
+      "timeout": 300000,
+      "actions": [
+        "checkSystemRequirements",
+        "validateBackupIntegrity",
+        "checkDiskSpace",
+        "checkNetworkConnectivity"
+      ],
+      "rollbackActions": []
+    },
+    {
+      "id": "notification",
+      "name": "Send recovery notifications",
+      "critical": false,
+      "timeout": 60000,
+      "actions": [
+        "notifyAdministrators",
+        "updateStatusPage"
+      ]
+    },
+    {
+      "id": "stop-services",
+      "name": "Stop application services",
+      "critical": true,
+      "timeout": 300000,
+      "actions": [
+        "stopApplicationServices",
+        "stopBackgroundJobs",
+        "stopDatabaseServices"
+      ],
+      "rollbackActions": [
+        "startDatabaseServices",
+        "startApplicationServices",
+        "startBackgroundJobs"
+      ]
+    },
+    {
+      "id": "backup-current",
+      "name": "Create restore point",
+      "critical": false,
+      "timeout": 600000,
+      "actions": [
+        "createRestorePoint"
+      ]
+    },
+    {
+      "id": "restore-database",
+      "name": "Restore database",
+      "critical": true,
+      "timeout": 1800000,
+      "actions": [
+        "restoreDatabase",
+        "verifyDatabaseIntegrity"
+      ],
+      "rollbackActions": [
+        "restoreDatabaseFromRestorePoint"
+      ]
+    },
+    {
+      "id": "restore-config",
+      "name": "Restore configuration",
+      "critical": true,
+      "timeout": 300000,
+      "actions": [
+        "restoreConfiguration",
+        "restoreEnvironmentVariables"
+      ],
+      "rollbackActions": [
+        "restoreConfigurationFromRestorePoint"
+      ]
+    },
+    {
+      "id": "restore-state",
+      "name": "Restore application state",
+      "critical": true,
+      "timeout": 600000,
+      "actions": [
+        "restoreState",
+        "restoreSessionData",
+        "restoreQueueData"
+      ],
+      "rollbackActions": [
+        "restoreStateFromRestorePoint"
+      ]
+    },
+    {
+      "id": "start-services",
+      "name": "Start services",
+      "critical": true,
+      "timeout": 600000,
+      "actions": [
+        "startDatabaseServices",
+        "waitForDatabaseReady",
+        "startApplicationServices",
+        "waitForApplicationReady",
+        "startBackgroundJobs"
+      ]
+    },
+    {
+      "id": "verify-basic",
+      "name": "Basic verification",
+      "critical": true,
+      "timeout": 300000,
+      "actions": [
+        "verifyDatabaseConnectivity",
+        "verifyApplicationHealth",
+        "verifyServiceEndpoints"
+      ]
+    },
+    {
+      "id": "verify-functionality",
+      "name": "Functional verification",
+      "critical": true,
+      "timeout": 600000,
+      "actions": [
+        "runSmokeTests",
+        "verifyDataIntegrity",
+        "verifyUserAccess",
+        "verifyAPIEndpoints"
+      ]
+    },
+    {
+      "id": "verify-performance",
+      "name": "Performance verification",
+      "critical": false,
+      "timeout": 300000,
+      "actions": [
+        "checkResponseTimes",
+        "checkResourceUsage",
+        "checkErrorRates"
+      ]
+    },
+    {
+      "id": "post-recovery",
+      "name": "Post-recovery tasks",
+      "critical": false,
+      "timeout": 300000,
+      "actions": [
+        "clearCaches",
+        "warmupServices",
+        "enableMonitoring",
+        "sendCompletionNotification"
+      ]
+    }
+  ],
+  "healthChecks": {
+    "database": {
+      "type": "tcp",
+      "host": "localhost",
+      "port": 5432,
+      "timeout": 5000
+    },
+    "redis": {
+      "type": "tcp",
+      "host": "localhost", 
+      "port": 6379,
+      "timeout": 5000
+    },
+    "application": {
+      "type": "http",
+      "url": "http://localhost:3000/health",
+      "expectedStatus": 200,
+      "timeout": 10000
+    },
+    "dashboard": {
+      "type": "http",
+      "url": "http://localhost:3001/api/health",
+      "expectedStatus": 200,
+      "timeout": 10000
+    }
+  },
+  "rollbackPolicy": {
+    "enabled": true,
+    "automaticRollback": true,
+    "rollbackOnFailure": true,
+    "maxRollbackAttempts": 3
+  },
+  "notifications": {
+    "channels": ["email", "slack", "github"],
+    "recipients": {
+      "email": ["admin@poppobuilder.com"],
+      "slack": ["#alerts", "#ops"],
+      "github": ["medamap/PoppoBuilderSuite"]
+    },
+    "templates": {
+      "recoveryStarted": "🚨 Disaster recovery started - Type: {{type}}, Reason: {{reason}}",
+      "recoveryCompleted": "✅ Disaster recovery completed - Duration: {{duration}}, RTO: {{rtoStatus}}, RPO: {{rpoStatus}}",
+      "recoveryFailed": "❌ Disaster recovery failed - Error: {{error}}",
+      "testCompleted": "🧪 Recovery test completed - Status: {{status}}, Duration: {{duration}}"
+    }
+  }
+}

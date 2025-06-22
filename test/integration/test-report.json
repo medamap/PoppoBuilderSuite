@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-06-20T11:12:41.104Z",
+  "environment": {
+    "nodeVersion": "v23.11.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cwd": "/Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/PoppoBuilderSuite"
+  },
+  "summary": {
+    "total": 3,
+    "passed": 0,
+    "failed": 3,
+    "skipped": 0,
+    "passRate": "0.00%"
+  },
+  "tests": [
+    {
+      "name": "test-ccta-integration.js",
+      "passed": false,
+      "duration": 7145,
+      "exitCode": 1
+    },
+    {
+      "name": "test-websocket-integration.js",
+      "passed": false,
+      "duration": 3146,
+      "exitCode": 1
+    },
+    {
+      "name": "test-github-projects-integration.js",
+      "passed": false,
+      "duration": 675,
+      "exitCode": 1
+    }
+  ]
+}

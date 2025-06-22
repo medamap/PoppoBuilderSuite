@@ -1,0 +1,115 @@
+{
+  "_meta": {
+    "language": "en",
+    "description": "English configuration template for PoppoBuilder Suite",
+    "version": "1.0.0"
+  },
+  "language": {
+    "primary": "en",
+    "fallback": "en"
+  },
+  "systemPrompt": {
+    "enforceLanguage": true,
+    "customInstructions": "Provide all responses, comments, and explanations in English. Follow clean coding practices and include comprehensive documentation."
+  },
+  "github": {
+    "owner": "medamap", 
+    "repo": "PoppoBuilderSuite"
+  },
+  "claude": {
+    "maxConcurrent": 2,
+    "timeout": 86400000
+  },
+  "polling": {
+    "interval": 300000
+  },
+  "commentHandling": {
+    "enabled": true,
+    "completionKeywords": [
+      "thank you", "thanks", "done", "complete", "finished",
+      "ok", "okay", "understood", "acknowledged", "got it"
+    ],
+    "maxCommentCount": 10,
+    "timeoutHours": 24
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "host": "localhost", 
+    "updateInterval": 5000,
+    "authentication": {
+      "enabled": false,
+      "username": "admin",
+      "password": "changeme"
+    }
+  },
+  "rateLimiting": {
+    "initialBackoffDelay": 1000,
+    "maxBackoffDelay": 300000,
+    "backoffMultiplier": 2,
+    "backoffJitter": 0.1
+  },
+  "taskQueue": {
+    "maxQueueSize": 100,
+    "priorityLevels": {
+      "dogfooding": 100,
+      "high": 75,
+      "normal": 50,
+      "low": 25
+    }
+  },
+  "dynamicTimeout": {
+    "enabled": false,
+    "baseTimeout": 120000,
+    "maxTimeout": 600000,
+    "scalingFactor": 1.5,
+    "adaptiveScaling": {
+      "enabled": true,
+      "performanceThreshold": 0.8,
+      "adjustmentRate": 0.1
+    }
+  },
+  "errorHandling": {
+    "maxRetries": 3,
+    "retryDelay": 5000,
+    "exponentialBackoff": true,
+    "enableAutoRecovery": true,
+    "emergencyStop": {
+      "enabled": true,
+      "errorThreshold": 10,
+      "timeWindow": 3600000
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metricsCollection": true,
+    "performanceTracking": true,
+    "healthChecks": {
+      "enabled": true,
+      "interval": 60000
+    }
+  },
+  "notification": {
+    "enabled": true,
+    "channels": ["log"],
+    "levels": ["error", "warn"],
+    "throttle": 300000
+  },
+  "agents": {
+    "ccsp": {
+      "enabled": true,
+      "maxConcurrentTasks": 3,
+      "sessionTimeout": 1800000
+    },
+    "ccla": {
+      "enabled": true,
+      "autoRepair": true,
+      "learningMode": true
+    },
+    "ccag": {
+      "enabled": true,
+      "documentationLanguages": ["en"],
+      "autoTranslation": false
+    }
+  }
+}

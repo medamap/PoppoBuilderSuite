@@ -1,0 +1,78 @@
+{
+  "dashboard": {
+    "disabled": "Dashboard is disabled",
+    "starting": "Dashboard server starting at {{url}}",
+    "started": "Process Dashboard: {{url}}",
+    "stopped": "Dashboard server stopped",
+    "websocket": {
+      "connected": "WebSocket connection established",
+      "disconnected": "WebSocket connection closed",
+      "error": "WebSocket error"
+    }
+  },
+  "process": {
+    "starting": "Starting {{processName}}",
+    "completed": "Process completed",
+    "error": "Process error",
+    "timeout": "Process timeout",
+    "killed": "Process killed",
+    "forceKill": "Force terminating process {{taskId}}"
+  },
+  "issue": {
+    "processing": "Processing issue #{{number}}: {{title}}",
+    "completed": "Issue #{{number}} completed",
+    "error": "Error processing issue #{{number}}",
+    "noTarget": "No issues to process",
+    "found": "Found {{count}} issue(s)",
+    "addedToQueue": "Added issue #{{number}} to queue (Task ID: {{taskId}})"
+  },
+  "comment": {
+    "processing": "Processing comment for issue #{{number}}",
+    "newFound": "New comment detected: Issue #{{number}}, Comment: {{commentId}}",
+    "completed": "Comment processing completed for issue #{{number}}",
+    "awaiting": "Comment processing completed for issue #{{number}} (awaiting response)",
+    "error": "Error processing comment for issue #{{number}}"
+  },
+  "agent": {
+    "disabled": "Agent mode is disabled",
+    "initializing": "Initializing agent mode...",
+    "initialized": "Agent mode initialized",
+    "error": "Agent mode initialization error: {{message}}"
+  },
+  "task": {
+    "enqueued": "Task enqueued",
+    "started": "Task started",
+    "completed": "Task completed",
+    "error": "Task error: {{message}}",
+    "progress": "[{{taskId}}] Progress: {{message}} ({{progress}}%)"
+  },
+  "queue": {
+    "status": "Queue status: running={{running}}, queued={{queued}}",
+    "priority": "By priority: {{priorities}}"
+  },
+  "labels": {
+    "execution": {
+      "completed": "## Execution Completed",
+      "error": "## An Error Occurred"
+    }
+  },
+  "errors": {
+    "detailedLog": "See detailed logs at `{{logPath}}`",
+    "message": "Error Message",
+    "stderr": "Error Output",
+    "stdout": "Standard Output"
+  },
+  "system": {
+    "starting": "PoppoBuilder Minimal Implementation Started",
+    "dynamicTimeout": {
+      "enabled": "✅ Dynamic timeout feature: Enabled",
+      "disabled": "❌ Dynamic timeout feature: Disabled (using fixed 24-hour timeout)"
+    },
+    "independentProcess": {
+      "enabled": "🔄 Independent process mode: Enabled (tasks continue after PoppoBuilder restart)"
+    },
+    "checkingIssues": "Checking issues...",
+    "waitingNext": "Checking again in {{seconds}} seconds...",
+    "shutdown": "Shutting down..."
+  }
+}

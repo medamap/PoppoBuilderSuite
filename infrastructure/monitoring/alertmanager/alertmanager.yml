@@ -1,0 +1,257 @@
+global:
+  # デフォルト設定
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'ccsp-alerts@example.com'
+  smtp_auth_username: 'alerts'
+  smtp_auth_password: 'password'
+  smtp_require_tls: true
+  
+  # Slack設定
+  slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  
+  # 解決通知タイムアウト
+  resolve_timeout: 5m
+
+# テンプレート
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ルート設定
+route:
+  # デフォルトレシーバー
+  receiver: 'default'
+  
+  # グループ化設定
+  group_by: ['alertname', 'severity', 'component']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  
+  # 子ルート
+  routes:
+    # 緊急アラート（即座通知）
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 1h
+      continue: true
+    
+    # セッションタイムアウト（専用チャンネル）
+    - match:
+        category: auth
+      receiver: 'session-alerts'
+      group_wait: 0s
+      repeat_interval: 30m
+      continue: true
+    
+    # システムリソース問題
+    - match:
+        category: resource
+      receiver: 'resource-alerts'
+      group_interval: 10m
+      repeat_interval: 6h
+    
+    # パフォーマンス問題
+    - match:
+        category: performance
+      receiver: 'performance-alerts'
+      group_interval: 5m
+      repeat_interval: 4h
+    
+    # エラー関連
+    - match:
+        category: error
+      receiver: 'error-alerts'
+      group_interval: 3m
+      repeat_interval: 2h
+    
+    # デッドマンスイッチ（監視システム生存確認）
+    - match:
+        category: deadman
+      receiver: 'deadman-switch'
+      group_interval: 1m
+      repeat_interval: 30m
+    
+    # 情報レベル（ログのみ）
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_interval: 1h
+      repeat_interval: 24h
+
+# インhibitionルール（アラート抑制）
+inhibit_rules:
+  # サービス停止時は他のアラートを抑制
+  - source_match:
+      alertname: CCSPServiceDown
+    target_match:
+      component: ccsp-agent
+    equal: ['component']
+  
+  # クリティカルメモリ使用時は警告メモリアラートを抑制
+  - source_match:
+      alertname: CCSPCriticalMemoryUsage
+    target_match:
+      alertname: CCSPHighMemoryUsage
+    equal: ['component']
+  
+  # Redis停止時はCCSP関連アラートを抑制
+  - source_match:
+      alertname: CCSPRedisConnectionIssue
+    target_match:
+      component: ccsp-agent
+    equal: []
+
+# レシーバー設定
+receivers:
+  # デフォルト受信者
+  - name: 'default'
+    email_configs:
+      - to: 'admin@example.com'
+        subject: '[CCSP] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Component: {{ .Labels.component }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+        headers:
+          X-Priority: 'Normal'
+  
+  # 緊急アラート
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'oncall@example.com'
+        subject: '[CCSP CRITICAL] {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 CRITICAL ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          Runbook: {{ .Annotations.runbook_url }}
+          {{ end }}
+        headers:
+          X-Priority: 'High'
+    
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ccsp-critical'
+        title: '🚨 CCSP Critical Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          {{ if .Annotations.runbook_url }}Runbook: {{ .Annotations.runbook_url }}{{ end }}
+          {{ end }}
+        color: 'danger'
+        send_resolved: true
+  
+  # セッションアラート
+  - name: 'session-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ccsp-session'
+        title: '🔐 CCSP Session Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          
+          **Action Required:** Please login to Claude CLI
+          {{ end }}
+        color: 'warning'
+        send_resolved: true
+    
+    email_configs:
+      - to: 'devops@example.com'
+        subject: '[CCSP SESSION] Manual action required'
+        body: |
+          Claude CLI session has timed out and requires manual login.
+          
+          Please SSH to the server and run: claude login
+          
+          {{ range .Alerts }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+  
+  # リソースアラート
+  - name: 'resource-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ccsp-resources'
+        title: '📊 CCSP Resource Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          Component: {{ .Labels.component }}
+          {{ end }}
+        color: 'warning'
+  
+  # パフォーマンスアラート
+  - name: 'performance-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ccsp-performance'
+        title: '⚡ CCSP Performance Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+        color: '#ff9900'
+  
+  # エラーアラート
+  - name: 'error-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#ccsp-errors'
+        title: '❌ CCSP Error Alert'
+        text: |
+          {{ range .Alerts }}
+          *{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+        color: 'danger'
+  
+  # デッドマンスイッチ
+  - name: 'deadman-switch'
+    webhook_configs:
+      - url: 'http://localhost:3001/api/ccsp/monitoring/heartbeat'
+        send_resolved: false
+  
+  # 情報アラート
+  - name: 'info-alerts'
+    email_configs:
+      - to: 'logs@example.com'
+        subject: '[CCSP INFO] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Info: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+# 時間ベースの抑制（メンテナンス時間など）
+time_intervals:
+  - name: 'maintenance-window'
+    time_intervals:
+      - times:
+        - start_time: '02:00'
+          end_time: '04:00'
+        weekdays: ['sunday']
+  
+  - name: 'business-hours'
+    time_intervals:
+      - times:
+        - start_time: '09:00'
+          end_time: '18:00'
+        weekdays: ['monday:friday']

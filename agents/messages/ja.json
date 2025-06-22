@@ -1,0 +1,88 @@
+{
+  "common": {
+    "initializing": "エージェント {agentName} を初期化中...",
+    "initialized": "エージェント {agentName} の初期化が完了しました",
+    "starting": "エージェント {agentName} を開始中...",
+    "started": "エージェント {agentName} が正常に開始されました",
+    "stopping": "エージェント {agentName} を停止中...",
+    "stopped": "エージェント {agentName} が停止しました",
+    "error": "エージェント {agentName} でエラーが発生: {error}",
+    "taskReceived": "タスクを受信: {taskId}",
+    "taskCompleted": "タスクが完了: {taskId}",
+    "taskFailed": "タスクが失敗: {taskId} - {error}",
+    "heartbeat": "{agentName} からのハートビート",
+    "shutdown": "{agentName} をシャットダウン中...",
+    "cleanupComplete": "{agentName} のクリーンアップが完了しました"
+  },
+  "status": {
+    "initializing": "初期化中",
+    "ready": "準備完了",
+    "running": "実行中", 
+    "stopping": "停止中",
+    "stopped": "停止済み",
+    "error": "エラー"
+  },
+  "messages": {
+    "messageProcessed": "メッセージを処理しました: {messageId}",
+    "messageError": "メッセージ {messageId} の処理でエラー: {error}",
+    "inboxChecked": "受信箱をチェック - {count} 件のメッセージを発見",
+    "outboxProcessed": "送信箱を処理 - {count} 件のメッセージを送信",
+    "directoryCreated": "メッセージディレクトリを作成: {dir}",
+    "directoryCreateError": "ディレクトリ {dir} の作成に失敗: {error}"
+  },
+  "ccsp": {
+    "sessionTimeout": "Claudeセッションタイムアウトを検出",
+    "rateLimitHit": "レート制限に到達、{delay}ms 待機",
+    "executionStarted": "Claude実行を開始: {taskId}",
+    "executionCompleted": "Claude実行が完了: {taskId} ({duration}ms)",
+    "executionFailed": "Claude実行が失敗: {taskId} - {error}",
+    "queueProcessing": "キューを処理中 - {count} 件のタスクが待機",
+    "emergencyStop": "緊急停止が有効化されました",
+    "apiKeyInvalid": "無効なAPIキーを検出、手動ログインが必要"
+  },
+  "ccla": {
+    "errorDetected": "エラーを検出: {error}",
+    "repairAttempt": "エラーの修復を試行: {errorType}",
+    "repairSuccess": "修復に成功: {file}",
+    "repairFailed": "修復に失敗: {file} - {error}",
+    "learningPattern": "新しいエラーパターンを学習: {pattern}",
+    "patternRecognized": "エラーパターンを認識: {pattern}",
+    "backupCreated": "バックアップを作成: {backupFile}",
+    "rollbackPerformed": "ロールバックを実行: {file}"
+  },
+  "ccag": {
+    "documentGenerating": "ドキュメントを生成中: {target}",
+    "documentGenerated": "ドキュメントを生成: {file}",
+    "translationStarted": "翻訳を開始: {source} -> {target}",
+    "translationCompleted": "翻訳が完了: {file}",
+    "multilingualSupport": "多言語サポートが有効: {languages}"
+  },
+  "ccpm": {
+    "refactoringStarted": "リファクタリング分析を開始: {file}",
+    "refactoringCompleted": "リファクタリング分析が完了: {suggestions} 件の提案",
+    "codeReviewStarted": "コードレビューを開始: {pr}",
+    "codeReviewCompleted": "コードレビューが完了: {pr} - {score}/100点",
+    "qualityImproved": "コード品質が向上: {oldScore} -> {newScore}"
+  },
+  "ccqa": {
+    "testSuiteStarted": "テストスイートを開始: {suite}",
+    "testSuiteCompleted": "テストスイートが完了: {passed}/{total} テストが合格",
+    "coverageReport": "テストカバレッジ: {percentage}% ({lines}/{totalLines} 行)",
+    "qualityGate": "品質ゲート: {status} (スコア: {score}/100)",
+    "securityScan": "セキュリティスキャンが完了: {issues} 件の問題を発見"
+  },
+  "ccra": {
+    "reviewStarted": "自動レビューを開始: {pr}",
+    "reviewCompleted": "レビューが完了: {pr} - {findings} 件の指摘",
+    "approvalRecommended": "承認を推奨: {pr}",
+    "changesRequested": "変更を要求: {pr} - {reasons}",
+    "reviewPosted": "レビューをGitHubに投稿: {pr}"
+  },
+  "ccta": {
+    "testEnvironmentSetup": "テスト環境を設定中: {environment}",
+    "testEnvironmentReady": "テスト環境が準備完了: {environment}",
+    "testExecutionStarted": "テスト実行を開始: {testSuite}",
+    "testExecutionCompleted": "テスト実行が完了: {results}",
+    "environmentCleanup": "テスト環境をクリーンアップ: {environment}"
+  }
+}

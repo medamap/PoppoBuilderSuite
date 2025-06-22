@@ -1,0 +1,26 @@
+{
+  "github": {
+    "owner": "{{GITHUB_OWNER}}",
+    "repo": "{{GITHUB_REPO}}",
+    "token": "{{GITHUB_TOKEN}}"
+  },
+  "claude": {
+    "apiKey": "{{CLAUDE_API_KEY}}",
+    "model": "claude-3-opus-20240229",
+    "timeout": 300000,
+    "maxRetries": 3,
+    "maxConcurrent": 3
+  },
+  "language": {
+    "primary": "ja",
+    "fallback": "en"
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001
+  },
+  "notification": {
+    "enabled": false,
+    "providers": []
+  }
+}

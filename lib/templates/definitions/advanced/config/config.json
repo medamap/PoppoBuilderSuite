@@ -1,0 +1,73 @@
+{
+  "github": {
+    "owner": "{{GITHUB_OWNER}}",
+    "repo": "{{GITHUB_REPO}}",
+    "token": "{{GITHUB_TOKEN}}"
+  },
+  "claude": {
+    "apiKey": "{{CLAUDE_API_KEY}}",
+    "model": "claude-3-opus-20240229",
+    "timeout": 300000,
+    "maxRetries": 3,
+    "maxConcurrent": 5
+  },
+  "language": {
+    "primary": "ja",
+    "fallback": "en"
+  },
+  "dashboard": {
+    "enabled": true,
+    "port": 3001,
+    "auth": {
+      "enabled": true,
+      "username": "admin",
+      "password": "{{DASHBOARD_PASSWORD}}"
+    }
+  },
+  "notification": {
+    "enabled": true,
+    "providers": [
+      {
+        "type": "discord",
+        "enabled": false,
+        "webhookUrl": "{{DISCORD_WEBHOOK_URL}}"
+      }
+    ]
+  },
+  "agents": {
+    "ccla": {
+      "enabled": true
+    },
+    "ccag": {
+      "enabled": true
+    },
+    "ccpm": {
+      "enabled": true
+    },
+    "ccqa": {
+      "enabled": true
+    },
+    "ccra": {
+      "enabled": true
+    },
+    "ccta": {
+      "enabled": true
+    },
+    "ccsp": {
+      "enabled": true
+    }
+  },
+  "multiProject": {
+    "enabled": true,
+    "schedulingAlgorithm": "weighted-fair"
+  },
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention": 30
+  },
+  "healthCheck": {
+    "enabled": true,
+    "interval": 60000
+  }
+}

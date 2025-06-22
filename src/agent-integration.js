@@ -1,6 +1,7 @@
 const AgentCoordinator = require('../agents/core/agent-coordinator');
 const Logger = require('./logger');
 const { v4: uuidv4 } = require('uuid');
+const i18n = require('../lib/i18n');
 
 /**
  * エージェントアーキテクチャとの統合クラス
@@ -20,11 +21,11 @@ class AgentIntegration {
    */
   async initialize() {
     if (!this.enabled) {
-      this.logger.info('エージェントモードは無効です');
+      this.logger.info(i18n.t('agent.disabled'));
       return;
     }
     
-    this.logger.info('エージェントモードを初期化中...');
+    this.logger.info(i18n.t('agent.initializing'));
     
     try {
       this.coordinator = new AgentCoordinator({
@@ -38,10 +39,10 @@ class AgentIntegration {
       // コーディネーターの初期化
       await this.coordinator.initialize();
       
-      this.logger.info('エージェントモードの初期化完了');
+      this.logger.info(i18n.t('agent.initialized'));
       
     } catch (error) {
-      this.logger.error(`エージェントモード初期化エラー: ${error.message}`);
+      this.logger.error(i18n.t('agent.error', { message: error.message }));
       this.enabled = false;
       throw error;
     }
@@ -53,17 +54,17 @@ class AgentIntegration {
   setupEventListeners() {
     // タスク進捗
     this.coordinator.on('task:progress', ({ taskId, progress, message }) => {
-      this.logger.info(`[${taskId}] 進捗: ${message} (${progress}%)`);
+      this.logger.info(i18n.t('task.progress', { taskId, progress, message }));
     });
     
     // タスク完了
     this.coordinator.on('task:completed', ({ taskId, result }) => {
-      this.logger.info(`[${taskId}] タスク完了`);
+      this.logger.info(`[${taskId}] ${i18n.t('task.completed')}`);
     });
     
     // タスクエラー
     this.coordinator.on('task:error', ({ taskId, error }) => {
-      this.logger.error(`[${taskId}] タスクエラー: ${error.message}`);
+      this.logger.error(`[${taskId}] ${i18n.t('task.error', { message: error.message })}`);
     });
   }
   
@@ -72,7 +73,7 @@ class AgentIntegration {
    */
   async processIssueWithAgents(issue) {
     if (!this.enabled || !this.coordinator) {
-      throw new Error('エージェントモードが有効ではありません');
+      throw new Error(i18n.t('errors.agent.notEnabled'));
     }
     
     const { number, title, body, labels } = issue;
@@ -84,7 +85,7 @@ class AgentIntegration {
     const taskTypes = this.determineTaskTypes(labels, body);
     
     if (taskTypes.length === 0) {
-      this.logger.warn('適切なタスクタイプが見つかりません。デフォルト処理を使用します。');
+      this.logger.warn(i18n.t('errors.agent.taskTypeMissing'));
       return null;
     }
     

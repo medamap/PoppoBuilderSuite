@@ -1,0 +1,52 @@
+{
+  "levels": {
+    "DEBUG": "デバッグ",
+    "INFO": "情報",
+    "WARN": "警告",
+    "ERROR": "エラー",
+    "FATAL": "致命的"
+  },
+  "messages": {
+    "starting": "PoppoBuilderを起動しています...",
+    "started": "PoppoBuilderが起動しました",
+    "stopping": "PoppoBuilderを停止しています...",
+    "stopped": "PoppoBuilderが停止しました",
+    "processingIssue": "Issue #{{number}} を処理しています",
+    "processedIssue": "Issue #{{number}} の処理が完了しました",
+    "errorProcessingIssue": "Issue #{{number}} の処理中にエラーが発生しました",
+    "taskQueued": "タスクをキューに追加しました: {{taskId}}",
+    "taskStarted": "タスク {{taskId}} を開始しました",
+    "taskCompleted": "タスク {{taskId}} が完了しました",
+    "taskFailed": "タスク {{taskId}} が失敗しました",
+    "connectingGitHub": "GitHubに接続しています...",
+    "connectedGitHub": "GitHubに接続しました",
+    "connectingClaude": "Claude APIに接続しています...",
+    "connectedClaude": "Claude APIに接続しました",
+    "rateLimitExceeded": "レート制限に達しました。{{seconds}}秒後に再試行します",
+    "retrying": "再試行しています... ({{attempt}}/{{maxAttempts}})",
+    "configLoaded": "設定ファイルを読み込みました",
+    "configError": "設定ファイルの読み込みに失敗しました",
+    "databaseConnected": "データベースに接続しました",
+    "databaseError": "データベースエラーが発生しました",
+    "serverStarted": "サーバーがポート {{port}} で起動しました",
+    "serverStopped": "サーバーが停止しました",
+    "agentStarted": "エージェント {{name}} が起動しました",
+    "agentStopped": "エージェント {{name}} が停止しました",
+    "fileCreated": "ファイルを作成しました: {{path}}",
+    "fileUpdated": "ファイルを更新しました: {{path}}",
+    "fileDeleted": "ファイルを削除しました: {{path}}",
+    "memoryUsage": "メモリ使用量: {{used}}MB / {{total}}MB ({{percentage}}%)",
+    "cpuUsage": "CPU使用率: {{percentage}}%",
+    "tokenUsage": "トークン使用量: {{used}} / {{limit}} ({{percentage}}%)"
+  },
+  "categories": {
+    "system": "システム",
+    "task": "タスク",
+    "api": "API",
+    "database": "データベース",
+    "file": "ファイル",
+    "performance": "パフォーマンス",
+    "security": "セキュリティ",
+    "agent": "エージェント"
+  }
+}

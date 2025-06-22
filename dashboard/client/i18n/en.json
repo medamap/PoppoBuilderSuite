@@ -1,0 +1,97 @@
+{
+  "title": "PoppoBuilder Process Dashboard",
+  "header": {
+    "title": "🤖 PoppoBuilder Process Dashboard",
+    "refresh": "Refresh",
+    "stopAll": "Stop All Processes"
+  },
+  "systemStatus": {
+    "title": "System Status",
+    "running": "Operating Normally",
+    "stats": {
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Error",
+      "total": "Total"
+    }
+  },
+  "processList": {
+    "title": "Process List",
+    "loading": "Loading..."
+  },
+  "logSearch": {
+    "title": "Log Search",
+    "placeholder": "Enter keyword...",
+    "allLevels": "All Levels",
+    "issueNumber": "Issue Number",
+    "search": "Search",
+    "clear": "Clear",
+    "export": "Export"
+  },
+  "analytics": {
+    "title": "Performance Analysis",
+    "tabs": {
+      "statistics": "Statistics",
+      "trends": "Trends", 
+      "history": "Execution History"
+    },
+    "taskTypes": {
+      "claudeCli": "claude-cli",
+      "issueProcess": "issue-process",
+      "commentProcess": "comment-process"
+    },
+    "metrics": {
+      "duration": "Execution Time",
+      "memory": "Memory Usage",
+      "cpu": "CPU Usage"
+    },
+    "timeRanges": {
+      "7days": "Past 7 Days",
+      "14days": "Past 14 Days", 
+      "30days": "Past 30 Days"
+    },
+    "status": {
+      "all": "All Status",
+      "success": "Success",
+      "error": "Error",
+      "timeout": "Timeout"
+    },
+    "loading": {
+      "stats": "Loading statistics data...",
+      "history": "Loading execution history..."
+    }
+  },
+  "realtimeLogs": {
+    "title": "Real-time Logs",
+    "connecting": "Connecting to dashboard..."
+  },
+  "processDetail": {
+    "title": "Process Details"
+  },
+  "common": {
+    "close": "Close",
+    "refresh": "Refresh",
+    "allTypes": "All Task Types"
+  },
+  "multiProject": {
+    "title": "PoppoBuilder Multi-Project Dashboard",
+    "stats": {
+      "totalProjects": "📊 Total Projects",
+      "registeredProjects": "Registered Projects",
+      "activeWorkers": "🔄 Active Workers",
+      "runningWorkers": "Running Workers",
+      "completedTasks": "✅ Completed Tasks",
+      "todayCompleted": "Today's Completed"
+    },
+    "projectList": {
+      "title": "🗂️ Project List",
+      "loading": "Loading project information...",
+      "noProjects": "No projects registered",
+      "completed": "Completed"
+    },
+    "errors": {
+      "websocketError": "WebSocket connection error occurred",
+      "parseError": "WebSocket message parsing error:"
+    }
+  }
+}

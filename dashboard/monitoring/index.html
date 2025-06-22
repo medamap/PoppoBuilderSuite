@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoppoBuilder Monitoring Dashboard</title>
+    <link rel="stylesheet" href="css/monitoring.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>PoppoBuilder Monitoring Dashboard</h1>
+            <div class="header-actions">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-icon">●</span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+                <button class="btn btn-export" onclick="exportMetrics()">Export Metrics</button>
+                <button class="btn btn-refresh" onclick="refreshDashboard()">Refresh</button>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <!-- System Health Overview -->
+            <section class="dashboard-section health-overview">
+                <h2>System Health</h2>
+                <div class="health-cards">
+                    <div class="health-card" id="healthScore">
+                        <div class="health-score">
+                            <div class="score-circle">
+                                <span class="score-value">--</span>
+                                <span class="score-label">Health Score</span>
+                            </div>
+                        </div>
+                        <div class="health-status">
+                            <span class="status-badge">Unknown</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>CPU Usage</h3>
+                        <div class="metric-value" id="cpuUsage">--%</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="cpuBar"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>Memory Usage</h3>
+                        <div class="metric-value" id="memoryUsage">--%</div>
+                        <div class="metric-bar">
+                            <div class="metric-fill" id="memoryBar"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <h3>Active Alerts</h3>
+                        <div class="metric-value" id="activeAlerts">0</div>
+                        <div class="alert-breakdown">
+                            <span class="alert-critical" id="criticalAlerts">0 Critical</span>
+                            <span class="alert-warning" id="warningAlerts">0 Warning</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Real-time Metrics Charts -->
+            <section class="dashboard-section metrics-charts">
+                <h2>Real-time Metrics</h2>
+                <div class="chart-tabs">
+                    <button class="tab-button active" onclick="switchChart('system')">System</button>
+                    <button class="tab-button" onclick="switchChart('application')">Application</button>
+                    <button class="tab-button" onclick="switchChart('business')">Business</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Active Alerts -->
+            <section class="dashboard-section alerts-section">
+                <h2>Active Alerts</h2>
+                <div class="alerts-container" id="alertsContainer">
+                    <div class="no-alerts">No active alerts</div>
+                </div>
+            </section>
+
+            <!-- Business Metrics -->
+            <section class="dashboard-section business-metrics">
+                <h2>Business Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-tile">
+                        <h3>Issues Processed</h3>
+                        <div class="metric-large" id="issuesProcessed">0</div>
+                        <div class="metric-subtitle">Total</div>
+                    </div>
+                    
+                    <div class="metric-tile">
+                        <h3>Success Rate</h3>
+                        <div class="metric-large" id="successRate">0%</div>
+                        <div class="metric-subtitle">Current</div>
+                    </div>
+                    
+                    <div class="metric-tile">
+                        <h3>Queue Size</h3>
+                        <div class="metric-large" id="queueSize">0</div>
+                        <div class="metric-subtitle">Pending</div>
+                    </div>
+                    
+                    <div class="metric-tile">
+                        <h3>Avg Processing Time</h3>
+                        <div class="metric-large" id="avgProcessingTime">0s</div>
+                        <div class="metric-subtitle">Per Issue</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Information -->
+            <section class="dashboard-section system-info">
+                <h2>System Information</h2>
+                <div class="info-grid" id="systemInfo">
+                    <div class="info-item">
+                        <span class="info-label">Hostname:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Platform:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">CPUs:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Memory:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Node Version:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Uptime:</span>
+                        <span class="info-value">--</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Alert Details Modal -->
+    <div class="modal" id="alertModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAlertModal()">&times;</span>
+            <h2>Alert Details</h2>
+            <div class="alert-details" id="alertDetails"></div>
+            <div class="modal-actions">
+                <button class="btn btn-suppress" onclick="suppressAlert()">Suppress Alert</button>
+                <button class="btn btn-close" onclick="closeAlertModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExportModal()">&times;</span>
+            <h2>Export Metrics</h2>
+            <div class="export-options">
+                <label>
+                    <input type="radio" name="format" value="json" checked> JSON
+                </label>
+                <label>
+                    <input type="radio" name="format" value="csv"> CSV
+                </label>
+            </div>
+            <div class="export-options">
+                <label>
+                    Period:
+                    <select id="exportPeriod">
+                        <option value="1h">Last Hour</option>
+                        <option value="6h">Last 6 Hours</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                    </select>
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="performExport()">Export</button>
+                <button class="btn btn-close" onclick="closeExportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/monitoring.js"></script>
+</body>
+</html>
