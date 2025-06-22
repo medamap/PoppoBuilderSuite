@@ -44,6 +44,18 @@ logs/
 temp/
 backups/
 
+# PoppoBuilder runtime data
+.poppo/health-metrics.json
+.poppo/locks/
+.poppo/*.db
+.poppo/*.db-*
+.poppobuilder/
+data/ccla/
+data/*.db
+data/*.db-*
+reports/
+test-results/
+
 # Temporary files
 *.tmp
 *.temp
@@ -57,6 +69,9 @@ Thumbs.db
 state/requests/label-update-*.json
 state/*.json.backup-*
 state/*.json.tmp.*
+state/poppo-cron.lock/
+state/*.lock
+state/poppo-node.lock
 
 # Redis dump
 dump.rdb
@@ -125,9 +140,14 @@ nohup.out
 # Temp cleanup directories
 temp/cleanup/
 test/cleanup/
+test/test-backup/
 
 # Coverage reports
 coverage/
+
+# Jest
+jest.config.js.backup
+test-results/junit.xml
 
 # Test files
 test-*.txt
