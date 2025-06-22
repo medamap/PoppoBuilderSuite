@@ -116,8 +116,21 @@ PoppoBuilderSuite/
 - Git
 
 ### Installation
-For detailed installation instructions, see the [Installation Guide](docs/INSTALL.md) ([English](docs/INSTALL_en.md)).
 
+#### Method 1: Global Installation (Recommended)
+```bash
+# Install globally from npm
+npm install -g poppo-builder-suite
+
+# Run initial setup wizard
+poppo-init
+
+# Start PoppoBuilder in your project directory
+cd your-project
+poppo-builder
+```
+
+#### Method 2: Local Installation
 ```bash
 # Clone repository
 git clone https://github.com/medamap/PoppoBuilderSuite.git
@@ -126,16 +139,38 @@ cd PoppoBuilderSuite
 # Install dependencies
 npm install
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env file and fill in GitHub settings
-
-# Initialize GitHub labels
-node scripts/setup-labels.js
-
-# Start PoppoBuilder
+# Run setup wizard
+npm run poppo:init
+# Or use the interactive setup on first run
 npm start
 ```
+
+#### Method 3: Quick Setup
+```bash
+# Create configuration directory
+mkdir -p .poppo
+
+# Create configuration file
+cat > .poppo/config.json << EOF
+{
+  "github": {
+    "owner": "YOUR_GITHUB_USERNAME",
+    "repo": "YOUR_REPO_NAME"
+  },
+  "language": {
+    "primary": "ja"
+  }
+}
+EOF
+
+# Set GitHub token
+export GITHUB_TOKEN=your_github_personal_access_token
+
+# Start PoppoBuilder
+npx poppo-builder-suite
+```
+
+For detailed installation instructions, see the [Installation Guide](docs/INSTALL.md) ([English](docs/INSTALL_en.md)).
 
 ### Basic Usage
 

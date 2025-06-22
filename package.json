@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node src/minimal-poppo.js",
     "start:agents": "node scripts/start-agents.js",
+    "poppo:init": "node scripts/poppo-init.js",
     "restart-scheduler": "node scripts/restart-scheduler.js",
     "setup": "node scripts/setup-labels.js",
     "dashboard": "open http://localhost:3001",
