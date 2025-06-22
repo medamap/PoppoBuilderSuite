@@ -133,154 +133,28 @@ class InitWizard {
           { name: 'English', value: 'en' }
         ],
         default: 'ja'
-      },
-      {
-        type: 'confirm',
-        name: 'enableDashboard',
-        message: 'ダッシュボード機能を有効にしますか？',
-        default: true
       }
     ];
 
-    // ダッシュボードが有効な場合の追加質問
     const answers = await inquirer.prompt(questions);
 
-    if (answers.enableDashboard) {
-      const dashboardQuestions = [
-        {
-          type: 'input',
-          name: 'dashboardPort',
-          message: 'ダッシュボードのポート番号を入力してください:',
-          default: '3001',
-          validate: (input) => {
-            const port = parseInt(input);
-            if (isNaN(port) || port < 1 || port > 65535) {
-              return '有効なポート番号を入力してください (1-65535)';
-            }
-            return true;
-          }
-        },
-        {
-          type: 'confirm',
-          name: 'dashboardAuth',
-          message: 'ダッシュボードに認証を設定しますか？',
-          default: true
-        }
-      ];
-
-      const dashboardAnswers = await inquirer.prompt(dashboardQuestions);
-      Object.assign(answers, dashboardAnswers);
-
-      if (dashboardAnswers.dashboardAuth) {
-        const authQuestions = [
-          {
-            type: 'input',
-            name: 'dashboardUsername',
-            message: 'ダッシュボードのユーザー名を入力してください:',
-            default: 'admin',
-            validate: (input) => input.trim() ? true : 'ユーザー名は必須です'
-          },
-          {
-            type: 'password',
-            name: 'dashboardPassword',
-            message: 'ダッシュボードのパスワードを入力してください:',
-            mask: '*',
-            validate: (input) => {
-              if (!input.trim()) {
-                return 'パスワードは必須です';
-              }
-              if (input.length < 8) {
-                return 'パスワードは8文字以上にしてください';
-              }
-              return true;
-            }
-          }
-        ];
-
-        const authAnswers = await inquirer.prompt(authQuestions);
-        Object.assign(answers, authAnswers);
-      }
-    }
-
-    // 詳細設定
-    const { advancedSetup } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'advancedSetup',
-        message: '詳細設定を行いますか？',
-        default: false
-      }
-    ]);
-
-    if (advancedSetup) {
-      const advancedQuestions = [
-        {
-          type: 'input',
-          name: 'maxConcurrent',
-          message: '同時実行可能なタスク数を入力してください:',
-          default: '2',
-          validate: (input) => {
-            const num = parseInt(input);
-            if (isNaN(num) || num < 1 || num > 10) {
-              return '1-10の範囲で入力してください';
-            }
-            return true;
-          }
-        },
-        {
-          type: 'input',
-          name: 'pollingInterval',
-          message: 'GitHubポーリング間隔（秒）を入力してください:',
-          default: '300',
-          validate: (input) => {
-            const num = parseInt(input);
-            if (isNaN(num) || num < 60) {
-              return '60秒以上を指定してください（GitHub APIレート制限のため）';
-            }
-            return true;
-          }
-        }
-      ];
-
-      const advancedAnswers = await inquirer.prompt(advancedQuestions);
-      Object.assign(answers, advancedAnswers);
-    }
 
     return answers;
   }
 
   async createConfig(answers) {
-    // 設定オブジェクトの構築
+    // プロジェクト固有の設定のみを保存
     const config = {
       github: {
         owner: answers.githubOwner,
-        repo: answers.githubRepo,
-        pollingInterval: (parseInt(answers.pollingInterval) || 300) * 1000
+        repo: answers.githubRepo
       },
       language: {
         primary: answers.language,
         fallback: 'en'
-      },
-      claude: {
-        maxConcurrent: parseInt(answers.maxConcurrent) || 2
       }
     };
 
-    // ダッシュボード設定
-    if (answers.enableDashboard) {
-      config.dashboard = {
-        enabled: true,
-        port: parseInt(answers.dashboardPort) || 3001
-      };
-
-      if (answers.dashboardAuth) {
-        config.dashboard.authentication = {
-          enabled: true,
-          username: answers.dashboardUsername,
-          password: answers.dashboardPassword
-        };
-      }
-    }
 
     // ディレクトリの作成
     if (!fs.existsSync(this.configDir)) {
@@ -313,16 +187,24 @@ class InitWizard {
 
   showSuccess() {
     console.log();
-    console.log(chalk.green('✓ 設定ファイルが正常に作成されました！'));
+    console.log(chalk.green('✓ プロジェクト設定ファイルが作成されました！'));
     console.log();
     console.log(chalk.cyan('設定ファイルの場所:'), this.configPath);
     console.log();
     console.log(chalk.yellow('次のステップ:'));
-    console.log('1. 環境変数 GITHUB_TOKEN を設定してください:');
+    console.log();
+    console.log('1. グローバルPoppoBuilderにこのプロジェクトを登録:');
+    console.log(chalk.gray('   poppo-builder register'));
+    console.log();
+    console.log('2. グローバル設定を確認・編集（必要に応じて）:');
+    console.log(chalk.gray('   ~/.poppobuilder/config.json'));
+    console.log();
+    console.log('3. 環境変数 GITHUB_TOKEN を設定:');
     console.log(chalk.gray('   export GITHUB_TOKEN=your_github_personal_access_token'));
     console.log();
-    console.log('2. PoppoBuilderを起動してください:');
-    console.log(chalk.gray('   poppo-builder'));
+    console.log('4. PoppoBuilderを起動:');
+    console.log(chalk.gray('   poppo-builder start  # すべてのプロジェクトを処理'));
+    console.log(chalk.gray('   poppo-builder start --project MedamaCode  # 特定プロジェクトのみ'));
     console.log();
     console.log(chalk.blue('詳細なドキュメント:'));
     console.log('https://github.com/medamap/PoppoBuilderSuite');
