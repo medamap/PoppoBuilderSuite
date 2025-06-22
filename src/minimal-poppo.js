@@ -21,7 +21,7 @@ const TwoStageProcessor = require('./two-stage-processor');
 const ProcessStateManager = require('./process-state-manager');
 const StatusManager = require('./status-manager');
 const MirinOrphanManager = require('./mirin-orphan-manager');
-const IssueLockManager = require('./issue-lock-manager');
+const EnhancedIssueLockManager = require('./enhanced-issue-lock-manager');
 const BackupScheduler = require('./backup-scheduler');
 const FileStateManager = require('./file-state-manager');
 const GitHubProjectsSync = require('./github-projects-sync');
@@ -145,11 +145,10 @@ const github = new GitHubClient(githubConfig);
 const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
 
 // FileStateManagerの初期化（IndependentProcessManagerで必要）
-const FileStateManager = require('./file-state-manager');
 const stateManager = new FileStateManager();
 
 // IssueLockManagerの初期化
-const lockManager = new IssueLockManager('.poppo/locks', logger);
+const lockManager = new EnhancedIssueLockManager('.poppo/locks', logger);
 
 const taskQueue = new TaskQueue({ 
   maxConcurrent: dynamicConfig.claude.maxConcurrent,
@@ -362,13 +361,37 @@ async function processIssue(issue) {
   logger.logIssue(issueNumber, 'START', { title: issue.title, labels: issue.labels });
   console.log(`\nIssue #${issueNumber} の処理開始: ${issue.title}`);
 
-  // 早期ロックチェック（IssueLockManager）
+  // 早期ロックチェック（EnhancedIssueLockManager）
   const existingLock = await lockManager.checkLock(issueNumber);
   if (existingLock && lockManager.isLockValid(existingLock)) {
     console.log(`⚠️  Issue #${issueNumber} は既に処理中です (PID: ${existingLock.lockedBy.pid})`);
     logger.logIssue(issueNumber, 'SKIP_ALREADY_LOCKED', { 
       lockedBy: existingLock.lockedBy,
       lockedAt: existingLock.lockedAt 
+    });
+    return;
+  }
+
+  // ラベル取得（ロック取得時に使用）
+  const issueLabels = issue.labels.map(l => l.name);
+
+  // Enhanced lock managerを使ってタイムアウト付きロックを取得
+  try {
+    await lockManager.acquireLockWithTimeout(issueNumber, {
+      taskId: `issue-${issueNumber}`,
+      type: 'issue_processing',
+      priority: issueLabels.includes('task:dogfooding') ? 'high' : 'normal'
+    }, 30000); // 30秒タイムアウト
+    
+    logger.logIssue(issueNumber, 'LOCK_ACQUIRED', { 
+      taskId: `issue-${issueNumber}`,
+      timeout: 30000
+    });
+  } catch (lockError) {
+    console.log(`⚠️  Issue #${issueNumber} のロック取得に失敗しました: ${lockError.message}`);
+    logger.logIssue(issueNumber, 'LOCK_FAILED', { 
+      error: lockError.message,
+      timeout: 30000
     });
     return;
   }
@@ -444,8 +467,17 @@ async function processIssue(issue) {
     console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
     
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
-
+    // 処理が完了したらロックを解放（バックグラウンドで実行される独立プロセスなので、ここではロック解放しない）
+    
   } catch (error) {
+    // エラー時は必ずロックを解放
+    try {
+      await lockManager.releaseLock(issueNumber);
+      logger.logIssue(issueNumber, 'LOCK_RELEASED_ON_ERROR', { error: error.message });
+    } catch (lockReleaseError) {
+      logger.error(`Issue #${issueNumber} のロック解放エラー:`, lockReleaseError);
+    }
+    
     // 統合エラーハンドリング
     const handledError = await errorHandler.handleError(error, {
       issueNumber,
@@ -829,6 +861,14 @@ async function checkCompletedTasks() {
         
         console.log(`✅ Issue #${issueNumber} の後処理完了`);
         
+        // 成功時にロックを解放
+        try {
+          await lockManager.releaseLock(issueNumber);
+          logger.logIssue(issueNumber, 'LOCK_RELEASED_ON_SUCCESS', { taskId: result.taskId });
+        } catch (lockReleaseError) {
+          logger.warn(`Issue #${issueNumber} のロック解放エラー（タスク完了時）:`, lockReleaseError);
+        }
+        
         // タスクタイプに応じた後処理
         if (result.taskInfo.type === 'dogfooding') {
           console.log('🔧 DOGFOODINGタスク完了 - 30秒後に再起動をスケジュール...');
@@ -873,6 +913,14 @@ async function checkCompletedTasks() {
         const errorComment = `## エラーが発生しました\n\n\`\`\`\n${result.error}\n\`\`\`\n\n詳細なログは確認してください。`;
         await github.addComment(issueNumber, errorComment);
         await statusManager.resetIssueStatus(issueNumber);
+        
+        // エラー時にもロックを解放
+        try {
+          await lockManager.releaseLock(issueNumber);
+          logger.logIssue(issueNumber, 'LOCK_RELEASED_ON_ERROR', { taskId: result.taskId });
+        } catch (lockReleaseError) {
+          logger.warn(`Issue #${issueNumber} のロック解放エラー（タスクエラー時）:`, lockReleaseError);
+        }
         
         console.log(`❌ Issue #${issueNumber} でエラーが発生`);
       }
