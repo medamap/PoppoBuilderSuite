@@ -3,7 +3,8 @@
   "header": {
     "title": "🤖 PoppoBuilder Process Dashboard",
     "refresh": "更新",
-    "stopAll": "全プロセス停止"
+    "stopAll": "全プロセス停止",
+    "config": "設定"
   },
   "systemStatus": {
     "title": "システム状態",

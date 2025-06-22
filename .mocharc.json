@@ -41,5 +41,8 @@
   "inline-diffs": true,
   "reporter-options": {
     "maxDiffSize": 8192
-  }
+  },
+  "require": [
+    "test/helpers/test-setup.js"
+  ]
 }

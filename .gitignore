@@ -58,9 +58,14 @@ test-results/
 
 # Temporary files
 *.tmp
+*.tmp.*
 *.temp
 *.bak
 .cache/
+*.pid
+*.lock
+temp/**/*
+!temp/.gitkeep
 
 # OS generated files
 Thumbs.db
@@ -90,6 +95,7 @@ traceability-matrix.md
 # Backup files
 *.backup
 CLAUDE.md.backup
+.cleanup-backup-*
 
 # Log archives
 logs/cleanup-*/
@@ -153,6 +159,14 @@ test-results/junit.xml
 test-*.txt
 test-result.txt
 test-rate-limit*.js
+test/**/*.tmp
+test/**/*.tmp.*
+test/test-state/
+test/integration/test-report.json
+test/**/*.log
+test/**/*.pid
+test/**/*.lock
+test/**/*.cache
 
 # Report files
 *-report.md
@@ -163,3 +177,4 @@ traceability-matrix.md
 # Backup files
 *.backup
 CLAUDE.md.backup
+.cleanup-backup-*

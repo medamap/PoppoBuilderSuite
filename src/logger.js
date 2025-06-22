@@ -2,6 +2,20 @@ const fs = require('fs');
 const path = require('path');
 const LogRotator = require('./log-rotator');
 
+// ストレージパスマネージャーを遅延読み込み（循環依存を避けるため）
+let storagePaths = null;
+const getStoragePaths = () => {
+  if (!storagePaths) {
+    try {
+      storagePaths = require('./core/storage-paths');
+    } catch (error) {
+      // storage-pathsが利用できない場合は従来の動作
+      storagePaths = null;
+    }
+  }
+  return storagePaths;
+};
+
 /**
  * シンプルなロガークラス（ログローテーション機能付き）
  */
@@ -18,7 +32,16 @@ class Logger {
     } else {
       // 新形式: constructor(category, options)
       this.category = categoryOrLogDir || 'default';
-      this.logDir = options.logDir || path.join(__dirname, '../logs');
+      
+      // StoragePathsが利用可能な場合は使用
+      const paths = getStoragePaths();
+      if (paths && paths.getLogsDir) {
+        this.logDir = paths.getLogsDir('app');
+      } else {
+        // フォールバック
+        this.logDir = options.logDir || path.join(__dirname, '../logs');
+      }
+      
       this.rotationConfig = options.rotationConfig || {};
     }
     

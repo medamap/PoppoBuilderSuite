@@ -7,6 +7,8 @@ const LogSearchAPI = require('./api/logs');
 const AnalyticsAPI = require('./api/analytics');
 const HealthAPI = require('./api/health');
 const ProcessAPI = require('./api/process');
+const ConfigAPI = require('./api/config');
+const StorageAPI = require('./api/storage');
 
 /**
  * PoppoBuilder Process Dashboard Server
@@ -43,6 +45,12 @@ class DashboardServer {
     // プロセス管理APIの初期化
     this.processAPI = this.independentProcessManager ? 
       new ProcessAPI(this.stateManager, this.independentProcessManager, this.logger) : null;
+    
+    // 設定管理APIの初期化
+    this.configAPI = new ConfigAPI(this.logger);
+    
+    // ストレージ監視APIの初期化
+    this.storageAPI = new StorageAPI(this.logger);
     
     this.setupRoutes();
     this.setupWebSocket();
@@ -143,6 +151,12 @@ class DashboardServer {
     if (this.processAPI) {
       this.app.use('/api', this.processAPI.getRouter());
     }
+    
+    // 設定管理APIのルートを設定
+    this.app.use('/api/config', this.configAPI.getRouter());
+    
+    // ストレージ監視APIのルートを設定
+    this.app.use('/api/storage', this.storageAPI.getRouter());
     
     // CCSP管理APIのルートを設定（Phase 4）
     const CCSPManagementAPI = require('./api/ccsp-management');

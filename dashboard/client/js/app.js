@@ -46,6 +46,12 @@ class DashboardApp {
     this.elements.refreshBtn.addEventListener('click', () => this.refresh());
     this.elements.stopAllBtn.addEventListener('click', () => this.stopAllProcesses());
     
+    // 設定ボタンイベント
+    const configBtn = document.getElementById('configBtn');
+    if (configBtn) {
+      configBtn.addEventListener('click', () => this.showConfigUI());
+    }
+    
     // ログ検索関連イベント
     this.elements.searchBtn.addEventListener('click', () => this.searchLogs());
     this.elements.clearSearchBtn.addEventListener('click', () => this.clearSearch());
@@ -715,6 +721,35 @@ class DashboardApp {
         processId: processId
       }));
     }
+  }
+  
+  showConfigUI() {
+    // 他のセクションを非表示
+    document.querySelectorAll('.system-status, .process-list, .log-search, .token-usage, .performance-analytics, .realtime-logs').forEach(section => {
+      section.style.display = 'none';
+    });
+    
+    // 設定管理セクションを表示
+    const configSection = document.querySelector('.config-management-section');
+    if (configSection) {
+      configSection.style.display = 'block';
+      
+      // 設定UIを初期化（まだ初期化されていない場合）
+      if (!this.configUIInitialized) {
+        configUI.init('configContainer');
+        this.configUIInitialized = true;
+      }
+    }
+  }
+  
+  hideConfigUI() {
+    // 設定管理セクションを非表示
+    document.querySelector('.config-management-section').style.display = 'none';
+    
+    // 他のセクションを表示
+    document.querySelectorAll('.system-status, .process-list, .log-search, .token-usage, .performance-analytics, .realtime-logs').forEach(section => {
+      section.style.display = '';
+    });
   }
 }
 

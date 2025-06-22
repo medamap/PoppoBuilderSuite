@@ -3,6 +3,17 @@
 // プロセス名を設定（psコマンドで識別しやすくするため）
 process.title = 'PoppoBuilder-Main';
 
+// メンテナンスモードチェック
+const MaintenanceMode = require('./core/maintenance-mode');
+MaintenanceMode.checkAndBlock('poppo-builder').then(isInMaintenance => {
+  if (!isInMaintenance) {
+    // メンテナンスモードでない場合のみ続行
+    startPoppoBuilder();
+  }
+});
+
+async function startPoppoBuilder() {
+
 const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
@@ -27,6 +38,7 @@ const FileStateManager = require('./file-state-manager');
 const GitHubProjectsSync = require('./github-projects-sync');
 const MemoryMonitor = require('./memory-monitor');
 const MemoryOptimizer = require('./memory-optimizer');
+const StorageMonitor = require('./storage-monitor');
 
 // エラーハンドリングとリカバリー戦略
 const { ErrorHandler } = require('./error-handler');
@@ -241,6 +253,44 @@ if (config.memory?.monitoring?.enabled !== false) {
       message: `増加率: ${leakInfo.mbPerMinute} MB/分`,
       severity: 'critical'
     });
+  });
+}
+
+// ストレージ監視の初期化
+let storageMonitor = null;
+if (config.storage?.monitoring?.enabled !== false) {
+  storageMonitor = new StorageMonitor(logger);
+  
+  // ストレージ監視の設定
+  const storagePaths = [];
+  if (config.storage?.baseDir) {
+    storagePaths.push(config.storage.baseDir);
+  }
+  storagePaths.push(process.cwd());  // プロジェクトディレクトリ
+  
+  storageMonitor.initialize({
+    checkInterval: config.storage?.monitoring?.interval || 5 * 60 * 1000,
+    thresholds: config.storage?.monitoring?.thresholds || {
+      warning: 0.8,
+      critical: 0.9
+    },
+    paths: storagePaths
+  });
+  
+  // ストレージ監視イベントハンドラー
+  storageMonitor.on('threshold-exceeded', ({ level, usage, message }) => {
+    logger.warn('ストレージ閾値超過:', { level, usage: usage.percentUsedHuman, path: usage.path });
+    
+    // 通知を送信
+    notificationManager.sendNotification('storage-alert', {
+      title: `ストレージ${level === 'critical' ? '危機' : '警告'}`,
+      message,
+      severity: level
+    });
+  });
+  
+  storageMonitor.on('threshold-recovered', ({ usage, message }) => {
+    logger.info('ストレージ使用量回復:', { usage: usage.percentUsedHuman, path: usage.path });
   });
 }
 
@@ -1099,6 +1149,11 @@ process.on('SIGINT', async () => {
     memoryOptimizer.stop();
   }
   
+  // ストレージ監視を停止
+  if (storageMonitor) {
+    storageMonitor.stop();
+  }
+  
   // ログローテーターを停止
   logger.close();
   
@@ -1150,6 +1205,11 @@ process.on('SIGTERM', async () => {
   if (memoryMonitor) {
     memoryMonitor.stop();
     memoryOptimizer.stop();
+  }
+  
+  // ストレージ監視を停止
+  if (storageMonitor) {
+    storageMonitor.stop();
   }
   
   // ログローテーターを停止
@@ -1220,9 +1280,17 @@ Promise.all([
     logger.info('メモリ監視と最適化を開始しました');
   }
   
+  // ストレージ監視を開始
+  if (storageMonitor) {
+    storageMonitor.start();
+    logger.info('ストレージ監視を開始しました');
+  }
+  
   // 開始
   mainLoop().catch(console.error);
 }).catch(err => {
   logger.error('初期化エラー:', err);
   process.exit(1);
 });
+
+} // startPoppoBuilder()の閉じ括弧
