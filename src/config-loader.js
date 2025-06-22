@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { GlobalConfigManager, getInstance } = require('../lib/core/global-config-manager');
 
 /**
  * PoppoBuilder Configuration Loading Utility
@@ -16,6 +17,9 @@ class ConfigLoader {
     this.globalConfigPath = path.join(require('os').homedir(), '.poppobuilder', 'config.json');
     this.systemDefaultPath = path.join(__dirname, '../config/defaults.json');
     this.templatesDir = path.join(__dirname, '../config/templates');
+    
+    // Get global config manager instance
+    this.globalConfigManager = getInstance();
     
     // Load system default configuration
     this.systemDefaultConfig = this.loadSystemDefaults();
@@ -53,11 +57,37 @@ class ConfigLoader {
   /**
    * Load configuration (environment variables → project → global → system defaults)
    */
-  loadConfig() {
+  async loadConfig() {
+    // Initialize global config manager if needed
+    if (!this.globalConfigManager.getStatus().initialized) {
+      await this.globalConfigManager.initialize();
+    }
+    
     // Load configurations in hierarchical order (lowest priority first)
     const configs = [
       this.systemDefaultConfig,           // 4. System defaults
-      this.loadGlobalConfig(),           // 3. Global configuration
+      await this.loadGlobalConfig(),      // 3. Global configuration
+      this.loadProjectConfig(),          // 2. Project configuration
+      this.loadEnvironmentConfig()       // 1. Environment variables (highest priority)
+    ];
+
+    // Merge configurations
+    const mergedConfig = this.mergeConfigs(configs);
+    
+    // Validate configuration values
+    this.validateConfig(mergedConfig);
+    
+    return mergedConfig;
+  }
+
+  /**
+   * Synchronous config loading (for backward compatibility)
+   */
+  loadConfigSync() {
+    // Load configurations in hierarchical order (lowest priority first)
+    const configs = [
+      this.systemDefaultConfig,           // 4. System defaults
+      this.loadGlobalConfigSync(),        // 3. Global configuration
       this.loadProjectConfig(),          // 2. Project configuration
       this.loadEnvironmentConfig()       // 1. Environment variables (highest priority)
     ];
@@ -87,13 +117,48 @@ class ConfigLoader {
   }
 
   /**
-   * Load global configuration
+   * Load global configuration (async with GlobalConfigManager)
    */
-  loadGlobalConfig() {
+  async loadGlobalConfig() {
+    try {
+      // Use GlobalConfigManager to get global config
+      const globalConfig = this.globalConfigManager.getAll();
+      
+      // Extract only the settings relevant for project use
+      const relevantConfig = {
+        defaults: globalConfig.defaults || {},
+        resources: globalConfig.resources || {},
+        logging: {
+          level: globalConfig.logging?.level || 'info'
+        }
+      };
+      
+      return relevantConfig;
+    } catch (error) {
+      console.warn(`Global configuration loading error: ${error.message}`);
+      return {};
+    }
+  }
+
+  /**
+   * Load global configuration (sync version for backward compatibility)
+   */
+  loadGlobalConfigSync() {
     try {
       if (fs.existsSync(this.globalConfigPath)) {
         const content = fs.readFileSync(this.globalConfigPath, 'utf-8');
-        return JSON.parse(content);
+        const globalConfig = JSON.parse(content);
+        
+        // Extract only the settings relevant for project use
+        const relevantConfig = {
+          defaults: globalConfig.defaults || {},
+          resources: globalConfig.resources || {},
+          logging: {
+            level: globalConfig.logging?.level || 'info'
+          }
+        };
+        
+        return relevantConfig;
       }
     } catch (error) {
       console.warn(`Global configuration loading error: ${error.message}`);
