@@ -577,10 +577,15 @@ async function main() {
     // コマンド解析と実行
     await program.parseAsync(process.argv);
   } catch (error) {
-    console.error(chalk.red(t('errors:fatal')), error.message);
-    if (program.opts().verbose) {
-      console.error(error.stack);
+    // If i18n is not initialized, use fallback error message
+    const errorMessage = error.message || 'Unknown error';
+    if (typeof t === 'function') {
+      console.error(chalk.red(t('errors:fatal')), errorMessage);
+    } else {
+      console.error(chalk.red('致命的なエラー:'), errorMessage);
     }
+    // Always show stack trace for debugging
+    console.error(error.stack);
     process.exit(1);
   }
 }
