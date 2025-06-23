@@ -729,7 +729,7 @@ class DashboardTUI {
 
   async updateAnalytics() {
     // Fetch analytics data
-    const statsResponse = await axios.get(`${this.apiUrl}/analytics/statistics/all');
+    const statsResponse = await axios.get(`${this.apiUrl}/analytics/statistics/all`);
     const stats = statsResponse.data;
 
     // Update performance chart (simplified text representation)

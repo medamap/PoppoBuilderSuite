@@ -1,1 +1,18 @@
-{}
+{
+  "issue-98-comment-IC_kwDOO7m6fc6x_DFF": {
+    "issueNumber": 98,
+    "title": "minimal-poppo-cron.jsの状態管理統合と二重起動防止強化",
+    "pid": 33028,
+    "type": "comment",
+    "isCompletion": false,
+    "startTime": "2025-06-23T15:09:19.061Z"
+  },
+  "issue-98-comment-IC_kwDOO7m6fc6yoPxe": {
+    "issueNumber": 98,
+    "title": "minimal-poppo-cron.jsの状態管理統合と二重起動防止強化",
+    "pid": 34643,
+    "type": "comment",
+    "isCompletion": false,
+    "startTime": "2025-06-23T15:18:09.742Z"
+  }
+}

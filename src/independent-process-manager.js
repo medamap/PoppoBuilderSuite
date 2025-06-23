@@ -26,6 +26,19 @@ class IndependentProcessManager {
   }
 
   /**
+   * StateManagerを設定（後から設定可能）
+   */
+  setStateManager(stateManager) {
+    this.stateManager = stateManager;
+    console.log('✅ StateManagerが設定されました');
+    
+    // 設定後に既存タスクを検出
+    this.recoverExistingTasks().catch(error => {
+      console.error('既存タスクの回復に失敗:', error);
+    });
+  }
+
+  /**
    * 必要なディレクトリを作成
    */
   ensureDirectories() {

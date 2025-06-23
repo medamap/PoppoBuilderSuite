@@ -33,23 +33,24 @@ warning() {
 # セッション定義（連想配列の代わりに関数を使用）
 get_session_command() {
     case "$1" in
-        "poppo-builder-main")
+        "${SESSION_PREFIX}-main")
             echo "cd $PROJECT_ROOT && while true; do ./scripts/poppo-cron-wrapper.sh; sleep 300; done"
             ;;
-        "poppo-builder-medama")
+        "${SESSION_PREFIX}-medama")
             echo "while true; do /opt/homebrew/bin/node /Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/medama-repair-log-only.js >> $LOG_DIR/medama.log 2>&1; sleep 900; done"
             ;;
-        "poppo-builder-mera")
+        "${SESSION_PREFIX}-mera")
             echo "while true; do /opt/homebrew/bin/node /Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/mera-cleaner.js >> $LOG_DIR/mera.log 2>&1; sleep 1800; done"
             ;;
-        "poppo-builder-mirin")
+        "${SESSION_PREFIX}-mirin")
             echo "while true; do CURRENT_MIN=\$(date +%M); if [ \$CURRENT_MIN -eq 03 ] || [ \$CURRENT_MIN -eq 33 ]; then /opt/homebrew/bin/node /Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/mirin-orphan-manager.js >> $LOG_DIR/mirin.log 2>&1; fi; sleep 60; done"
             ;;
     esac
 }
 
-# セッション名の配列
-SESSIONS=("poppo-builder-main" "poppo-builder-medama" "poppo-builder-mera" "poppo-builder-mirin")
+# セッション名の配列（ユニークプレフィックス付き）
+SESSION_PREFIX="pbs"  # PoppoBuilder Suite の略
+SESSIONS=("${SESSION_PREFIX}-main" "${SESSION_PREFIX}-medama" "${SESSION_PREFIX}-mera" "${SESSION_PREFIX}-mirin")
 
 # セッションが存在するかチェック
 session_exists() {
@@ -179,14 +180,14 @@ PoppoBuilder tmux管理ツール
     help        このヘルプを表示
 
 セッション名:
-    poppo-builder-main    - PoppoBuilder本体（5分毎）
-    poppo-builder-medama  - MedamaRepair（15分毎）
-    poppo-builder-mera    - MeraCleaner（30分毎）
-    poppo-builder-mirin   - MirinOrphanManager（毎時3,33分）
+    ${SESSION_PREFIX}-main    - PoppoBuilder本体（5分毎）
+    ${SESSION_PREFIX}-medama  - MedamaRepair（15分毎）
+    ${SESSION_PREFIX}-mera    - MeraCleaner（30分毎）
+    ${SESSION_PREFIX}-mirin   - MirinOrphanManager（毎時3,33分）
 
 例:
     $0 start                    # すべて開始
-    $0 logs poppo-builder-main  # メインのログを表示
+    $0 logs ${SESSION_PREFIX}-main  # メインのログを表示
     $0 status                   # 状態確認
 
 EOF

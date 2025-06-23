@@ -1,1 +1,46 @@
-{}
+{
+  "issuesChecked": 30,
+  "issuesProcessed": 0,
+  "queueStatus": {
+    "running": 0,
+    "queued": 0,
+    "queuesByPriority": {
+      "LOW": 0,
+      "NORMAL": 0,
+      "HIGH": 0,
+      "DOGFOODING": 0
+    },
+    "stats": {
+      "totalEnqueued": 38,
+      "totalProcessed": 40,
+      "totalFailed": 0,
+      "byPriority": {
+        "25": {
+          "enqueued": 0,
+          "processed": 0,
+          "failed": 0,
+          "averageWaitTime": 0
+        },
+        "50": {
+          "enqueued": 0,
+          "processed": 0,
+          "failed": 0,
+          "averageWaitTime": 69047993
+        },
+        "75": {
+          "enqueued": 0,
+          "processed": 0,
+          "failed": 0,
+          "averageWaitTime": 0
+        },
+        "100": {
+          "enqueued": 38,
+          "processed": 0,
+          "failed": 0,
+          "averageWaitTime": 280441
+        }
+      }
+    }
+  },
+  "timestamp": "2025-06-23T15:14:32.396Z"
+}

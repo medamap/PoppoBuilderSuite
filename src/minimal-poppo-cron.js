@@ -154,12 +154,22 @@ async function processIssue(issue) {
 
   // 処理開始前に再度実行中タスクを確認（二重処理防止）
   const currentRunningTasks = await stateManager.loadRunningTasks();
-  if (currentRunningTasks[`issue-${issueNumber}`]) {
-    console.log(`⚠️  Issue #${issueNumber} は既に処理中です`);
-    logger.logIssue(issueNumber, 'ALREADY_RUNNING', { 
-      existingTask: currentRunningTasks[`issue-${issueNumber}`] 
-    });
-    return;
+  const taskId = `issue-${issueNumber}`;
+  
+  if (currentRunningTasks[taskId]) {
+    // 実行中のプロセスが本当に生きているか確認
+    const existingTask = currentRunningTasks[taskId];
+    if (existingTask.pid && processManager.isProcessRunning(existingTask.pid)) {
+      console.log(`⚠️  Issue #${issueNumber} は既に処理中です (PID: ${existingTask.pid})`);
+      logger.logIssue(issueNumber, 'ALREADY_RUNNING', { 
+        existingTask: existingTask
+      });
+      return;
+    } else {
+      // プロセスが死んでいる場合は、タスクを削除して続行
+      console.log(`🧹 Issue #${issueNumber} の死んだタスクをクリーンアップ (PID: ${existingTask.pid})`);
+      await stateManager.removeRunningTask(taskId);
+    }
   }
 
   // 処理開始前に処理済みとして記録（二重起動防止）
@@ -258,22 +268,39 @@ async function processIssue(issue) {
     });
     console.error(`Issue #${issueNumber} の処理エラー:`, error.message);
     
-    // エラー時の状態クリーンアップ
+    // エラー時の包括的なクリーンアップ
     const taskId = `issue-${issueNumber}`;
+    
+    // 1. 実行中タスクから削除
     try {
       await stateManager.removeRunningTask(taskId);
+      console.log(`✅ タスク ${taskId} を実行中リストから削除`);
     } catch (cleanupError) {
       logger.error(`タスク ${taskId} のクリーンアップエラー:`, cleanupError);
     }
     
-    // 独立プロセスの停止確認
-    if (error.result && error.result.pid) {
+    // 2. 独立プロセスの停止確認（resultオブジェクトまたはerrorオブジェクトから）
+    const pid = error.result?.pid || error.pid;
+    if (pid) {
       try {
-        process.kill(error.result.pid, 'SIGTERM');
-        console.log(`🛑 PID ${error.result.pid} のプロセスを停止しました`);
+        process.kill(pid, 'SIGTERM');
+        console.log(`🛑 PID ${pid} のプロセスを停止しました`);
       } catch (killError) {
-        // プロセスが既に終了している場合は無視
+        if (killError.code !== 'ESRCH') {
+          // プロセスが見つからない以外のエラーはログに記録
+          logger.error(`プロセス ${pid} の停止エラー:`, killError);
+        }
       }
+    }
+    
+    // 3. StatusManagerの状態をクリーンアップ
+    try {
+      await statusManager.checkin(issueNumber, 'error', {
+        error: error.message,
+        taskType: 'issue'
+      });
+    } catch (statusError) {
+      logger.error(`Issue #${issueNumber} のステータス更新エラー:`, statusError);
     }
     
     // エラー時の処理
@@ -383,18 +410,37 @@ async function buildContext(issueNumber) {
  */
 async function processComment(issue, comment) {
   const issueNumber = issue.number;
+  const commentId = comment.id || `${comment.createdAt}-${comment.author.login}`;
+  const taskId = `issue-${issueNumber}-comment-${commentId}`;
+  
   logger.logIssue(issueNumber, 'COMMENT_START', { 
-    commentId: comment.id,
+    commentId: commentId,
     commentAuthor: comment.author.login 
   });
   console.log(`\nIssue #${issueNumber} のコメント処理開始`);
 
+  // 処理開始前に二重処理防止
+  const currentRunningTasks = await stateManager.loadRunningTasks();
+  if (currentRunningTasks[taskId]) {
+    const existingTask = currentRunningTasks[taskId];
+    if (existingTask.pid && processManager.isProcessRunning(existingTask.pid)) {
+      console.log(`⚠️  コメント ${taskId} は既に処理中です (PID: ${existingTask.pid})`);
+      logger.logIssue(issueNumber, 'COMMENT_ALREADY_RUNNING', { 
+        existingTask: existingTask
+      });
+      return;
+    } else {
+      console.log(`🧹 コメント ${taskId} の死んだタスクをクリーンアップ (PID: ${existingTask.pid})`);
+      await stateManager.removeRunningTask(taskId);
+    }
+  }
+
   try {
     // StatusManagerでコメント処理を開始（awaiting-response→processingの変更もMirinOrphanManager経由）
-    await statusManager.checkout(issueNumber, `comment-${issueNumber}-${comment.id}`, 'comment-response');
+    await statusManager.checkout(issueNumber, `comment-${issueNumber}-${commentId}`, 'comment-response');
     logger.logIssue(issueNumber, 'COMMENT_CHECKOUT', { 
       status: 'processing',
-      commentId: comment.id
+      commentId: commentId
     });
 
     // コンテキストを構築
@@ -425,14 +471,14 @@ async function processComment(issue, comment) {
 
     // Claudeで実行（独立プロセス方式）
     logger.logIssue(issueNumber, 'COMMENT_EXECUTE_START', { 
-      commentId: comment.id,
+      commentId: commentId,
       conversationLength: conversation.length 
     });
     
     instruction.issue.type = 'comment';
     instruction.issue.isCompletion = isCompletionComment(comment);
     
-    const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction);
+    const result = await processManager.execute(taskId, instruction);
     logger.logIssue(issueNumber, 'COMMENT_INDEPENDENT_STARTED', { 
       taskId: result.taskId,
       pid: result.pid 
@@ -456,27 +502,30 @@ async function processComment(issue, comment) {
 
   } catch (error) {
     logger.logIssue(issueNumber, 'COMMENT_ERROR', { 
-      commentId: comment.id,
+      commentId: commentId,
       message: error.message, 
       stack: error.stack 
     });
     console.error(`Issue #${issueNumber} のコメント処理エラー:`, error.message);
     
-    // エラー時の状態クリーンアップ
-    const taskId = `issue-${issueNumber}-comment-${comment.id}`;
+    // 1. 実行中タスクから削除
     try {
       await stateManager.removeRunningTask(taskId);
+      console.log(`✅ コメントタスク ${taskId} を実行中リストから削除`);
     } catch (cleanupError) {
       logger.error(`コメントタスク ${taskId} のクリーンアップエラー:`, cleanupError);
     }
     
-    // 独立プロセスの停止確認
-    if (error.result && error.result.pid) {
+    // 2. 独立プロセスの停止確認
+    const pid = error.result?.pid || error.pid;
+    if (pid) {
       try {
-        process.kill(error.result.pid, 'SIGTERM');
-        console.log(`🛑 PID ${error.result.pid} のプロセスを停止しました`);
+        process.kill(pid, 'SIGTERM');
+        console.log(`🛑 PID ${pid} のプロセスを停止しました`);
       } catch (killError) {
-        // プロセスが既に終了している場合は無視
+        if (killError.code !== 'ESRCH') {
+          logger.error(`プロセス ${pid} の停止エラー:`, killError);
+        }
       }
     }
     

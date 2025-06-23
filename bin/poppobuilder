@@ -161,18 +161,36 @@ projectCmd
 // Start command
 program
   .command('start')
-  .description('Start PoppoBuilder daemon')
+  .description('Start PoppoBuilder daemon and agent tmux sessions')
   .option('-d, --detach', 'run in background')
   .option('-p, --port <port>', 'daemon port', '3003')
   .option('-h, --host <host>', 'daemon host', '127.0.0.1')
-  .action(handleStart);
+  .option('--no-agents', 'do not start agent tmux sessions')
+  .action((cmdObj) => {
+    const options = {
+      detach: cmdObj.detach,
+      port: cmdObj.port,
+      host: cmdObj.host,
+      withAgents: cmdObj.agents !== false,
+      verbose: cmdObj.parent?.verbose || false
+    };
+    return handleStart(options);
+  });
 
 // Stop command
 program
   .command('stop')
-  .description('Stop PoppoBuilder daemon')
+  .description('Stop PoppoBuilder daemon and agent tmux sessions')
   .option('-f, --force', 'force stop without waiting for tasks')
-  .action(handleStop);
+  .option('--no-agents', 'do not stop agent tmux sessions')
+  .action((cmdObj) => {
+    const options = {
+      force: cmdObj.force,
+      withAgents: cmdObj.agents !== false,
+      verbose: cmdObj.parent?.verbose || false
+    };
+    return handleStop(options);
+  });
 
 // Status command
 program

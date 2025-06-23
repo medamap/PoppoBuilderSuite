@@ -1,0 +1,357 @@
+{
+  "issues": {
+    "34": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:59.243Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:57.914Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:59.243Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "37": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:57.913Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:56.426Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:57.913Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "39": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:42.909Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:41.594Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:42.909Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "54": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:41.593Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:26.073Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:41.593Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "68": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:19.014Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:04.989Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:19.014Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "75": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:13:03.612Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:13:02.342Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:13:03.612Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "76": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:12:53.987Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:12:38.848Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:12:53.987Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "78": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:12:18.686Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:12:17.180Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:12:18.686Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "81": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:12:15.829Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:12:14.074Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:12:15.829Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "82": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:11:50.403Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:11:37.096Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:11:50.403Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "83": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:11:35.636Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:11:34.268Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:11:35.636Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "84": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:11:10.430Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:10:57.320Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:11:10.430Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "89": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:10:56.025Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:10:54.761Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:10:56.025Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "90": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:10:49.849Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:10:32.765Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:10:49.849Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "91": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:10:29.995Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:10:21.834Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:10:29.995Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "92": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:09:58.447Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:09:40.781Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:09:58.447Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "94": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:09:37.942Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:09:36.674Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:09:37.942Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      }
+    },
+    "96": {
+      "status": "awaiting-response",
+      "lastUpdated": "2025-06-23T15:18:11.197Z",
+      "processId": null,
+      "pid": null,
+      "startTime": "2025-06-23T15:18:09.743Z",
+      "lastHeartbeat": null,
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      },
+      "endTime": "2025-06-23T15:18:11.197Z",
+      "result": {
+        "error": "errors.process.cannotExecute",
+        "taskType": "comment-response"
+      },
+      "reason": "completion_keyword",
+      "taskId": "issue-96-comment-IC_kwDOO7m6fc6x-4qC"
+    },
+    "98": {
+      "status": "processing",
+      "lastUpdated": "2025-06-23T15:18:08.325Z",
+      "processId": "comment-98-IC_kwDOO7m6fc6yoPxe",
+      "pid": 34376,
+      "startTime": "2025-06-23T15:18:08.324Z",
+      "lastHeartbeat": "2025-06-23T15:18:08.324Z",
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      }
+    },
+    "193": {
+      "status": "processing",
+      "lastUpdated": "2025-06-23T15:18:11.199Z",
+      "processId": "issue-193",
+      "pid": 34376,
+      "startTime": "2025-06-23T15:18:11.199Z",
+      "lastHeartbeat": "2025-06-23T15:18:11.199Z",
+      "taskType": "claude-cli",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      }
+    }
+  },
+  "lastSync": null
+}
