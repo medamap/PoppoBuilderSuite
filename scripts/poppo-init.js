@@ -31,7 +31,7 @@ async function main() {
     if (success) {
       console.log(chalk.green('\n✅ セットアップが完了しました！'));
       console.log(chalk.yellow('\n次のステップ:'));
-      console.log('1. プロジェクトディレクトリで実行: poppo-builder'));
+      console.log('1. プロジェクトディレクトリで実行: poppo-builder');
     } else {
       console.log(chalk.red('\nセットアップがキャンセルされました'));
     }
