@@ -108,6 +108,8 @@
     "config/defaults.json",
     "prompts/",
     "examples/",
+    "locales/",
+    "bin/",
     "LICENSE",
     "README.md"
   ],
