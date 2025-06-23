@@ -11,8 +11,8 @@
       "DOGFOODING": 0
     },
     "stats": {
-      "totalEnqueued": 38,
-      "totalProcessed": 40,
+      "totalEnqueued": 0,
+      "totalProcessed": 2,
       "totalFailed": 0,
       "byPriority": {
         "25": {
@@ -25,7 +25,7 @@
           "enqueued": 0,
           "processed": 0,
           "failed": 0,
-          "averageWaitTime": 69047993
+          "averageWaitTime": 69497259
         },
         "75": {
           "enqueued": 0,
@@ -34,13 +34,13 @@
           "averageWaitTime": 0
         },
         "100": {
-          "enqueued": 38,
+          "enqueued": 0,
           "processed": 0,
           "failed": 0,
-          "averageWaitTime": 280441
+          "averageWaitTime": 69494118
         }
       }
     }
   },
-  "timestamp": "2025-06-23T15:14:32.396Z"
+  "timestamp": "2025-06-23T15:21:59.555Z"
 }

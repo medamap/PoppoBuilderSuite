@@ -87,6 +87,9 @@ const stateManager = new FileStateManager();
 // 独立プロセス方式を使用（FileStateManagerを渡す）
 const processManager = new IndependentProcessManager(config.claude, rateLimiter, logger, stateManager);
 
+// IndependentProcessManagerにFileStateManagerを設定（二重管理を防止）
+processManager.setStateManager(stateManager);
+
 // 2段階処理システムの初期化
 const twoStageProcessor = new TwoStageProcessor(config, null, logger);
 
@@ -171,6 +174,52 @@ async function processIssue(issue) {
       await stateManager.removeRunningTask(taskId);
     }
   }
+  
+  // IndependentProcessManagerの内部状態も確認
+  const processManagerTasks = await processManager.getRunningTasks();
+  if (processManagerTasks[taskId]) {
+    const pmTask = processManagerTasks[taskId];
+    if (pmTask.pid && processManager.isProcessRunning(pmTask.pid)) {
+      console.log(`⚠️  Issue #${issueNumber} はProcessManager内で処理中です (PID: ${pmTask.pid})`);
+      logger.logIssue(issueNumber, 'ALREADY_RUNNING_PM', { 
+        existingTask: pmTask
+      });
+      return;
+    }
+  }
+  
+  // アトミックな状態更新で二重起動を防止
+  try {
+    // 即座に実行中タスクとして記録（他のプロセスから見えるように）
+    await stateManager.addRunningTask(taskId, {
+      issueNumber,
+      title: issue.title,
+      pid: process.pid, // 一時的に親プロセスのPIDを設定
+      type: 'issue',
+      status: 'preparing', // 準備中ステータス
+      lockTime: new Date().toISOString()
+    });
+    
+    // 再度チェック（レースコンディション対策）
+    const doubleCheck = await stateManager.loadRunningTasks();
+    const ourTask = doubleCheck[taskId];
+    if (!ourTask || ourTask.pid !== process.pid || ourTask.status !== 'preparing') {
+      console.log(`⚠️  Issue #${issueNumber} は別のプロセスに取られました`);
+      logger.logIssue(issueNumber, 'RACE_CONDITION', { 
+        ourPid: process.pid,
+        actualTask: doubleCheck[taskId]
+      });
+      // 念のため自分の登録を削除
+      if (ourTask && ourTask.pid === process.pid) {
+        await stateManager.removeRunningTask(taskId);
+      }
+      return;
+    }
+  } catch (error) {
+    console.error(`Issue #${issueNumber} の状態更新エラー:`, error);
+    logger.error(`タスク ${taskId} の事前登録エラー:`, error);
+    return;
+  }
 
   // 処理開始前に処理済みとして記録（二重起動防止）
   processedIssues.add(issueNumber);
@@ -244,13 +293,15 @@ async function processIssue(issue) {
       pid: result.pid 
     });
 
-    // 実行中タスクとして記録
+    // 実行中タスクの情報を更新（実際のPIDで）
     try {
       await stateManager.addRunningTask(result.taskId, {
         issueNumber,
         title: issue.title,
         pid: result.pid,
-        type: instruction.issue.type
+        type: instruction.issue.type,
+        status: 'running',
+        startTime: new Date().toISOString()
       });
     } catch (error) {
       logger.error(`タスク ${result.taskId} の状態記録エラー:`, error);
@@ -293,7 +344,30 @@ async function processIssue(issue) {
       }
     }
     
-    // 3. StatusManagerの状態をクリーンアップ
+    // 3. IndependentProcessManagerから関連プロセスを確認・停止
+    try {
+      const runningTasks = await processManager.getRunningTasks();
+      if (runningTasks[taskId]) {
+        const taskPid = runningTasks[taskId].pid;
+        if (taskPid && processManager.isProcessRunning(taskPid)) {
+          process.kill(taskPid, 'SIGTERM');
+          console.log(`🛑 関連プロセス PID ${taskPid} を停止しました`);
+        }
+      }
+    } catch (processError) {
+      logger.error(`関連プロセスの停止エラー:`, processError);
+    }
+    
+    // 4. 処理済みIssueリストから削除（再処理可能にする）
+    processedIssues.delete(issueNumber);
+    try {
+      await stateManager.saveProcessedIssues(processedIssues);
+      console.log(`📝 Issue #${issueNumber} を処理済みリストから削除しました`);
+    } catch (saveError) {
+      logger.error(`Issue #${issueNumber} の処理済み状態削除エラー:`, saveError);
+    }
+    
+    // 5. StatusManagerの状態をクリーンアップ
     try {
       await statusManager.checkin(issueNumber, 'error', {
         error: error.message,
