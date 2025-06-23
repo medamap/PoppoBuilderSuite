@@ -5,9 +5,7 @@
   "main": "src/minimal-poppo.js",
   "bin": {
     "poppo-builder": "./bin/poppobuilder",
-    "poppo-builder-legacy": "./src/minimal-poppo.js",
     "poppobuilder": "./bin/poppobuilder",
-    "poppo-init": "./scripts/poppo-init.js",
     "poppo": "./scripts/poppo-process.js",
     "poppo-health": "./scripts/poppo-health.js",
     "poppo-log-rotate": "./scripts/poppo-log-rotate.js",
