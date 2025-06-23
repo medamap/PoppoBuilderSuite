@@ -36,7 +36,18 @@ class Logger {
       // StoragePathsが利用可能な場合は使用
       const paths = getStoragePaths();
       if (paths && paths.getLogsDir) {
-        this.logDir = paths.getLogsDir('app');
+        try {
+          // StoragePathsが初期化されているか確認
+          if (paths.basePath && paths.projectName) {
+            this.logDir = paths.getLogsDir('app');
+          } else {
+            // 初期化されていない場合はフォールバック
+            this.logDir = options.logDir || path.join(__dirname, '../logs');
+          }
+        } catch (error) {
+          // エラーが発生した場合もフォールバック
+          this.logDir = options.logDir || path.join(__dirname, '../logs');
+        }
       } else {
         // フォールバック
         this.logDir = options.logDir || path.join(__dirname, '../logs');

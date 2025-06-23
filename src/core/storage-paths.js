@@ -103,6 +103,10 @@ class StoragePathsManager {
    * プロジェクトルートディレクトリ
    */
   getProjectRoot() {
+    // 初期化されていない場合はnullを返す
+    if (!this.basePath || !this.projectName) {
+      return null;
+    }
     return path.join(this.basePath, 'projects', this.projectName);
   }
 
@@ -110,7 +114,13 @@ class StoragePathsManager {
    * ログディレクトリ
    */
   getLogsDir(subdir = '') {
-    const logsBase = path.join(this.getProjectRoot(), 'logs');
+    const projectRoot = this.getProjectRoot();
+    if (!projectRoot) {
+      // フォールバック: ホームディレクトリの.poppobuilder/logs を使用
+      const fallbackBase = path.join(os.homedir(), '.poppobuilder', 'logs');
+      return subdir ? path.join(fallbackBase, subdir) : fallbackBase;
+    }
+    const logsBase = path.join(projectRoot, 'logs');
     return subdir ? path.join(logsBase, subdir) : logsBase;
   }
 
