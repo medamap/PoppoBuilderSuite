@@ -325,6 +325,19 @@
       },
       "reason": "completion_keyword",
       "taskId": "issue-96-comment-IC_kwDOO7m6fc6x-4qC"
+    },
+    "98": {
+      "status": "processing",
+      "lastUpdated": "2025-06-23T15:21:27.113Z",
+      "processId": "comment-98-IC_kwDOO7m6fc6x_DFF",
+      "pid": 35173,
+      "startTime": "2025-06-23T15:21:27.109Z",
+      "lastHeartbeat": "2025-06-23T15:21:27.109Z",
+      "taskType": "comment-response",
+      "metadata": {
+        "retryCount": 0,
+        "errorCount": 0
+      }
     }
   },
   "lastSync": null

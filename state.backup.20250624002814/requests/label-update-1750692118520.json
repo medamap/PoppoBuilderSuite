@@ -1,0 +1,14 @@
+{
+  "requestId": "req-1750692118520-7b91moruy",
+  "timestamp": "2025-06-23T15:21:58.520Z",
+  "issueNumber": 193,
+  "action": "update",
+  "addLabels": [
+    "error"
+  ],
+  "removeLabels": [
+    "processing"
+  ],
+  "requestedBy": "StatusManager",
+  "processId": "35173"
+}
