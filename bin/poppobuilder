@@ -41,6 +41,8 @@ program
   .option('-f, --force', 'overwrite existing configuration')
   .option('--skip-daemon', 'skip daemon setup')
   .option('--skip-projects', 'skip project discovery')
+  .option('-p, --max-processes <count>', 'maximum concurrent processes', parseInt)
+  .option('-l, --language <lang>', 'interface language (ja/en)')
   .action(handleInit);
 
 // Register command
@@ -56,6 +58,10 @@ program
   .option('--enable', 'enable project immediately', true)
   .option('--disable', 'disable project')
   .option('-f, --force', 'force re-registration of existing project')
+  .option('-o, --owner <owner>', 'GitHub owner/organization')
+  .option('-r, --repo <repo>', 'GitHub repository name')
+  .option('-l, --language <lang>', 'interface language (ja/en)')
+  .option('-y, --yes', 'skip all confirmations')
   .action(handleRegister);
 
 // Unregister command
