@@ -178,3 +178,9 @@ traceability-matrix.md
 *.backup
 CLAUDE.md.backup
 .cleanup-backup-*
+
+# PoppoBuilder
+.poppo/state/
+.poppo/logs/
+.poppo/*.log
+.poppo/.cache/

@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "project": "poppo-builder-suite",
+  "github": {
+    "owner": "medamap",
+    "repo": "PoppoBuilderSuite"
+  },
+  "language": {
+    "primary": "ja"
+  }
+}
