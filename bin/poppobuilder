@@ -62,7 +62,13 @@ program
   .option('-r, --repo <repo>', 'GitHub repository name')
   .option('-l, --language <lang>', 'interface language (ja/en)')
   .option('-y, --yes', 'skip all confirmations')
-  .action(handleRegister);
+  .action((projectPath, options) => {
+    console.error('Debug CLI - register command called');
+    console.error('Debug CLI - projectPath:', projectPath);
+    console.error('Debug CLI - options:', JSON.stringify(options));
+    console.error('Debug CLI - options.yes:', options.yes);
+    return handleRegister(projectPath, options);
+  });
 
 // Unregister command
 program
