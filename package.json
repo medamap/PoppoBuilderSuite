@@ -4,7 +4,9 @@
   "description": "AI-powered autonomous software development system",
   "main": "src/minimal-poppo.js",
   "bin": {
-    "poppo-builder": "./src/minimal-poppo.js",
+    "poppo-builder": "./bin/poppobuilder",
+    "poppo-builder-legacy": "./src/minimal-poppo.js",
+    "poppobuilder": "./bin/poppobuilder",
     "poppo-init": "./scripts/poppo-init.js",
     "poppo": "./scripts/poppo-process.js",
     "poppo-health": "./scripts/poppo-health.js",
