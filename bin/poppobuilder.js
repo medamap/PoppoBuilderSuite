@@ -200,6 +200,33 @@ const daemonCmd = program
   // project コマンド - プロジェクト管理
   program.addCommand(require('../lib/commands/project')());
 
+  // redis コマンド - Redis管理
+  program
+    .command('redis-enable')
+    .description('Enable Redis mode for state management')
+    .action(async () => {
+      try {
+        const { handleRedisEnable } = require('../lib/cli/commands/redis');
+        await handleRedisEnable();
+      } catch (error) {
+        console.error(chalk.red('Error:'), error.message);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command('redis-disable')
+    .description('Disable Redis mode and revert to file-based state management')
+    .action(async () => {
+      try {
+        const { handleRedisDisable } = require('../lib/cli/commands/redis');
+        await handleRedisDisable();
+      } catch (error) {
+        console.error(chalk.red('Error:'), error.message);
+        process.exit(1);
+      }
+    });
+
   // template コマンド - テンプレート管理
   const TemplateCommand = require('../lib/commands/template');
   const templateCommand = new TemplateCommand();

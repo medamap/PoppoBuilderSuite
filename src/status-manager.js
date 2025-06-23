@@ -312,7 +312,7 @@ class StatusManager extends EventEmitter {
         request.addLabels.push('awaiting-response');
         break;
       case 'completed':
-        // completed ラベルは追加しない（既定の動作）
+        request.addLabels.push('awaiting-response');
         break;
       case 'error':
         request.addLabels.push('error');

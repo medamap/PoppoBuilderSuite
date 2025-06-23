@@ -325,24 +325,6 @@
       },
       "reason": "completion_keyword",
       "taskId": "issue-96-comment-IC_kwDOO7m6fc6x-4qC"
-    },
-    "98": {
-      "status": "awaiting-response",
-      "lastUpdated": "2025-06-23T17:22:16.257Z",
-      "processId": null,
-      "pid": null,
-      "startTime": "2025-06-23T17:21:42.070Z",
-      "lastHeartbeat": null,
-      "taskType": "comment-response",
-      "metadata": {
-        "retryCount": 0,
-        "errorCount": 0
-      },
-      "endTime": "2025-06-23T17:22:16.257Z",
-      "result": {
-        "taskId": "issue-98-comment-IC_kwDOO7m6fc6x_DFF",
-        "taskType": "comment"
-      }
     }
   },
   "lastSync": null

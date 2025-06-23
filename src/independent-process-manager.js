@@ -230,7 +230,45 @@ console.log('独立プロセス ${taskId} 開始');
 const rateLimitHandler = new RateLimitHandler('${this.tempDir}');
 
 async function executeClaudeTask() {
-  const prompt = '${instructionFile} の指示に従ってください。';
+  // 指示ファイルの内容を読み込む
+  const instructionContent = fs.readFileSync('${instructionFile}', 'utf8');
+  const instruction = JSON.parse(instructionContent);
+  
+  // JSON形式の構造化プロンプトを構築
+  const structuredPrompt = {
+    system_prompt: {
+      type: "instruction_string",
+      content: [
+        instruction.systemPrompt || "あなたはGitHub Issueを処理する開発アシスタントです。",
+        "ユーザープロンプトの内容を処理してください。",
+        "ユーザープロンプトに明示されていなくても、必ず詳細なコメントをIssueに返すために適切な回答を生成してください。",
+        "要約ではなく、具体的で実行可能な内容を提供してください。",
+        "処理が完全に完了したと判断できる場合は「completed」、まだユーザーからの返答が必要な場合は「awaiting-response」として扱ってください。",
+        instruction.metadata?.projectId ? \`プロジェクトID: \${instruction.metadata.projectId}\` : "",
+        instruction.issue?.number ? \`Issue番号: #\${instruction.issue.number}\` : "",
+        instruction.issue?.title ? \`Issueタイトル: \${instruction.issue.title}\` : "",
+        instruction.issue?.labels?.length > 0 ? \`ラベル: \${instruction.issue.labels.join(', ')}\` : ""
+      ].filter(Boolean).join('\\n')
+    },
+    user_prompt: {
+      type: "instruction_content",
+      content: instruction.instructions || instruction.issue?.body || ""
+    },
+    output_requirements: {
+      type: "instruction_string",
+      content: [
+        "必ず以下の形式で回答してください：",
+        "1. 要求の理解と分析",
+        "2. 具体的な提案や回答",
+        "3. 実行した内容の説明（もしあれば）",
+        "4. 次のステップの提案"
+      ].join('\\n')
+    }
+  };
+  
+  // JSON形式のプロンプトを文字列に変換
+  const prompt = JSON.stringify(structuredPrompt, null, 2);
+  
   const args = ['--dangerously-skip-permissions', '--print'];
 
   const claude = spawn('claude', args, {
