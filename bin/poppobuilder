@@ -62,11 +62,24 @@ program
   .option('-r, --repo <repo>', 'GitHub repository name')
   .option('-l, --language <lang>', 'interface language (ja/en)')
   .option('-y, --yes', 'skip all confirmations')
-  .action((projectPath, options) => {
-    console.error('Debug CLI - register command called');
-    console.error('Debug CLI - projectPath:', projectPath);
-    console.error('Debug CLI - options:', JSON.stringify(options));
-    console.error('Debug CLI - options.yes:', options.yes);
+  .action((projectPath, cmdObj) => {
+    // Extract options from command object
+    const options = {
+      name: cmdObj.name,
+      id: cmdObj.id,
+      template: cmdObj.template,
+      priority: cmdObj.priority,
+      weight: cmdObj.weight,
+      pollingInterval: cmdObj.pollingInterval,
+      enable: cmdObj.enable,
+      disable: cmdObj.disable,
+      force: cmdObj.force,
+      owner: cmdObj.owner,
+      repo: cmdObj.repo,
+      language: cmdObj.language,
+      yes: cmdObj.yes,
+      verbose: cmdObj.parent.verbose
+    };
     return handleRegister(projectPath, options);
   });
 
