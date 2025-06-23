@@ -1,0 +1,173 @@
+#!/usr/bin/env node
+
+/**
+ * PoppoBuilder CLI Entry Point
+ * 
+ * Global daemon-based command line interface for PoppoBuilder Suite
+ */
+
+const { program } = require('commander');
+const path = require('path');
+const fs = require('fs').promises;
+const { version } = require('../package.json');
+
+// Commands
+const { handleInit } = require('../lib/cli/commands/init');
+const { handleRegister, handleUnregister, handleList } = require('../lib/cli/commands/register');
+const { handleMigrate } = require('../lib/cli/commands/migrate');
+const { handleProject } = require('../lib/cli/commands/project');
+const { handleStart } = require('../lib/cli/commands/start');
+const { handleStop } = require('../lib/cli/commands/stop');
+const { handleStatus } = require('../lib/cli/commands/status');
+const { handleRestart } = require('../lib/cli/commands/restart');
+const { handleReload } = require('../lib/cli/commands/reload');
+
+program
+  .name('poppobuilder')
+  .description('PoppoBuilder Suite - AI-powered GitHub issue processing system')
+  .version(version);
+
+// Global options
+program
+  .option('-c, --config <path>', 'path to configuration file')
+  .option('-v, --verbose', 'verbose output')
+  .option('--daemon-host <host>', 'daemon host', '127.0.0.1')
+  .option('--daemon-port <port>', 'daemon port', '3003');
+
+// Init command
+program
+  .command('init')
+  .description('Initialize global PoppoBuilder configuration')
+  .option('-f, --force', 'overwrite existing configuration')
+  .option('--skip-daemon', 'skip daemon setup')
+  .option('--skip-projects', 'skip project discovery')
+  .action(handleInit);
+
+// Register command
+program
+  .command('register [path]')
+  .description('Register a PoppoBuilder project')
+  .option('-n, --name <name>', 'project name')
+  .option('-i, --id <id>', 'project identifier')
+  .option('-t, --template <template>', 'configuration template', 'basic')
+  .option('-p, --priority <priority>', 'project priority (1-100)', '50')
+  .option('-w, --weight <weight>', 'project weight', '1.0')
+  .option('--polling-interval <ms>', 'polling interval in milliseconds', '300000')
+  .option('--enable', 'enable project immediately', true)
+  .option('--disable', 'disable project')
+  .action(handleRegister);
+
+// Unregister command
+program
+  .command('unregister <id>')
+  .description('Unregister a PoppoBuilder project')
+  .option('-f, --force', 'force removal without confirmation')
+  .action(handleUnregister);
+
+// List command
+program
+  .command('list')
+  .description('List registered projects')
+  .option('-j, --json', 'output as JSON')
+  .option('--enabled-only', 'show only enabled projects')
+  .option('--disabled-only', 'show only disabled projects')
+  .action(handleList);
+
+// Migrate command
+program
+  .command('migrate [path]')
+  .description('Migrate local PoppoBuilder project to global daemon')
+  .option('-f, --force', 'force migration without confirmation')
+  .option('--backup', 'create backup before migration', true)
+  .option('--no-backup', 'skip backup creation')
+  .option('--keep-local', 'keep local configuration after migration')
+  .option('--dry-run', 'show what would be migrated without making changes')
+  .action(handleMigrate);
+
+// Project management commands
+const projectCmd = program
+  .command('project')
+  .description('Project management commands');
+
+projectCmd
+  .command('enable <id>')
+  .description('Enable a project')
+  .action((id) => handleProject('enable', id));
+
+projectCmd
+  .command('disable <id>')
+  .description('Disable a project')
+  .action((id) => handleProject('disable', id));
+
+projectCmd
+  .command('info <id>')
+  .description('Show project information')
+  .option('-j, --json', 'output as JSON')
+  .action((id, options) => handleProject('info', id, options));
+
+projectCmd
+  .command('config <id>')
+  .description('Edit project configuration')
+  .option('-p, --priority <priority>', 'set priority (1-100)')
+  .option('-w, --weight <weight>', 'set weight (0.1-10.0)')
+  .option('--polling-interval <ms>', 'set polling interval in milliseconds')
+  .action((id, options) => handleProject('config', id, options));
+
+projectCmd
+  .command('logs <id>')
+  .description('Show project logs')
+  .option('-f, --follow', 'follow log output')
+  .option('-n, --lines <count>', 'number of lines to show', '50')
+  .option('--level <level>', 'filter by log level')
+  .action((id, options) => handleProject('logs', id, options));
+
+projectCmd
+  .command('restart <id>')
+  .description('Restart project tasks')
+  .option('-f, --force', 'force restart')
+  .action((id, options) => handleProject('restart', id, options));
+
+projectCmd
+  .command('validate <id>')
+  .description('Validate project configuration and setup')
+  .action((id) => handleProject('validate', id));
+
+// Start command
+program
+  .command('start')
+  .description('Start PoppoBuilder daemon')
+  .option('-d, --detach', 'run in background')
+  .option('-p, --port <port>', 'daemon port', '3003')
+  .option('-h, --host <host>', 'daemon host', '127.0.0.1')
+  .action(handleStart);
+
+// Stop command
+program
+  .command('stop')
+  .description('Stop PoppoBuilder daemon')
+  .option('-f, --force', 'force stop without waiting for tasks')
+  .action(handleStop);
+
+// Status command
+program
+  .command('status')
+  .description('Show daemon and project status')
+  .option('-j, --json', 'output as JSON')
+  .option('-w, --watch', 'watch for changes')
+  .action(handleStatus);
+
+// Restart command
+program
+  .command('restart')
+  .description('Restart PoppoBuilder daemon')
+  .option('-f, --force', 'force restart')
+  .action(handleRestart);
+
+// Reload command
+program
+  .command('reload')
+  .description('Reload configuration without restart')
+  .action(handleReload);
+
+// Parse arguments
+program.parse(process.argv);

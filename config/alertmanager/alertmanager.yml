@@ -1,0 +1,155 @@
+# PoppoBuilder AlertManager Configuration
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@poppobuilder.local'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+  smtp_require_tls: false
+
+# Template files
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'web.hook'
+  routes:
+    # Critical alerts
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 5s
+      repeat_interval: 5m
+
+    # PoppoBuilder specific alerts
+    - match:
+        service: poppobuilder
+      receiver: 'poppobuilder-alerts'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    # Database alerts
+    - match:
+        service: postgres
+      receiver: 'database-alerts'
+      repeat_interval: 15m
+
+    # Redis alerts
+    - match:
+        service: redis
+      receiver: 'redis-alerts'
+      repeat_interval: 15m
+
+# Inhibit rules
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+# Receiver configurations
+receivers:
+  - name: 'web.hook'
+    webhook_configs:
+      - url: 'http://poppobuilder:3003/webhooks/alerts'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'alertmanager'
+            password: 'webhook_password'
+
+  - name: 'critical-alerts'
+    email_configs:
+      - to: 'admin@example.com'
+        subject: '[CRITICAL] PoppoBuilder Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#alerts-critical'
+        title: 'PoppoBuilder Critical Alert'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+
+  - name: 'poppobuilder-alerts'
+    email_configs:
+      - to: 'poppo-admin@example.com'
+        subject: '[PoppoBuilder] {{ .GroupLabels.alertname }}'
+        body: |
+          PoppoBuilder Alert Details:
+          {{ range .Alerts }}
+          - Alert: {{ .Annotations.summary }}
+          - Instance: {{ .Labels.instance }}
+          - Project: {{ .Labels.project_id }}
+          - Time: {{ .StartsAt }}
+          {{ end }}
+
+  - name: 'database-alerts'
+    email_configs:
+      - to: 'db-admin@example.com'
+        subject: '[Database] {{ .GroupLabels.alertname }}'
+        body: |
+          Database Alert:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+          - Instance: {{ .Labels.instance }}
+          {{ end }}
+
+  - name: 'redis-alerts'
+    email_configs:
+      - to: 'redis-admin@example.com'
+        subject: '[Redis] {{ .GroupLabels.alertname }}'
+        body: |
+          Redis Alert:
+          {{ range .Alerts }}
+          - {{ .Annotations.summary }}
+          - Instance: {{ .Labels.instance }}
+          {{ end }}
+
+# Advanced routing examples
+# route:
+#   receiver: 'default-receiver'
+#   routes:
+#     # Route for specific teams
+#     - match:
+#         team: frontend
+#       receiver: frontend-team
+#     - match:
+#         team: backend
+#       receiver: backend-team
+    
+#     # Route based on time (business hours)
+#     - match_re:
+#         severity: critical|warning
+#       receiver: oncall-team
+#       active_time_intervals:
+#         - business_hours
+    
+#     # Route for maintenance window
+#     - match:
+#         alertname: MaintenanceMode
+#       receiver: maintenance-team
+#       group_wait: 0s
+#       group_interval: 5m
+#       repeat_interval: 12h
+
+# Time intervals for routing
+# time_intervals:
+#   - name: business_hours
+#     time_intervals:
+#       - times:
+#           - start_time: '09:00'
+#             end_time: '17:00'
+#         weekdays: ['monday:friday']

@@ -165,26 +165,8 @@ program
   });
 
 // daemon コマンド - デーモン管理
-const DaemonCommand = require('../lib/commands/daemon');
-program
-  .command('daemon <action>')
-  .description('Manage PoppoBuilder daemon (start|stop|restart|status|reload|logs)')
-  .option('-j, --json', 'output as JSON')
-  .option('-v, --verbose', 'verbose output')
-  .option('--detach', 'run daemon in detached mode', true)
-    .option('--no-detach', t('commands:daemon.options.noDetach'))
-    .action(async (action, options) => {
-      try {
-        const daemonCommand = new DaemonCommand();
-        await daemonCommand.execute(action, options);
-      } catch (error) {
-        console.error(chalk.red(t('general.error') + ':'), error.message);
-        if (options.verbose) {
-          console.error(error.stack);
-        }
-        process.exit(1);
-      }
-    });
+const daemonCommands = require('../lib/cli/commands/daemon');
+program.addCommand(daemonCommands());
 
   // project コマンド - プロジェクト管理
   program.addCommand(require('../lib/commands/project')());

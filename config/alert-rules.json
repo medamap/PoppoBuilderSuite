@@ -1,0 +1,470 @@
+{
+  "rules": [
+    {
+      "id": "high_cpu_usage",
+      "name": "High CPU Usage",
+      "description": "Alert when CPU usage exceeds 80% for more than 5 minutes",
+      "type": "threshold",
+      "metric": "poppobuilder_cpu_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 80,
+        "duration": 300
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "resource",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/high-cpu",
+        "summary": "CPU usage is critically high",
+        "description": "The CPU usage has been above 80% for more than 5 minutes. This may impact system performance."
+      }
+    },
+    {
+      "id": "critical_cpu_usage",
+      "name": "Critical CPU Usage",
+      "description": "Alert when CPU usage exceeds 90% for more than 2 minutes",
+      "type": "threshold",
+      "metric": "poppobuilder_cpu_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 90,
+        "duration": 120
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "resource",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/critical-cpu",
+        "summary": "CPU usage is critically high",
+        "description": "The CPU usage has been above 90% for more than 2 minutes. Immediate action required."
+      }
+    },
+    {
+      "id": "high_memory_usage",
+      "name": "High Memory Usage",
+      "description": "Alert when memory usage exceeds 85%",
+      "type": "threshold",
+      "metric": "poppobuilder_memory_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 85,
+        "duration": 300
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "resource",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/high-memory",
+        "summary": "Memory usage is high",
+        "description": "The memory usage has been above 85% for more than 5 minutes."
+      }
+    },
+    {
+      "id": "critical_memory_usage",
+      "name": "Critical Memory Usage",
+      "description": "Alert when memory usage exceeds 95%",
+      "type": "threshold",
+      "metric": "poppobuilder_memory_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 95,
+        "duration": 60
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "resource",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/critical-memory",
+        "summary": "Memory usage is critically high",
+        "description": "The memory usage has been above 95%. System may become unstable."
+      }
+    },
+    {
+      "id": "high_disk_usage",
+      "name": "High Disk Usage",
+      "description": "Alert when disk usage exceeds 80%",
+      "type": "threshold",
+      "metric": "poppobuilder_disk_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 80,
+        "duration": 300
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "storage",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/high-disk",
+        "summary": "Disk usage is high",
+        "description": "The disk usage has been above 80%. Consider cleaning up old files or expanding storage."
+      }
+    },
+    {
+      "id": "critical_disk_usage",
+      "name": "Critical Disk Usage",
+      "description": "Alert when disk usage exceeds 90%",
+      "type": "threshold",
+      "metric": "poppobuilder_disk_usage_percent",
+      "condition": {
+        "operator": ">",
+        "value": 90,
+        "duration": 60
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "storage",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/critical-disk",
+        "summary": "Disk usage is critically high",
+        "description": "The disk usage has been above 90%. Immediate cleanup required to prevent system failure."
+      }
+    },
+    {
+      "id": "service_down",
+      "name": "Service Down",
+      "description": "Alert when a critical service becomes unhealthy",
+      "type": "threshold",
+      "metric": "poppobuilder_service_health",
+      "condition": {
+        "operator": "==",
+        "value": 0,
+        "duration": 60
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "service",
+        "category": "availability",
+        "team": "platform"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/service-down",
+        "summary": "Critical service is down",
+        "description": "A critical service has been unhealthy for more than 1 minute."
+      }
+    },
+    {
+      "id": "high_error_rate",
+      "name": "High Error Rate",
+      "description": "Alert when error rate exceeds 5% over 5 minutes",
+      "type": "rate",
+      "metric": "poppobuilder_errors_total",
+      "condition": {
+        "rate_interval": 300,
+        "threshold": 0.05,
+        "comparison_metric": "poppobuilder_http_requests_total"
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "application",
+        "category": "error",
+        "team": "development"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/high-error-rate",
+        "summary": "High error rate detected",
+        "description": "The error rate has exceeded 5% over the last 5 minutes."
+      }
+    },
+    {
+      "id": "slow_response_time",
+      "name": "Slow Response Time",
+      "description": "Alert when average response time exceeds 5 seconds over 10 minutes",
+      "type": "time_window",
+      "metric": "poppobuilder_http_duration_seconds",
+      "condition": {
+        "aggregation": "avg",
+        "window": 600,
+        "threshold": 5.0
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "application",
+        "category": "performance",
+        "team": "development"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/slow-response",
+        "summary": "Response time is slow",
+        "description": "The average response time has been above 5 seconds for the last 10 minutes."
+      }
+    },
+    {
+      "id": "github_rate_limit_low",
+      "name": "GitHub Rate Limit Low",
+      "description": "Alert when GitHub rate limit drops below 100 requests",
+      "type": "threshold",
+      "metric": "poppobuilder_github_rate_limit_remaining",
+      "condition": {
+        "operator": "<",
+        "value": 100,
+        "duration": 60
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "github",
+        "category": "rate_limit",
+        "team": "integration"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/github-rate-limit",
+        "summary": "GitHub rate limit is low",
+        "description": "GitHub API rate limit is running low. Consider reducing API calls or waiting for reset."
+      }
+    },
+    {
+      "id": "github_rate_limit_critical",
+      "name": "GitHub Rate Limit Critical",
+      "description": "Alert when GitHub rate limit drops below 10 requests",
+      "type": "threshold",
+      "metric": "poppobuilder_github_rate_limit_remaining",
+      "condition": {
+        "operator": "<",
+        "value": 10,
+        "duration": 30
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "github",
+        "category": "rate_limit",
+        "team": "integration"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/github-rate-limit-critical",
+        "summary": "GitHub rate limit is critically low",
+        "description": "GitHub API rate limit is critically low. API calls will be throttled."
+      }
+    },
+    {
+      "id": "large_task_queue",
+      "name": "Large Task Queue",
+      "description": "Alert when pending task queue exceeds 1000 items",
+      "type": "threshold",
+      "metric": "poppobuilder_task_queue_size{status=\"pending\"}",
+      "condition": {
+        "operator": ">",
+        "value": 1000,
+        "duration": 300
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "queue",
+        "category": "capacity",
+        "team": "platform"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/large-queue",
+        "summary": "Task queue is large",
+        "description": "The pending task queue has grown to over 1000 items. Consider scaling workers."
+      }
+    },
+    {
+      "id": "critical_task_queue",
+      "name": "Critical Task Queue",
+      "description": "Alert when pending task queue exceeds 5000 items",
+      "type": "threshold",
+      "metric": "poppobuilder_task_queue_size{status=\"pending\"}",
+      "condition": {
+        "operator": ">",
+        "value": 5000,
+        "duration": 60
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "queue",
+        "category": "capacity",
+        "team": "platform"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/critical-queue",
+        "summary": "Task queue is critically large",
+        "description": "The pending task queue has grown to over 5000 items. Immediate scaling required."
+      }
+    },
+    {
+      "id": "claude_token_usage_high",
+      "name": "High Claude Token Usage",
+      "description": "Alert when Claude token usage rate is high",
+      "type": "rate",
+      "metric": "poppobuilder_claude_tokens_total",
+      "condition": {
+        "rate_interval": 3600,
+        "threshold": 10000
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "claude",
+        "category": "usage",
+        "team": "ai"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/claude-usage",
+        "summary": "Claude token usage is high",
+        "description": "Claude API token usage rate is high. Monitor costs and consider optimization."
+      }
+    },
+    {
+      "id": "failed_tasks_high",
+      "name": "High Failed Task Rate",
+      "description": "Alert when task failure rate exceeds 10%",
+      "type": "rate",
+      "metric": "poppobuilder_task_queue_size{status=\"failed\"}",
+      "condition": {
+        "rate_interval": 600,
+        "threshold": 0.1,
+        "comparison_metric": "poppobuilder_task_queue_size"
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "tasks",
+        "category": "reliability",
+        "team": "development"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/task-failures",
+        "summary": "High task failure rate",
+        "description": "The task failure rate has exceeded 10% over the last 10 minutes."
+      }
+    },
+    {
+      "id": "redis_connection_failed",
+      "name": "Redis Connection Failed",
+      "description": "Alert when Redis service is unavailable",
+      "type": "threshold",
+      "metric": "poppobuilder_service_health{service=\"redis\"}",
+      "condition": {
+        "operator": "==",
+        "value": 0,
+        "duration": 30
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "redis",
+        "category": "availability",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/redis-down",
+        "summary": "Redis service is down",
+        "description": "Redis service is unavailable. This will impact caching and session management."
+      }
+    },
+    {
+      "id": "postgres_connection_failed",
+      "name": "PostgreSQL Connection Failed",
+      "description": "Alert when PostgreSQL service is unavailable",
+      "type": "threshold",
+      "metric": "poppobuilder_service_health{service=\"postgres\"}",
+      "condition": {
+        "operator": "==",
+        "value": 0,
+        "duration": 30
+      },
+      "severity": "critical",
+      "enabled": true,
+      "labels": {
+        "component": "postgres",
+        "category": "availability",
+        "team": "infrastructure"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/postgres-down",
+        "summary": "PostgreSQL service is down",
+        "description": "PostgreSQL service is unavailable. This will impact data persistence."
+      }
+    },
+    {
+      "id": "dashboard_unavailable",
+      "name": "Dashboard Unavailable",
+      "description": "Alert when dashboard service is down",
+      "type": "threshold",
+      "metric": "poppobuilder_service_health{service=\"dashboard\"}",
+      "condition": {
+        "operator": "==",
+        "value": 0,
+        "duration": 60
+      },
+      "severity": "warning",
+      "enabled": true,
+      "labels": {
+        "component": "dashboard",
+        "category": "availability",
+        "team": "frontend"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/dashboard-down",
+        "summary": "Dashboard service is down",
+        "description": "Dashboard service is unavailable. Users cannot access the web interface."
+      }
+    },
+    {
+      "id": "anomaly_detection_cpu",
+      "name": "CPU Usage Anomaly",
+      "description": "Detect unusual CPU usage patterns",
+      "type": "anomaly",
+      "metric": "poppobuilder_cpu_usage_percent",
+      "condition": {
+        "window": 3600,
+        "sensitivity": 2.5
+      },
+      "severity": "info",
+      "enabled": true,
+      "labels": {
+        "component": "system",
+        "category": "anomaly",
+        "team": "monitoring"
+      },
+      "annotations": {
+        "runbook": "https://docs.poppobuilder.com/runbooks/cpu-anomaly",
+        "summary": "Unusual CPU usage pattern detected",
+        "description": "CPU usage pattern is unusual compared to historical data."
+      }
+    }
+  ],
+  "global_settings": {
+    "evaluation_interval": 30,
+    "alert_cooldown": 300,
+    "default_severity": "warning",
+    "enable_annotations": true,
+    "enable_runbooks": true
+  },
+  "notification_routing": {
+    "critical": ["email", "slack", "pagerduty"],
+    "warning": ["email", "slack"],
+    "info": ["slack"]
+  }
+}
