@@ -60,6 +60,21 @@ function setupProgram() {
       }
     });
 
+  // init-simple コマンド - 簡易初期化
+  program
+    .command('init-simple')
+    .description('Initialize PoppoBuilder with minimal configuration (3 questions only)')
+    .option('-f, --force', 'Force overwrite existing configuration')
+    .action(async (options) => {
+      try {
+        const { handleSimpleInit } = require('../lib/cli/commands/init-simple');
+        await handleSimpleInit(options);
+      } catch (error) {
+        console.error(chalk.red(t('general.error') + ':'), error.message);
+        process.exit(1);
+      }
+    });
+
   // start コマンド - PoppoBuilder起動
   program
     .command('start')
@@ -165,8 +180,22 @@ program
   });
 
 // daemon コマンド - デーモン管理
-const daemonCommands = require('../lib/cli/commands/daemon');
-program.addCommand(daemonCommands());
+const DaemonCommand = require('../lib/commands/daemon');
+const daemonCmd = program
+  .command('daemon <action>')
+  .description('Manage PoppoBuilder daemon process')
+  .option('-j, --json', 'Output in JSON format')
+  .option('-f, --follow', 'Follow logs in real-time')
+  .option('-n, --lines <number>', 'Number of log lines to show', '50')
+  .action(async (action, options) => {
+    try {
+      const daemonCommand = new DaemonCommand();
+      await daemonCommand.execute(action, options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
 
   // project コマンド - プロジェクト管理
   program.addCommand(require('../lib/commands/project')());
@@ -466,6 +495,34 @@ program.addCommand(daemonCommands());
 // メイン処理
 async function main() {
   try {
+    // For init-simple, skip complex initialization
+    if (process.argv[2] === 'init-simple') {
+      // Minimal setup for init-simple
+      const { Command } = require('commander');
+      const program = new Command();
+      
+      program
+        .name('poppobuilder')
+        .version(packageInfo.version);
+        
+      program
+        .command('init-simple')
+        .description('Initialize PoppoBuilder with minimal configuration (3 questions only)')
+        .option('-f, --force', 'Force overwrite existing configuration')
+        .action(async (options) => {
+          try {
+            const { handleSimpleInit } = require('../lib/cli/commands/init-simple');
+            await handleSimpleInit(options);
+          } catch (error) {
+            console.error(chalk.red('Error:'), error.message);
+            process.exit(1);
+          }
+        });
+        
+      await program.parseAsync(process.argv);
+      return;
+    }
+    
     // Parse command line args to get language option early
     const commandLineOptions = runtimeSwitcher.parseCommandLineArgs(process.argv);
     
@@ -483,9 +540,10 @@ async function main() {
     const localConfigPath = path.join(process.cwd(), '.poppobuilder', 'config.json');
     
     // 初期化されていない場合の警告
-    if (process.argv[2] !== 'init' && !fs.existsSync(localConfigPath) && !fs.existsSync(globalConfigPath)) {
+    if (process.argv[2] !== 'init' && process.argv[2] !== 'init-simple' && !fs.existsSync(localConfigPath) && !fs.existsSync(globalConfigPath)) {
       console.log(chalk.yellow(t('messages:notInitialized')));
       console.log(t('messages:runInit', { command: chalk.cyan('poppobuilder init') }));
+      console.log(chalk.gray('For quick setup with only 3 questions: ' + chalk.cyan('poppobuilder init-simple')));
       console.log('');
     }
     

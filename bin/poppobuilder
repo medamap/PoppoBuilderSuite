@@ -55,6 +55,7 @@ program
   .option('--polling-interval <ms>', 'polling interval in milliseconds', '300000')
   .option('--enable', 'enable project immediately', true)
   .option('--disable', 'disable project')
+  .option('-f, --force', 'force re-registration of existing project')
   .action(handleRegister);
 
 // Unregister command
