@@ -110,6 +110,7 @@
     "examples/",
     "locales/",
     "bin/",
+    "deprecated/",
     "LICENSE",
     "README.md"
   ],
