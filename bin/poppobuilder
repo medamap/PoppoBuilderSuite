@@ -78,7 +78,7 @@ program
       repo: cmdObj.repo,
       language: cmdObj.language,
       yes: cmdObj.yes,
-      verbose: cmdObj.parent.verbose
+      verbose: cmdObj.parent?.verbose || false
     };
     return handleRegister(projectPath, options);
   });
