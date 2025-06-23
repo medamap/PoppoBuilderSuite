@@ -7,6 +7,7 @@
     "poppo-builder": "./bin/poppobuilder",
     "poppobuilder": "./bin/poppobuilder",
     "poppo": "./scripts/poppo-process.js",
+    "poppo-init": "./scripts/poppo-init.js",
     "poppo-health": "./scripts/poppo-health.js",
     "poppo-log-rotate": "./scripts/poppo-log-rotate.js",
     "poppo-memory": "./scripts/poppo-memory.js"

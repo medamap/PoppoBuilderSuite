@@ -1,63 +1,23 @@
 #!/usr/bin/env node
 
+/**
+ * Legacy poppo-init command redirector
+ * Redirects to new unified initialization flow
+ */
+
 const chalk = require('chalk');
+const { execSync } = require('child_process');
 
-async function main() {
-  console.clear();
-  console.log(chalk.cyan('╔════════════════════════════════════════╗'));
-  console.log(chalk.cyan('║  PoppoBuilder Suite 初期設定           ║'));
-  console.log(chalk.cyan('╚════════════════════════════════════════╝'));
-  console.log();
+console.log(chalk.yellow('⚠️  poppo-init is deprecated. Redirecting to poppo-builder init...'));
+console.log();
 
-  // Claude CLIが利用可能かチェック
-  let claudeAvailable = false;
-  try {
-    require('child_process').execSync('claude --version', { stdio: 'ignore' });
-    claudeAvailable = true;
-    console.log(chalk.green('✨ Claude CLIが検出されました！'));
-  } catch {
-    console.log(chalk.yellow('ℹ️  Claude CLIは検出されませんでした'));
-  }
-
-  if (claudeAvailable) {
-    // Claude CLIを使ったセットアップウィザード
-    console.log(chalk.cyan('\n🤖 Claude CLIによる対話型セットアップを開始します'));
-    console.log(chalk.gray('Claude があなたの設定を手助けします\n'));
-    
-    const SetupWizard = require('../lib/commands/setup-wizard');
-    const wizard = new SetupWizard();
-    const success = await wizard.runSetup();
-    
-    if (success) {
-      console.log(chalk.green('\n✅ セットアップが完了しました！'));
-      console.log(chalk.yellow('\n次のステップ:'));
-      console.log('1. プロジェクトディレクトリで実行: poppo-builder');
-    } else {
-      console.log(chalk.red('\nセットアップがキャンセルされました'));
-    }
-  } else {
-    // inquirerを使ったTUIセットアップ
-    console.log(chalk.cyan('\n🔧 対話型設定ツールを起動します'));
-    console.log(chalk.gray('いくつかの質問に答えて設定を完了してください\n'));
-    
-    const InitWizard = require('../src/init-wizard');
-    const wizard = new InitWizard();
-    const success = await wizard.run();
-    
-    if (!success) {
-      console.log(chalk.red('\nセットアップがキャンセルされました'));
-    }
-  }
+try {
+  // Redirect to new command
+  execSync('poppo-builder init', { stdio: 'inherit' });
+} catch (error) {
+  // If poppo-builder is not found, show helpful message
+  console.error(chalk.red('Error: poppo-builder command not found.'));
+  console.error(chalk.yellow('Please ensure PoppoBuilder Suite is installed globally:'));
+  console.error(chalk.cyan('  npm install -g poppo-builder-suite'));
+  process.exit(1);
 }
-
-// エラーハンドリング
-process.on('unhandledRejection', (error) => {
-  console.error(chalk.red('\n❌ エラーが発生しました:'), error.message);
-  process.exit(1);
-});
-
-// メイン実行
-main().catch((error) => {
-  console.error(chalk.red('\n❌ エラーが発生しました:'), error.message);
-  process.exit(1);
-});
