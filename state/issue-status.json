@@ -332,7 +332,7 @@
       "processId": "issue-267",
       "pid": 80235,
       "startTime": "2025-06-24T05:10:01.614Z",
-      "lastHeartbeat": "2025-06-24T05:20:33.201Z",
+      "lastHeartbeat": "2025-06-24T05:26:03.554Z",
       "taskType": "claude-cli",
       "metadata": {
         "retryCount": 0,
