@@ -96,9 +96,9 @@ status() {
     for session_name in "${SESSIONS[@]}"; do
         if session_exists "$session_name"; then
             echo -e "✅ ${GREEN}$session_name${NC}: 実行中"
-            # 最後の5行を表示
+            # 最後の5行を表示（空白行を除外）
             echo "   最新ログ:"
-            tmux capture-pane -t "$session_name" -p | tail -5 | sed 's/^/     /'
+            tmux capture-pane -t "$session_name" -p | grep -v "^$" | tail -5 | sed 's/^/     /'
         else
             echo -e "❌ ${RED}$session_name${NC}: 停止中"
         fi
