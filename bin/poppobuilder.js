@@ -16,7 +16,7 @@ const runtimeSwitcher = require('../lib/i18n/runtime-switcher');
 // コマンドの実装をインポート
 const InitCommand = require('../lib/commands/init');
 const StartCommand = require('../lib/commands/start');
-const StatusCommand = require('../lib/commands/status');
+const StatusCommand = require('../lib/commands/status-unified');
 const ConfigCommand = require('../lib/commands/config');
 
 // プログラム設定
