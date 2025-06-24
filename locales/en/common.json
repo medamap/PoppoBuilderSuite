@@ -43,6 +43,8 @@
     "running": "Running",
     "stopped": "Stopped"
   },
+  "enabled": "Enabled",
+  "disabled": "Disabled",
   "time": {
     "second": "second",
     "second_plural": "seconds",
@@ -74,7 +76,8 @@
     "years_plural": "{{count}} years",
     "ago": "{{time}} ago",
     "remaining": "{{time}} remaining",
-    "elapsed": "{{time}} elapsed"
+    "elapsed": "{{time}} elapsed",
+    "justNow": "just now"
   },
   "format": {
     "date": "MM/DD/YYYY",

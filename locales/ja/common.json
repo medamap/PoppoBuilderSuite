@@ -43,6 +43,8 @@
     "running": "実行中",
     "stopped": "停止"
   },
+  "enabled": "有効",
+  "disabled": "無効",
   "time": {
     "second": "秒",
     "second_plural": "秒",
@@ -74,7 +76,8 @@
     "years_plural": "{{count}}年",
     "ago": "{{time}}前",
     "remaining": "残り{{time}}",
-    "elapsed": "経過時間: {{time}}"
+    "elapsed": "経過時間: {{time}}",
+    "justNow": "たった今"
   },
   "format": {
     "date": "YYYY/MM/DD",

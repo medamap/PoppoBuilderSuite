@@ -18,8 +18,6 @@ const os = require('os');
 // Setup i18n before using it
 const i18nPath = path.join(__dirname, '..', 'lib', 'i18n');
 const { initI18n, t } = require(i18nPath);
-// Initialize i18n synchronously
-initI18n().catch(console.error);
 
 // Import table formatter
 const tableFormatterPath = path.join(__dirname, '..', 'lib', 'utils', 'table-formatter');
@@ -490,6 +488,13 @@ ${colors.blue}例:${colors.reset}
 
 // メイン処理
 async function main() {
+  // Initialize i18n first
+  try {
+    await initI18n();
+  } catch (error) {
+    console.error('Failed to initialize i18n:', error.message);
+  }
+  
   const args = process.argv.slice(2);
   const command = args[0];
   
