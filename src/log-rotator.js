@@ -11,10 +11,17 @@ const createReadStream = fs.createReadStream;
 const createWriteStream = fs.createWriteStream;
 
 /**
- * ログローテーション管理クラス
+ * ログローテーション管理クラス（シングルトン）
  */
 class LogRotator {
   constructor(config = {}) {
+    // シングルトンパターンの実装
+    if (LogRotator.instance) {
+      // 既存のインスタンスがある場合は設定をマージ
+      Object.assign(LogRotator.instance.config, config);
+      return LogRotator.instance;
+    }
+
     this.config = {
       enabled: config.enabled !== false,
       maxSize: config.maxSize || 100 * 1024 * 1024, // 100MB
@@ -35,6 +42,9 @@ class LogRotator {
       this.ensureArchiveDir();
       this.startWatching();
     }
+
+    // シングルトンインスタンスを保存
+    LogRotator.instance = this;
   }
 
   /**
@@ -87,6 +97,23 @@ class LogRotator {
       }
     }
     this.watchedFiles.clear();
+  }
+
+  /**
+   * シングルトンインスタンスをリセット（テスト用）
+   */
+  static reset() {
+    if (LogRotator.instance) {
+      LogRotator.instance.stopWatching();
+      LogRotator.instance = null;
+    }
+  }
+
+  /**
+   * 現在のインスタンスを取得
+   */
+  static getInstance(config = {}) {
+    return new LogRotator(config);
   }
 
   /**
@@ -165,6 +192,16 @@ class LogRotator {
    * ファイルをローテーション
    */
   async rotateFile(filePath, reason) {
+    // 既にローテーション中の場合はスキップ
+    if (this.rotationInProgress.has(filePath)) {
+      return;
+    }
+
+    // ファイルが存在しない場合はスキップ
+    if (!fs.existsSync(filePath)) {
+      return;
+    }
+
     this.rotationInProgress.add(filePath);
     
     try {
@@ -191,27 +228,31 @@ class LogRotator {
       const rotatedName = `${baseName}-${timestamp}.log`;
       const rotatedPath = path.join(path.dirname(filePath), rotatedName);
       
-      // ファイルをリネーム
-      await rename(filePath, rotatedPath);
-      
-      // 圧縮が有効な場合
-      if (this.config.compress) {
-        await this.compressFile(rotatedPath);
-      } else {
-        // 圧縮しない場合はアーカイブディレクトリに移動
-        const archivePath = path.join(this.getArchivePath(), path.basename(rotatedPath));
-        await rename(rotatedPath, archivePath);
+      // ファイルをリネーム（ファイルが存在することを再確認）
+      if (fs.existsSync(filePath)) {
+        await rename(filePath, rotatedPath);
+        
+        // 圧縮が有効な場合
+        if (this.config.compress) {
+          await this.compressFile(rotatedPath);
+        } else {
+          // 圧縮しない場合はアーカイブディレクトリに移動
+          const archivePath = path.join(this.getArchivePath(), path.basename(rotatedPath));
+          await rename(rotatedPath, archivePath);
+        }
+        
+        // 新しい空のログファイルを作成
+        fs.writeFileSync(filePath, '');
+        
+        // ファイル数制限をチェック
+        await this.enforceFileLimit();
+        
+        console.log(`[LogRotator] ローテーション完了: ${filePath}`);
       }
-      
-      // 新しい空のログファイルを作成
-      fs.writeFileSync(filePath, '');
-      
-      // ファイル数制限をチェック
-      await this.enforceFileLimit();
-      
-      console.log(`[LogRotator] ローテーション完了: ${filePath}`);
     } catch (error) {
-      console.error(`[LogRotator] ローテーションエラー ${filePath}:`, error);
+      if (error.code !== 'ENOENT') {
+        console.error(`[LogRotator] ローテーションエラー ${filePath}:`, error);
+      }
     } finally {
       this.rotationInProgress.delete(filePath);
     }

@@ -1,7 +1,24 @@
 {
-  "i18n": {
-    "locale": "ja"
+  "version": "1.0.0",
+  "project": {
+    "name": "PoppoBuilderSuite"
   },
-  "language": "en",
-  "locale": "en-US"
+  "language": {
+    "primary": "ja"
+  },
+  "github": {
+    "owner": "medamap",
+    "repo": "PoppoBuilderSuite"
+  },
+  "claude": {
+    "enabled": true,
+    "maxConcurrent": 2
+  },
+  "features": {
+    "agents": true
+  },
+  "monitoring": {
+    "enabled": true,
+    "port": 3001
+  }
 }

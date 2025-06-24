@@ -299,12 +299,12 @@ const stateManager = new FileStateManager();
 const lockManager = new IssueLockManager('.poppo/locks', logger);
 
 const taskQueue = new TaskQueue({ 
-  maxConcurrent: dynamicConfig.claude.maxConcurrent,
+  maxConcurrent: dynamicConfig.claude?.maxConcurrent || 2,
   maxQueueSize: dynamicConfig.taskQueue?.maxQueueSize || 100 
 }, lockManager); // lockManagerを渡す
 
 // 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
-const processManager = new IndependentProcessManager(dynamicConfig.claude, rateLimiter, logger, stateManager, lockManager); // stateManagerとlockManagerを渡す
+const processManager = new IndependentProcessManager(dynamicConfig.claude || { maxConcurrent: 2, timeout: 86400000 }, rateLimiter, logger, stateManager, lockManager); // stateManagerとlockManagerを渡す
 
 // 通知マネージャーの初期化（設定で有効な場合のみ）
 let notificationManager = null;
