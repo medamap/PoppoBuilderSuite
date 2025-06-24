@@ -34,7 +34,7 @@ warning() {
 get_session_command() {
     case "$1" in
         "${SESSION_PREFIX}-main")
-            echo "cd $PROJECT_ROOT && while true; do ./scripts/poppo-cron-wrapper.sh; sleep 300; done"
+            echo "$PROJECT_ROOT/scripts/multi-project-executor.sh"
             ;;
         "${SESSION_PREFIX}-medama")
             echo "while true; do /opt/homebrew/bin/node /Volumes/PoppoSSD2T/Projects/ClaudeCodeProjects/AIBuildSystem/medama-repair-log-only.js >> $LOG_DIR/medama.log 2>&1; sleep 900; done"
