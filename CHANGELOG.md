@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2025-06-24
+
+### Added
+- Constants file (`lib/constants/status-constants.js`) for better maintainability
+- Time formatting utilities (`lib/utils/time-formatter.js`) for consistent time display
+- `ensureIPCConnection()` method to eliminate duplicate connection logic
+
+### Changed
+- Refactored unified status command for better code organization
+- Replaced all hard-coded values with constants
+- Improved error handling with proper null/undefined checks
+- Extracted time formatting logic to utility module
+
+### Removed
+- Backup files (`.original.js`) from previous status implementations
+- Duplicate time formatting methods from unified status command
+- Redundant IPC connection logic
+
+### Fixed
+- Issue #268: Unified three different status command implementations into one
+
 ## [0.1.8] - 2025-06-24
 
 ### Added
