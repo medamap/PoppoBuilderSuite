@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2025-06-24
+
+### Fixed
+- Phantom project "0" appearing in status display - properly convert project array to object in IPC commands
+- i18n translation keys not working - added missing translation keys for list table headers
+- Missing enabled/disabled translations in common namespace
+- Time formatter using incorrect i18n interpolation
+- Async initialization in poppo-process.js not waiting for i18n
+
+### Added
+- Translation keys for list.table.project, list.table.status, list.table.processes, list.table.activeIssues, list.table.lastActivity
+- Common translations for enabled/disabled status
+- Time translation for "justNow" in both English and Japanese
+
 ## [0.1.9] - 2025-06-24
 
 ### Added
