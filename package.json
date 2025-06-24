@@ -1,6 +1,6 @@
 {
   "name": "poppo-builder-suite",
-  "version": "0.1.11",
+  "version": "0.1.13",
   "description": "AI-powered autonomous software development system",
   "main": "src/minimal-poppo.js",
   "bin": {

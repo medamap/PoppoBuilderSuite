@@ -261,7 +261,12 @@ class ConfigLoader {
   deepMerge(target, source) {
     for (const key in source) {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        if (!target[key]) target[key] = {};
+        // If target[key] exists but is not an object, replace it
+        if (target[key] && typeof target[key] !== 'object') {
+          target[key] = {};
+        } else if (!target[key]) {
+          target[key] = {};
+        }
         this.deepMerge(target[key], source[key]);
       } else {
         target[key] = source[key];

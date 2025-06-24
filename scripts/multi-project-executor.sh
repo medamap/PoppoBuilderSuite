@@ -184,6 +184,16 @@ process_project() {
     
     # Run minimal-poppo.js directly (single execution)
     if [ -f "$MINIMAL_POPPO" ]; then
+        # Set environment variables to ensure correct project context
+        export POPPO_PROJECT_PATH="$project_path"
+        export POPPO_PROJECT_NAME="$project_name"
+        # Read github config from project's .poppo/config.json if it exists
+        if [ -f "$project_path/.poppo/config.json" ]; then
+            local poppo_config=$(cat "$project_path/.poppo/config.json")
+            export POPPO_GITHUB_OWNER=$(echo "$poppo_config" | jq -r '.github.owner // empty')
+            export POPPO_GITHUB_REPO=$(echo "$poppo_config" | jq -r '.github.repo // empty')
+        fi
+        
         # Run without timeout for now (can add gtimeout later if needed)
         node "$MINIMAL_POPPO" 2>&1 | while IFS= read -r line; do
             echo "[${project_name}] $line" | tee -a "$LOG_FILE"

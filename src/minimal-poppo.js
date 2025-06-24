@@ -71,6 +71,7 @@ const { ErrorRecoveryManager } = require('./error-recovery');
 // エラーハンドリングの設定
 process.on('uncaughtException', (error) => {
   console.error('\n❌ エラーが発生しました\n');
+  console.error('Stack trace:', error.stack);
   
   if (error.code === 'ENOENT') {
     console.log('📁 設定ファイルが見つかりません');
@@ -102,7 +103,8 @@ process.on('uncaughtException', (error) => {
 const configLoader = new ConfigLoader();
 let poppoConfig = {};
 try {
-  poppoConfig = configLoader.loadConfig();
+  poppoConfig = configLoader.loadConfigSync();
+  console.log('LoadConfigSync returned:', typeof poppoConfig, poppoConfig);
   
   // 言語設定のフォールバック
   if (!poppoConfig.language || !poppoConfig.language.primary) {
@@ -133,6 +135,9 @@ if (fs.existsSync(mainConfigPath)) {
     console.warn('警告: メイン設定ファイルの読み込みに失敗しました:', error.message);
   }
 }
+
+// デバッグ: poppoConfigの内容
+console.log('poppoConfig.github:', poppoConfig.github);
 
 // 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
 const config = {
@@ -230,6 +235,13 @@ if (config.configReload?.enabled !== false) {
 // GitHub設定を確実に取得
 const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github;
 
+// デバッグ: 環境変数の確認
+if (process.env.POPPO_GITHUB_OWNER || process.env.POPPO_GITHUB_REPO) {
+  console.log('環境変数が設定されています:');
+  console.log('  POPPO_GITHUB_OWNER:', process.env.POPPO_GITHUB_OWNER);
+  console.log('  POPPO_GITHUB_REPO:', process.env.POPPO_GITHUB_REPO);
+}
+
 // GitHub設定が見つからない場合のエラーハンドリング
 if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
   console.error('\n❌ GitHub設定が見つかりません\n');
@@ -288,6 +300,8 @@ function showManualSetupInstructions() {
   console.log('詳細: https://github.com/medamap/PoppoBuilderSuite/blob/main/config/config.example.json\n');
 }
 
+console.log('マージ後のconfig.github:', config.github);
+console.log('dynamicConfig.github:', dynamicConfig?.github);
 console.log('使用するGitHub設定:', githubConfig);
 const github = new GitHubClient(githubConfig);
 const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
@@ -493,8 +507,9 @@ async function shouldProcessIssue(issue) {
     return false;
   }
 
-  // completed, processing, awaiting-responseラベルがあればスキップ
-  if (labels.includes('completed') || labels.includes('processing') || labels.includes('awaiting-response')) {
+  // completed, processingラベルがあればスキップ
+  // Note: awaiting-response は処理対象とする（レスポンス待ちの意味なので）
+  if (labels.includes('completed') || labels.includes('processing')) {
     return false;
   }
 
@@ -533,7 +548,7 @@ async function processIssue(issue) {
     const labels = issue.labels.map(l => l.name);
     
     // 言語設定読み込み
-    const poppoConfig = configLoader.loadConfig();
+    const poppoConfig = configLoader.loadConfigSync();
     
     // 2段階処理を試みる
     const instructionText = `${issue.title}\n\n${issue.body}`;
@@ -605,7 +620,7 @@ async function processIssue(issue) {
       issueNumber,
       operation: async () => {
         // リトライ用の操作（簡略版）
-        const poppoConfig = configLoader.loadConfig();
+        const poppoConfig = configLoader.loadConfigSync();
         return await processManager.executeClaudeCode(issue.body, {
           issueNumber,
           title: issue.title,
@@ -753,7 +768,7 @@ async function processComment(issue, comment) {
     const labels = issue.labels.map(l => l.name);
     
     // 言語設定読み込み
-    const poppoConfig = configLoader.loadConfig();
+    const poppoConfig = configLoader.loadConfigSync();
     
     // Claude用の指示を作成（コンテキスト付き）
     const instruction = {

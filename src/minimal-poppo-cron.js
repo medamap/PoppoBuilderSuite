@@ -20,7 +20,7 @@ const MirinOrphanManager = require('./mirin-orphan-manager');
 
 // ConfigLoaderで階層的に設定を読み込み
 const configLoader = new ConfigLoader();
-const poppoConfig = configLoader.loadConfig();
+const poppoConfig = configLoader.loadConfigSync();
 
 // メイン設定ファイルも読み込み（後方互換性のため）
 const mainConfig = JSON.parse(
@@ -137,9 +137,10 @@ function shouldProcessIssue(issue) {
     return false;
   }
 
-  // completed, processing, awaiting-responseラベルがあればスキップ
-  if (labels.includes('completed') || labels.includes('processing') || labels.includes('awaiting-response')) {
-    console.log(`${debugPrefix} ⏭️  スキップラベルあり (completed/processing/awaiting-response)`);
+  // completed, processingラベルがあればスキップ
+  // Note: awaiting-response は処理対象とする（レスポンス待ちの意味なので）
+  if (labels.includes('completed') || labels.includes('processing')) {
+    console.log(`${debugPrefix} ⏭️  スキップラベルあり (completed/processing)`);
     return false;
   }
 
@@ -239,7 +240,7 @@ async function processIssue(issue) {
     const labels = issue.labels.map(l => l.name);
     
     // 言語設定読み込み
-    const poppoConfig = configLoader.loadConfig();
+    const poppoConfig = configLoader.loadConfigSync();
     
     // 2段階処理を試みる
     const instructionText = `${issue.title}\n\n${issue.body}`;
@@ -524,7 +525,7 @@ async function processComment(issue, comment) {
     const labels = issue.labels.map(l => l.name);
     
     // 言語設定読み込み
-    const poppoConfig = configLoader.loadConfig();
+    const poppoConfig = configLoader.loadConfigSync();
     
     // Claude用の指示を作成（コンテキスト付き）
     const instruction = {
