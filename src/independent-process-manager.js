@@ -135,15 +135,20 @@ class IndependentProcessManager {
 
   /**
    * Claude実行（独立プロセス方式）
+   * @param {string} taskId - タスクID
+   * @param {Object} instruction - 実行指示
+   * @param {Object} options - オプション設定
+   * @param {boolean} options.skipLockAcquisition - ロック取得をスキップするかどうか（既に取得済みの場合）
    */
-  async execute(taskId, instruction) {
+  async execute(taskId, instruction, options = {}) {
     if (!await this.canExecute()) {
       throw new Error(i18n.t('errors.process.cannotExecute'));
     }
 
     // IssueLockManagerが設定されている場合、ロックを取得
+    // ただし、skipLockAcquisitionが指定されている場合はスキップ
     const issueNumber = instruction.issue?.number;
-    if (this.lockManager && issueNumber) {
+    if (this.lockManager && issueNumber && !options.skipLockAcquisition) {
       const lockAcquired = await this.lockManager.acquireLock(issueNumber, {
         pid: process.pid,
         sessionId: process.env.CLAUDE_SESSION_ID,

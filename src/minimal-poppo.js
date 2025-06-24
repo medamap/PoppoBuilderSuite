@@ -41,14 +41,12 @@ PoppoBuilder Suite - AI-powered autonomous software development system
 const fs = require('fs');
 const path = require('path');
 const GitHubClient = require('./github-client');
-const ProcessManager = require('./process-manager');
 const IndependentProcessManager = require('./independent-process-manager');
 const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const ConfigWatcher = require('./config-watcher');
-const RestartScheduler = require('../scripts/restart-scheduler');
 const DashboardServer = require('../dashboard/server/index');
 const HealthCheckManager = require('./health-check-manager');
 const NotificationManager = require('./notification-manager');
@@ -62,6 +60,7 @@ const FileStateManager = require('./file-state-manager');
 const GitHubProjectsSync = require('./github-projects-sync');
 const MemoryMonitor = require('./memory-monitor');
 const MemoryOptimizer = require('./memory-optimizer');
+const CleanupManager = require('./cleanup-manager');
 
 // エラーハンドリングとリカバリー戦略
 const { ErrorHandler } = require('./error-handler');
@@ -104,7 +103,6 @@ const configLoader = new ConfigLoader();
 let poppoConfig = {};
 try {
   poppoConfig = configLoader.loadConfigSync();
-  console.log('LoadConfigSync returned:', typeof poppoConfig, poppoConfig);
   
   // 言語設定のフォールバック
   if (!poppoConfig.language || !poppoConfig.language.primary) {
@@ -136,8 +134,6 @@ if (fs.existsSync(mainConfigPath)) {
   }
 }
 
-// デバッグ: poppoConfigの内容
-console.log('poppoConfig.github:', poppoConfig.github);
 
 // 設定をマージ（メイン設定を基本とし、PoppoConfig設定で上書き）
 const config = {
@@ -187,6 +183,7 @@ const logger = new Logger(
 
 // エラーハンドリングシステムの初期化
 const errorHandler = new ErrorHandler(logger, config.errorHandling || {});
+const cleanupManager = new CleanupManager({ logger });
 const circuitBreakerFactory = new CircuitBreakerFactory();
 const recoveryManager = new ErrorRecoveryManager(logger, config.errorHandling?.autoRecovery || {});
 
@@ -235,12 +232,6 @@ if (config.configReload?.enabled !== false) {
 // GitHub設定を確実に取得
 const githubConfig = (dynamicConfig && dynamicConfig.github) || config.github;
 
-// デバッグ: 環境変数の確認
-if (process.env.POPPO_GITHUB_OWNER || process.env.POPPO_GITHUB_REPO) {
-  console.log('環境変数が設定されています:');
-  console.log('  POPPO_GITHUB_OWNER:', process.env.POPPO_GITHUB_OWNER);
-  console.log('  POPPO_GITHUB_REPO:', process.env.POPPO_GITHUB_REPO);
-}
 
 // GitHub設定が見つからない場合のエラーハンドリング
 if (!githubConfig || !githubConfig.owner || !githubConfig.repo) {
@@ -300,9 +291,6 @@ function showManualSetupInstructions() {
   console.log('詳細: https://github.com/medamap/PoppoBuilderSuite/blob/main/config/config.example.json\n');
 }
 
-console.log('マージ後のconfig.github:', config.github);
-console.log('dynamicConfig.github:', dynamicConfig?.github);
-console.log('使用するGitHub設定:', githubConfig);
 const github = new GitHubClient(githubConfig);
 const rateLimiter = new EnhancedRateLimiter(dynamicConfig.rateLimiting || {});
 
@@ -398,11 +386,13 @@ if (config.memory?.monitoring?.enabled !== false) {
   
   memoryMonitor.on('memory-leak-detected', (leakInfo) => {
     logger.error('メモリリーク検出:', leakInfo);
-    notificationManager.sendNotification('memory-leak', {
-      title: 'メモリリークの可能性',
-      message: `増加率: ${leakInfo.mbPerMinute} MB/分`,
-      severity: 'critical'
-    });
+    if (notificationManager) {
+      notificationManager.sendNotification('memory-leak', {
+        title: 'メモリリークの可能性',
+        message: `増加率: ${leakInfo.mbPerMinute} MB/分`,
+        severity: 'critical'
+      });
+    }
   });
 }
 
@@ -507,7 +497,7 @@ async function shouldProcessIssue(issue) {
     return false;
   }
 
-  // completed, processingラベルがあればスキップ
+  // completedラベルがあればスキップ
   // Note: awaiting-response は処理対象とする（レスポンス待ちの意味なので）
   if (labels.includes('completed') || labels.includes('processing')) {
     return false;
@@ -539,6 +529,9 @@ async function processIssue(issue) {
   await fileStateManager.addProcessedIssue(issueNumber);
   processedIssues.add(issueNumber);
 
+  let cleanupRequired = true;
+  let cleanupError = null;
+  
   try {
     // StatusManagerでチェックアウト（processingラベルの追加はMirinOrphanManager経由で行われる）
     await statusManager.checkout(issueNumber, `issue-${issueNumber}`, 'claude-cli');
@@ -596,7 +589,8 @@ async function processIssue(issue) {
     const isDogfooding = labels.includes('task:dogfooding');
     instruction.issue.type = isDogfooding ? 'dogfooding' : 'normal';
     
-    const result = await processManager.execute(`issue-${issueNumber}`, instruction);
+    // タスクキューで既にロックを取得しているため、skipLockAcquisitionを指定
+    const result = await processManager.execute(`issue-${issueNumber}`, instruction, { skipLockAcquisition: true });
     logger.logIssue(issueNumber, 'INDEPENDENT_STARTED', { 
       taskId: result.taskId,
       pid: result.pid 
@@ -605,9 +599,15 @@ async function processIssue(issue) {
     console.log(`Issue #${issueNumber} を独立プロセス (${result.taskId}) として開始`);
     console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
     
+    // 正常に処理が開始されたのでクリーンアップは不要
+    cleanupRequired = false;
+    
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
+    // エラーを記録
+    cleanupError = error;
+    
     // 統合エラーハンドリング
     const handledError = await errorHandler.handleError(error, {
       issueNumber,
@@ -619,13 +619,10 @@ async function processIssue(issue) {
     const recovered = await recoveryManager.recover(handledError, {
       issueNumber,
       operation: async () => {
-        // リトライ用の操作（簡略版）
-        const poppoConfig = configLoader.loadConfigSync();
-        return await processManager.executeClaudeCode(issue.body, {
-          issueNumber,
-          title: issue.title,
-          language: poppoConfig.language?.primary || 'ja'
-        });
+        // リトライ用の操作
+        console.log(`Issue #${issueNumber} のリトライを実行します`);
+        // processIssue自体を再実行するとループになるため、ここではfalseを返す
+        return false;
       }
     });
     
@@ -663,6 +660,16 @@ async function processIssue(issue) {
       await fileStateManager.saveProcessedIssues(currentProcessed);
     } else {
       logger.info(`Issue #${issueNumber} の自動リカバリーが成功しました`);
+    }
+  } finally {
+    // クリーンアップ処理
+    if (cleanupRequired) {
+      await cleanupManager.cleanupTask(`issue-${issueNumber}`, {
+        issueNumber,
+        lockManager,
+        statusManager,
+        error: cleanupError ? cleanupError.message : 'Process interrupted'
+      });
     }
   }
 }
@@ -753,6 +760,9 @@ async function processComment(issue, comment) {
   });
   console.log(`\nIssue #${issueNumber} のコメント処理開始`);
 
+  let cleanupRequired = true;
+  let cleanupError = null;
+  
   try {
     // StatusManagerでコメント処理を開始（awaiting-response→processingの変更もMirinOrphanManager経由）
     await statusManager.checkout(issueNumber, `comment-${issueNumber}-${comment.id}`, 'comment-response');
@@ -796,7 +806,8 @@ async function processComment(issue, comment) {
     instruction.issue.type = 'comment';
     instruction.issue.isCompletion = isCompletionComment(comment);
     
-    const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction);
+    // タスクキューで既にロックを取得しているため、skipLockAcquisitionを指定
+    const result = await processManager.execute(`issue-${issueNumber}-comment-${comment.id}`, instruction, { skipLockAcquisition: true });
     logger.logIssue(issueNumber, 'COMMENT_INDEPENDENT_STARTED', { 
       taskId: result.taskId,
       pid: result.pid 
@@ -805,9 +816,15 @@ async function processComment(issue, comment) {
     console.log(`Issue #${issueNumber} のコメントを独立プロセス (${result.taskId}) として開始`);
     console.log(`PID: ${result.pid} - PoppoBuilder再起動時も継続実行されます`);
     
+    // 正常に処理が開始されたのでクリーンアップは不要
+    cleanupRequired = false;
+    
     // 注意: 結果の処理は checkCompletedTasks() で非同期に行われる
 
   } catch (error) {
+    // エラーを記録
+    cleanupError = error;
+    
     logger.logIssue(issueNumber, 'COMMENT_ERROR', { 
       commentId: comment.id,
       message: error.message, 
@@ -820,6 +837,16 @@ async function processComment(issue, comment) {
       error: error.message,
       commentId: comment.id
     });
+  } finally {
+    // クリーンアップ処理
+    if (cleanupRequired) {
+      await cleanupManager.cleanupTask(`comment-${issueNumber}-${comment.id}`, {
+        issueNumber,
+        lockManager,
+        statusManager,
+        error: cleanupError ? cleanupError.message : 'Comment processing interrupted'
+      });
+    }
   }
 }
 
@@ -1322,6 +1349,18 @@ Promise.all([
     memoryOptimizer.start();
     logger.info('メモリ監視と最適化を開始しました');
   }
+  
+  // 定期的な孤児リソースクリーンアップ（1時間ごと）
+  setInterval(async () => {
+    try {
+      const cleaned = await cleanupManager.cleanupOrphanedResources(config.stateDir || 'state');
+      if (cleaned.locks > 0 || cleaned.tempFiles > 0) {
+        logger.info(`孤児リソースをクリーンアップ: ${cleaned.locks} locks, ${cleaned.tempFiles} temp files`);
+      }
+    } catch (error) {
+      logger.error('孤児リソースクリーンアップエラー:', error);
+    }
+  }, 3600000); // 1時間
   
   // 開始
   mainLoop().catch(console.error);
