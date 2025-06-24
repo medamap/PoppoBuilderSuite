@@ -42,18 +42,15 @@ class Logger {
             this.logDir = paths.getLogsDir('app');
           } else {
             // 初期化されていない場合はフォールバック
-            const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-            this.logDir = options.logDir || path.join(homeDir, '.poppobuilder', 'logs');
+            this.logDir = options.logDir || '/tmp/poppo-builder/logs';
           }
         } catch (error) {
           // エラーが発生した場合もフォールバック
-          const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-          this.logDir = options.logDir || path.join(homeDir, '.poppobuilder', 'logs');
+          this.logDir = options.logDir || '/tmp/poppo-builder/logs';
         }
       } else {
         // フォールバック
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-        this.logDir = options.logDir || path.join(homeDir, '.poppobuilder', 'logs');
+        this.logDir = options.logDir || '/tmp/poppo-builder/logs';
       }
       
       this.rotationConfig = options.rotationConfig || {};
