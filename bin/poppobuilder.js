@@ -12,10 +12,6 @@ const fs = require('fs');
 const packageInfo = require('../package.json');
 const { t, initI18n } = require('../lib/i18n');
 const runtimeSwitcher = require('../lib/i18n/runtime-switcher');
-const LogRotator = require('../src/log-rotator');
-
-// Silence LogRotator messages for clean CLI output
-LogRotator.setGlobalSilent(true);
 
 // コマンドの実装をインポート
 const InitCommand = require('../lib/commands/init');

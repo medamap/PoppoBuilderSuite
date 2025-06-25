@@ -32,6 +32,11 @@ class LogRotator {
       return LogRotator.instance;
     }
 
+    // Deprecation warning for silent config
+    if (config.hasOwnProperty('silent')) {
+      console.warn('[LogRotator] DEPRECATION: "silent" config option is deprecated. Use POPPO_DEBUG_LOG_ROTATION environment variable instead.');
+    }
+    
     this.config = {
       enabled: config.enabled !== false,
       maxSize: config.maxSize || 100 * 1024 * 1024, // 100MB
@@ -42,7 +47,7 @@ class LogRotator {
       retentionDays: config.retentionDays || 30,
       checkInterval: config.checkInterval || 60000, // 1分
       archivePath: config.archivePath || 'logs/archive',
-      silent: config.silent || false // サイレントモード（コンソール出力を抑制）
+      silent: config.silent || false // サイレントモード（コンソール出力を抑制） - DEPRECATED
     };
     
     // 環境変数からデバッグモードを初期化
@@ -155,8 +160,10 @@ class LogRotator {
 
   /**
    * グローバルサイレントモードを設定
+   * @deprecated Use POPPO_DEBUG_LOG_ROTATION environment variable instead
    */
   static setGlobalSilent(silent) {
+    console.warn('[LogRotator] DEPRECATION: "setGlobalSilent" is deprecated. Use POPPO_DEBUG_LOG_ROTATION environment variable instead.');
     LogRotator.globalSilent = silent;
   }
 

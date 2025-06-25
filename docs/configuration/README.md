@@ -52,6 +52,21 @@ PoppoBuilder Suiteでは、環境変数を使用して動作をカスタマイ�
   export POPPO_LANGUAGE_PRIMARY=en
   ```
 
+### POPPO_DEBUG_LOG_ROTATION
+- **必須**: いいえ
+- **デフォルト**: `false`
+- **説明**: LogRotatorデバッグ出力の制御
+- **値**: `true` または `false`
+- **設定例**:
+  ```bash
+  # デバッグ出力を有効化
+  export POPPO_DEBUG_LOG_ROTATION=true
+  
+  # または一時的に有効化
+  POPPO_DEBUG_LOG_ROTATION=true poppo-builder start
+  ```
+- **詳細**: [LogRotatorデバッグ出力制御](../log-rotator-debug.md)
+
 ## 設定のベストプラクティス
 
 1. **永続的な設定**
