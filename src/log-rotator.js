@@ -14,6 +14,9 @@ const createWriteStream = fs.createWriteStream;
  * ログローテーション管理クラス（シングルトン）
  */
 class LogRotator {
+  // グローバルサイレントモードフラグ
+  static globalSilent = false;
+  
   constructor(config = {}) {
     // シングルトンパターンの実装
     if (LogRotator.instance) {
@@ -31,7 +34,8 @@ class LogRotator {
       compressionLevel: config.compressionLevel || 6,
       retentionDays: config.retentionDays || 30,
       checkInterval: config.checkInterval || 60000, // 1分
-      archivePath: config.archivePath || 'logs/archive'
+      archivePath: config.archivePath || 'logs/archive',
+      silent: config.silent || false // サイレントモード（コンソール出力を抑制）
     };
     
     this.rotationInProgress = new Set();
@@ -107,6 +111,13 @@ class LogRotator {
       LogRotator.instance.stopWatching();
       LogRotator.instance = null;
     }
+  }
+
+  /**
+   * グローバルサイレントモードを設定
+   */
+  static setGlobalSilent(silent) {
+    LogRotator.globalSilent = silent;
   }
 
   /**
@@ -205,7 +216,9 @@ class LogRotator {
     this.rotationInProgress.add(filePath);
     
     try {
-      console.log(`[LogRotator] ローテーション開始: ${filePath} (理由: ${reason})`);
+      if (!this.config.silent && !LogRotator.globalSilent) {
+        console.log(`[LogRotator] ローテーション開始: ${filePath} (理由: ${reason})`);
+      }
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       let baseName = path.basename(filePath, '.log');
@@ -247,7 +260,9 @@ class LogRotator {
         // ファイル数制限をチェック
         await this.enforceFileLimit();
         
-        console.log(`[LogRotator] ローテーション完了: ${filePath}`);
+        if (!this.config.silent && !LogRotator.globalSilent) {
+          console.log(`[LogRotator] ローテーション完了: ${filePath}`);
+        }
       }
     } catch (error) {
       if (error.code !== 'ENOENT') {
@@ -342,7 +357,9 @@ class LogRotator {
             await unlink(metaPath);
           }
           
-          console.log(`[LogRotator] 古いファイルを削除: ${file}`);
+          if (!this.config.silent && !LogRotator.globalSilent) {
+            console.log(`[LogRotator] 古いファイルを削除: ${file}`);
+          }
         }
       }
     } catch (error) {
@@ -366,7 +383,9 @@ class LogRotator {
         
         if (now - stats.mtime.getTime() > retentionMs) {
           await unlink(filePath);
-          console.log(`[LogRotator] 保存期間超過により削除: ${file}`);
+          if (!this.config.silent && !LogRotator.globalSilent) {
+            console.log(`[LogRotator] 保存期間超過により削除: ${file}`);
+          }
         }
       }
     } catch (error) {
@@ -378,7 +397,9 @@ class LogRotator {
    * 手動でローテーションを実行
    */
   async rotateAll() {
-    console.log('[LogRotator] 手動ローテーション開始');
+    if (!this.config.silent && !LogRotator.globalSilent) {
+      console.log('[LogRotator] 手動ローテーション開始');
+    }
     
     try {
       const logDir = path.resolve('logs');
@@ -390,7 +411,9 @@ class LogRotator {
         await this.rotateFile(filePath, 'manual');
       }
       
-      console.log('[LogRotator] 手動ローテーション完了');
+      if (!this.config.silent && !LogRotator.globalSilent) {
+        console.log('[LogRotator] 手動ローテーション完了');
+      }
     } catch (error) {
       console.error('[LogRotator] 手動ローテーションエラー:', error);
       throw error;
