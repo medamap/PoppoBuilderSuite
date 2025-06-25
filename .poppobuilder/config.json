@@ -18,6 +18,7 @@
     "agents": true
   },
   "monitoring": {
-    "enabled": false
+    "enabled": true,
+    "port": 3001
   }
 }
