@@ -30,15 +30,6 @@
   bash scripts/multi-project-executor.sh
   ```
 
-#### POPPOBUILDER_MAX_RETRIES
-- **説明**: 失敗時の最大リトライ回数
-- **デフォルト値**: `3`
-- **使用例**:
-  ```bash
-  # 5回までリトライ
-  export POPPOBUILDER_MAX_RETRIES=5
-  bash scripts/multi-project-executor.sh
-  ```
 
 ### 実行戦略設定
 
@@ -127,7 +118,6 @@ echo "POPPOBUILDER_TIMEOUT=${POPPOBUILDER_TIMEOUT:-300}"
 echo "POPPOBUILDER_HEALTH_CHECK_INTERVAL=${POPPOBUILDER_HEALTH_CHECK_INTERVAL:-30}"
 echo "POPPOBUILDER_WAIT_TIME=${POPPOBUILDER_WAIT_TIME:-60}"
 echo "POPPOBUILDER_STRATEGY=${POPPOBUILDER_STRATEGY:-round-robin}"
-echo "POPPOBUILDER_MAX_RETRIES=${POPPOBUILDER_MAX_RETRIES:-3}"
 ```
 
 ## 注意事項

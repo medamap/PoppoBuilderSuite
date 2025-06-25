@@ -570,44 +570,6 @@ executeClaudeTask().catch(error => {
     await this.saveRunningTasks({});
   }
 
-  /**
-   * タスクの実行状況を取得
-   */
-  async getTaskStatus() {
-    const runningTasks = await this.getRunningTasks();
-    const status = {
-      running: Object.keys(runningTasks).length,
-      tasks: {}
-    };
-    
-    for (const [taskId, taskInfo] of Object.entries(runningTasks)) {
-      const statusFile = path.join(this.tempDir, `task-${taskId}.status`);
-      
-      try {
-        if (fs.existsSync(statusFile)) {
-          const taskStatus = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
-          status.tasks[taskId] = {
-            ...taskInfo,
-            ...taskStatus
-          };
-        } else {
-          status.tasks[taskId] = {
-            ...taskInfo,
-            status: 'unknown',
-            message: 'ステータスファイルなし'
-          };
-        }
-      } catch (error) {
-        status.tasks[taskId] = {
-          ...taskInfo,
-          status: 'error',
-          message: `ステータス読み込みエラー: ${error.message}`
-        };
-      }
-    }
-    
-    return status;
-  }
 
   /**
    * 実行中のプロセス一覧を取得（ApplicationMonitor用）

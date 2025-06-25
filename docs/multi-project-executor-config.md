@@ -20,10 +20,6 @@ The multi-project-executor.sh script manages PoppoBuilder execution across multi
   - Interval in seconds between health checks on running processes
   - Example: `export POPPOBUILDER_HEALTH_CHECK_INTERVAL=60`
 
-- **POPPOBUILDER_MAX_RETRIES**
-  - Default: 3
-  - Maximum number of retry attempts for failed processes
-  - Example: `export POPPOBUILDER_MAX_RETRIES=5`
 
 ### Execution Strategy
 

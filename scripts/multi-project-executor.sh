@@ -41,7 +41,6 @@ mkdir -p "$PID_DIR"
 # Configuration
 POPPOBUILDER_TIMEOUT=${POPPOBUILDER_TIMEOUT:-300}  # 5 minutes default
 POPPOBUILDER_HEALTH_CHECK_INTERVAL=${POPPOBUILDER_HEALTH_CHECK_INTERVAL:-30}
-POPPOBUILDER_MAX_RETRIES=${POPPOBUILDER_MAX_RETRIES:-3}
 
 # Function to log messages
 log() {
@@ -182,16 +181,16 @@ select_next_project() {
             ;;
             
         "weighted")
-            # TODO: Implement weighted selection based on project weights
+            # Weighted selection based on project weights (not implemented)
             log "WARN" "Weighted strategy not yet implemented, falling back to round-robin"
-            strategy="round-robin"
+            selected_index=0
             selected_project="${projects[0]}"
             ;;
             
         "fair-share")
-            # TODO: Implement fair-share based on recent processing history
+            # Fair-share based on recent processing history (not implemented)
             log "WARN" "Fair-share strategy not yet implemented, falling back to round-robin"
-            strategy="round-robin"
+            selected_index=0
             selected_project="${projects[0]}"
             ;;
             
@@ -215,8 +214,7 @@ process_project() {
     local project_priority=$(echo "$project_json" | jq -r '.priority // 50')
     
     log "INFO" "${BLUE}Processing project: ${project_name} (${project_id})${NC}"
-    log "INFO" "Path: ${project_path}"
-    log "INFO" "Priority: ${project_priority}"
+    log "DEBUG" "Path: ${project_path}, Priority: ${project_priority}"
     
     # Check if process is already running for this project
     if check_existing_process "$project_name"; then
