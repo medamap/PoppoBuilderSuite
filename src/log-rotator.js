@@ -15,13 +15,20 @@ const createWriteStream = fs.createWriteStream;
  */
 class LogRotator {
   // グローバルサイレントモードフラグ
-  static globalSilent = false;
+  static globalSilent = undefined; // undefined = デフォルト, true/false = 明示的設定
   
   constructor(config = {}) {
     // シングルトンパターンの実装
     if (LogRotator.instance) {
       // 既存のインスタンスがある場合は設定をマージ
       Object.assign(LogRotator.instance.config, config);
+      
+      // デバッグ設定を再計算
+      LogRotator.instance.debugEnabled = process.env.POPPO_DEBUG_LOG_ROTATION === 'true';
+      if (!LogRotator.instance.debugEnabled && (config.silent === false || LogRotator.globalSilent === false)) {
+        LogRotator.instance.debugEnabled = true;
+      }
+      
       return LogRotator.instance;
     }
 
@@ -37,6 +44,14 @@ class LogRotator {
       archivePath: config.archivePath || 'logs/archive',
       silent: config.silent || false // サイレントモード（コンソール出力を抑制）
     };
+    
+    // 環境変数からデバッグモードを初期化
+    this.debugEnabled = process.env.POPPO_DEBUG_LOG_ROTATION === 'true';
+    
+    // 後方互換性: silentとglobalSilentがfalseの場合はデバッグを有効化
+    if (!this.debugEnabled && (config.silent === false || LogRotator.globalSilent === false)) {
+      this.debugEnabled = true;
+    }
     
     this.rotationInProgress = new Set();
     this.watchedFiles = new Map();
@@ -104,6 +119,31 @@ class LogRotator {
   }
 
   /**
+   * デバッグ出力が有効かチェック
+   */
+  isDebugEnabled() {
+    return this.debugEnabled;
+  }
+  
+  /**
+   * 条件付きデバッグログ出力
+   */
+  debugLog(...args) {
+    if (this.isDebugEnabled()) {
+      console.log(...args);
+    }
+  }
+  
+  /**
+   * 条件付きデバッグエラー出力
+   */
+  debugError(...args) {
+    if (this.isDebugEnabled()) {
+      console.error(...args);
+    }
+  }
+
+  /**
    * シングルトンインスタンスをリセット（テスト用）
    */
   static reset() {
@@ -148,7 +188,7 @@ class LogRotator {
       // 古いアーカイブファイルをクリーンアップ
       await this.cleanupOldArchives();
     } catch (error) {
-      console.error('[LogRotator] エラー:', error);
+      this.debugError('[LogRotator] エラー:', error);
     }
   }
 
@@ -176,7 +216,7 @@ class LogRotator {
       }
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.error(`[LogRotator] ファイルチェックエラー ${filePath}:`, error);
+        this.debugError(`[LogRotator] ファイルチェックエラー ${filePath}:`, error);
       }
     }
   }
@@ -216,9 +256,7 @@ class LogRotator {
     this.rotationInProgress.add(filePath);
     
     try {
-      if (!this.config.silent && !LogRotator.globalSilent) {
-        console.log(`[LogRotator] ローテーション開始: ${filePath} (理由: ${reason})`);
-      }
+      this.debugLog(`[LogRotator] ローテーション開始: ${filePath} (理由: ${reason})`);
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       let baseName = path.basename(filePath, '.log');
@@ -260,13 +298,11 @@ class LogRotator {
         // ファイル数制限をチェック
         await this.enforceFileLimit();
         
-        if (!this.config.silent && !LogRotator.globalSilent) {
-          console.log(`[LogRotator] ローテーション完了: ${filePath}`);
-        }
+        this.debugLog(`[LogRotator] ローテーション完了: ${filePath}`);
       }
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.error(`[LogRotator] ローテーションエラー ${filePath}:`, error);
+        this.debugError(`[LogRotator] ローテーションエラー ${filePath}:`, error);
       }
     } finally {
       this.rotationInProgress.delete(filePath);
@@ -358,12 +394,12 @@ class LogRotator {
           }
           
           if (!this.config.silent && !LogRotator.globalSilent) {
-            console.log(`[LogRotator] 古いファイルを削除: ${file}`);
+            this.debugLog(`[LogRotator] 古いファイルを削除: ${file}`);
           }
         }
       }
     } catch (error) {
-      console.error('[LogRotator] ファイル数制限エラー:', error);
+      this.debugError('[LogRotator] ファイル数制限エラー:', error);
     }
   }
 
@@ -384,12 +420,12 @@ class LogRotator {
         if (now - stats.mtime.getTime() > retentionMs) {
           await unlink(filePath);
           if (!this.config.silent && !LogRotator.globalSilent) {
-            console.log(`[LogRotator] 保存期間超過により削除: ${file}`);
+            this.debugLog(`[LogRotator] 保存期間超過により削除: ${file}`);
           }
         }
       }
     } catch (error) {
-      console.error('[LogRotator] クリーンアップエラー:', error);
+      this.debugError('[LogRotator] クリーンアップエラー:', error);
     }
   }
 
@@ -398,7 +434,7 @@ class LogRotator {
    */
   async rotateAll() {
     if (!this.config.silent && !LogRotator.globalSilent) {
-      console.log('[LogRotator] 手動ローテーション開始');
+      this.debugLog('[LogRotator] 手動ローテーション開始');
     }
     
     try {
@@ -412,10 +448,10 @@ class LogRotator {
       }
       
       if (!this.config.silent && !LogRotator.globalSilent) {
-        console.log('[LogRotator] 手動ローテーション完了');
+        this.debugLog('[LogRotator] 手動ローテーション完了');
       }
     } catch (error) {
-      console.error('[LogRotator] 手動ローテーションエラー:', error);
+      this.debugError('[LogRotator] 手動ローテーションエラー:', error);
       throw error;
     }
   }
@@ -467,7 +503,7 @@ class LogRotator {
         newestFile: files.length > 0 ? files.sort().reverse()[0] : null
       };
     } catch (error) {
-      console.error('[LogRotator] 統計情報取得エラー:', error);
+      this.debugError('[LogRotator] 統計情報取得エラー:', error);
       return null;
     }
   }

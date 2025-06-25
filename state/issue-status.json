@@ -325,19 +325,6 @@
       },
       "reason": "completion_keyword",
       "taskId": "issue-96-comment-IC_kwDOO7m6fc6x-4qC"
-    },
-    "267": {
-      "status": "processing",
-      "lastUpdated": "2025-06-24T05:10:01.615Z",
-      "processId": "issue-267",
-      "pid": 80235,
-      "startTime": "2025-06-24T05:10:01.614Z",
-      "lastHeartbeat": "2025-06-24T05:26:03.554Z",
-      "taskType": "claude-cli",
-      "metadata": {
-        "retryCount": 0,
-        "errorCount": 0
-      }
     }
   },
   "lastSync": null

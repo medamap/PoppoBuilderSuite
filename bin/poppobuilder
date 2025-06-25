@@ -10,6 +10,10 @@ const { program } = require('commander');
 const path = require('path');
 const fs = require('fs').promises;
 const { version } = require('../package.json');
+const LogRotator = require('../src/log-rotator');
+
+// Silence LogRotator messages for clean CLI output
+LogRotator.setGlobalSilent(true);
 
 // Commands
 const { handleInit } = require('../lib/cli/commands/init');
