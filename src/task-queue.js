@@ -163,6 +163,8 @@ class TaskQueue extends EventEmitter {
   async startTask(taskId, processInfo) {
     // IssueLockManagerが設定されていて、processInfoにissueNumberがある場合はロックを取得
     if (this.lockManager && processInfo && processInfo.issueNumber) {
+      this.emit('lockAttempt', { issueNumber: processInfo.issueNumber, taskId });
+      
       const lockAcquired = await this.lockManager.acquireLock(processInfo.issueNumber, {
         pid: processInfo.pid || process.pid,
         sessionId: process.env.CLAUDE_SESSION_ID,
@@ -171,6 +173,7 @@ class TaskQueue extends EventEmitter {
       });
       
       if (!lockAcquired) {
+        this.emit('lockFailure', { issueNumber: processInfo.issueNumber, taskId });
         throw new Error(`Failed to acquire lock for Issue #${processInfo.issueNumber}`);
       }
     }

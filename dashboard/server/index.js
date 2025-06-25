@@ -12,7 +12,7 @@ const ProcessAPI = require('./api/process');
  * PoppoBuilder Process Dashboard Server
  */
 class DashboardServer {
-  constructor(config, processStateManager, logger, healthCheckManager = null, independentProcessManager = null) {
+  constructor(config, processStateManager, logger, healthCheckManager = null, independentProcessManager = null, processMonitor = null) {
     this.config = config.dashboard || {
       enabled: true,
       port: 3001,
@@ -24,6 +24,7 @@ class DashboardServer {
     this.logger = logger;
     this.healthCheckManager = healthCheckManager;
     this.independentProcessManager = independentProcessManager;
+    this.processMonitor = processMonitor;
     
     if (!this.config.enabled) {
       this.logger?.info('ダッシュボードは無効化されています');
@@ -46,6 +47,7 @@ class DashboardServer {
     
     this.setupRoutes();
     this.setupWebSocket();
+    this.setupMonitoringEvents();
   }
 
   /**
@@ -88,6 +90,16 @@ class DashboardServer {
     this.app.get('/api/system/stats', (req, res) => {
       const stats = this.stateManager.getSystemStats();
       res.json(stats);
+    });
+    
+    // プロセス監視統計API
+    this.app.get('/api/monitoring/stats', (req, res) => {
+      if (this.processMonitor) {
+        const monitoringStats = this.processMonitor.getStatus();
+        res.json(monitoringStats);
+      } else {
+        res.status(503).json({ error: 'Process monitoring not available' });
+      }
     });
     
     // ログ取得API（最新のログファイルから）
@@ -285,6 +297,49 @@ class DashboardServer {
     this.server.listen(this.config.port, this.config.host, () => {
       this.logger?.info(`ダッシュボードサーバーが起動しました: http://${this.config.host}:${this.config.port}`);
       console.log(`📊 プロセスダッシュボード: http://${this.config.host}:${this.config.port}`);
+    });
+  }
+
+  /**
+   * モニタリングイベントの設定
+   */
+  setupMonitoringEvents() {
+    if (!this.processMonitor) {
+      return;
+    }
+    
+    // ヘルスチェックイベント
+    this.processMonitor.on('healthCheck', (data) => {
+      this.broadcastMonitoringUpdate('health-check', data);
+    });
+    
+    // アラートイベント
+    this.processMonitor.on('alert', (data) => {
+      this.broadcastMonitoringUpdate('alert', data);
+    });
+    
+    // アラート解除イベント
+    this.processMonitor.on('alertCleared', (data) => {
+      this.broadcastMonitoringUpdate('alert-cleared', data);
+    });
+  }
+  
+  /**
+   * モニタリング更新をブロードキャスト
+   */
+  broadcastMonitoringUpdate(eventType, data) {
+    const message = JSON.stringify({
+      type: 'monitoring-update',
+      eventType: eventType,
+      data: data,
+      timestamp: new Date().toISOString()
+    });
+    
+    // 全接続中のクライアントに通知
+    this.wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
     });
   }
 

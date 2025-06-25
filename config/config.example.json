@@ -33,5 +33,18 @@
   "notification": {
     "enabled": false,
     "providers": []
+  },
+  "monitoring": {
+    "enabled": true,
+    "checkInterval": 30000,
+    "alertCooldown": 300000,
+    "thresholds": {
+      "processCount": 10,
+      "queueSize": 50,
+      "lockFailureRate": 0.3,
+      "errorRate": 0.1,
+      "memoryUsage": 0.8,
+      "cpuUsage": 0.9
+    }
   }
 }

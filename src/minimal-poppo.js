@@ -45,6 +45,7 @@ const IndependentProcessManager = require('./independent-process-manager');
 const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
 const RetryManager = require('./retry-manager');
+const ProcessMonitor = require('./process-monitor');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const ConfigWatcher = require('./config-watcher');
@@ -327,6 +328,14 @@ if (config.notifications?.enabled) {
   });
 }
 
+// プロセスモニターの初期化
+const processMonitor = new ProcessMonitor({
+  checkInterval: config.monitoring?.checkInterval || 30000,
+  thresholds: config.monitoring?.thresholds || {},
+  alertCooldown: config.monitoring?.alertCooldown || 300000,
+  logger: logger
+});
+
 // ヘルスチェックマネージャーの初期化
 let healthCheckManager = null;
 if (config.healthCheck?.enabled !== false) {
@@ -347,8 +356,8 @@ const mirinManager = new MirinOrphanManager(github, statusManager, {
   requestCheckInterval: 5000 // 5秒
 }, logger);
 
-// ダッシュボードサーバーの初期化（ProcessStateManagerを渡す）
-const dashboardServer = new DashboardServer(config, processStateManager, logger, healthCheckManager, processManager);
+// ダッシュボードサーバーの初期化（ProcessStateManagerとProcessMonitorを渡す）
+const dashboardServer = new DashboardServer(config, processStateManager, logger, healthCheckManager, processManager, processMonitor);
 
 // ProcessStateManagerのイベントをダッシュボードサーバーに接続
 processStateManager.on('process-added', (process) => {
@@ -935,6 +944,7 @@ async function processQueuedTasks() {
     
     // タスク実行開始
     taskQueue.startTask(task.id, { type: task.type, issueNumber: task.issueNumber });
+    processMonitor.recordTaskAttempt();
     
     try {
       if (task.type === 'issue') {
@@ -944,6 +954,7 @@ async function processQueuedTasks() {
         }).catch((error) => {
           console.error(`タスク ${task.id} エラー:`, error.message);
           taskQueue.completeTask(task.id, false);
+          processMonitor.recordTaskError();
           
           // リトライ判定
           handleTaskError(task, error);
@@ -955,6 +966,7 @@ async function processQueuedTasks() {
         }).catch((error) => {
           console.error(`コメントタスク ${task.id} エラー:`, error.message);
           taskQueue.completeTask(task.id, false);
+          processMonitor.recordTaskError();
           
           // リトライ判定
           handleTaskError(task, error);
@@ -1323,6 +1335,9 @@ process.on('SIGTERM', async () => {
   // IssueLockManagerをシャットダウン
   await lockManager.shutdown();
   
+  // プロセスモニターを停止
+  processMonitor.stop();
+  
   processManager.killAll();
   dashboardServer.stop();
   process.exit(0);
@@ -1383,6 +1398,48 @@ Promise.all([
     await memoryMonitor.start();
     memoryOptimizer.start();
     logger.info('メモリ監視と最適化を開始しました');
+  }
+  
+  // プロセスモニターの設定と開始
+  processMonitor.setComponents({
+    processManager: processManager,
+    taskQueue: taskQueue,
+    lockManager: lockManager,
+    retryManager: retryManager
+  });
+  
+  // アラートハンドラーの設定
+  processMonitor.on('alert', async (alertData) => {
+    logger.error(`監視アラート: ${alertData.type} - ${alertData.message}`);
+    
+    // 通知マネージャーが有効な場合は通知を送信
+    if (notificationManager) {
+      await notificationManager.sendNotification({
+        level: 'warning',
+        title: `System Alert: ${alertData.type}`,
+        message: alertData.message,
+        metadata: alertData.metrics
+      });
+    }
+  });
+  
+  processMonitor.on('alertCleared', (data) => {
+    logger.info(`アラート解除: ${data.type}`);
+  });
+  
+  // TaskQueueのロックイベントをProcessMonitorに転送
+  taskQueue.on('lockAttempt', (data) => {
+    processMonitor.recordLockAttempt();
+  });
+  
+  taskQueue.on('lockFailure', (data) => {
+    processMonitor.recordLockFailure();
+  });
+  
+  // 監視を開始
+  if (config.monitoring?.enabled !== false) {
+    processMonitor.start();
+    logger.info('プロセス監視を開始しました');
   }
   
   // 定期的な孤児リソースクリーンアップ（1時間ごと）
