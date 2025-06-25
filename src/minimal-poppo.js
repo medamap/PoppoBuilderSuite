@@ -44,6 +44,7 @@ const GitHubClient = require('./github-client');
 const IndependentProcessManager = require('./independent-process-manager');
 const EnhancedRateLimiter = require('./enhanced-rate-limiter');
 const TaskQueue = require('./task-queue');
+const RetryManager = require('./retry-manager');
 const Logger = require('./logger');
 const ConfigLoader = require('./config-loader');
 const ConfigWatcher = require('./config-watcher');
@@ -304,6 +305,15 @@ const taskQueue = new TaskQueue({
   maxConcurrent: dynamicConfig.claude?.maxConcurrent || 2,
   maxQueueSize: dynamicConfig.taskQueue?.maxQueueSize || 100 
 }, lockManager); // lockManagerを渡す
+
+// リトライマネージャーの初期化
+const retryManager = new RetryManager({
+  maxRetries: dynamicConfig.retry?.maxRetries || 3,
+  baseDelay: dynamicConfig.retry?.baseDelay || 1000,
+  maxDelay: dynamicConfig.retry?.maxDelay || 300000,
+  backoffFactor: dynamicConfig.retry?.backoffFactor || 2,
+  logger: logger
+});
 
 // 独立プロセス方式を使用（PoppoBuilder再起動時もタスクが継続）
 const processManager = new IndependentProcessManager(dynamicConfig.claude || { maxConcurrent: 2, timeout: 86400000 }, rateLimiter, logger, stateManager, lockManager); // stateManagerとlockManagerを渡す
@@ -931,6 +941,7 @@ async function processQueuedTasks() {
         processIssue(task.issue).then(() => {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
+          retryManager.clearRetryInfo(task.id);
         }).catch((error) => {
           console.error(`タスク ${task.id} エラー:`, error.message);
           taskQueue.completeTask(task.id, false);
@@ -942,6 +953,7 @@ async function processQueuedTasks() {
         processComment(task.issue, task.comment).then(() => {
           taskQueue.completeTask(task.id, true);
           rateLimiter.resetRetryState(task.id);
+          retryManager.clearRetryInfo(task.id);
         }).catch((error) => {
           console.error(`コメントタスク ${task.id} エラー:`, error.message);
           taskQueue.completeTask(task.id, false);
@@ -958,22 +970,47 @@ async function processQueuedTasks() {
 }
 
 /**
- * タスクエラーのハンドリング
+ * タスクエラーのハンドリング（改善版）
  */
 async function handleTaskError(task, error) {
-  // レート制限エラーの場合
-  if (error.message.includes('rate limit') || error.message.includes('Rate limit')) {
-    try {
-      await rateLimiter.waitWithBackoff(task.id, 'rate limit error');
-      // リトライのためタスクを再キュー
-      task.attempts = (task.attempts || 0) + 1;
-      if (task.attempts <= 5) {
-        taskQueue.enqueue(task);
-      }
-    } catch (retryError) {
-      console.error(`タスク ${task.id} の最大リトライ回数に到達`);
+  // リトライ可否を判定
+  if (!retryManager.shouldRetry(task.id, error)) {
+    console.error(`タスク ${task.id} はリトライしません: ${error.message}`);
+    
+    // エラー通知（必要に応じて）
+    if (notificationManager) {
+      await notificationManager.sendNotification({
+        level: 'error',
+        title: `Task Failed: ${task.id}`,
+        message: `Task permanently failed after retries: ${error.message}`,
+        metadata: { taskId: task.id, issueNumber: task.issueNumber }
+      });
     }
+    
+    return;
   }
+  
+  // リトライ試行を記録
+  retryManager.recordAttempt(task.id, error);
+  
+  // リトライ遅延を計算
+  const delay = retryManager.getRetryDelay(task.id, error);
+  console.log(`タスク ${task.id} を ${Math.ceil(delay / 1000)} 秒後にリトライします`);
+  
+  // 遅延後にリトライ
+  setTimeout(async () => {
+    try {
+      // 重複チェックしてから再キューイング
+      if (!taskQueue.hasDuplicateTask(task)) {
+        await taskQueue.enqueue(task);
+        console.log(`タスク ${task.id} を再キューイングしました`);
+      } else {
+        console.log(`タスク ${task.id} は既に処理中のため、再キューイングをスキップ`);
+      }
+    } catch (enqueueError) {
+      console.error(`タスク ${task.id} の再キューイング失敗:`, enqueueError.message);
+    }
+  }, delay);
 }
 
 /**
@@ -1361,6 +1398,15 @@ Promise.all([
       logger.error('孤児リソースクリーンアップエラー:', error);
     }
   }, 3600000); // 1時間
+  
+  // リトライ情報の定期クリーンアップ
+  setInterval(() => {
+    retryManager.cleanup(3600000); // 1時間以上古いリトライ情報を削除
+    const stats = retryManager.getStats();
+    if (stats.activeRetries > 0) {
+      logger.info(`リトライ統計: アクティブ=${stats.activeRetries}, 総試行回数=${stats.totalAttempts}`);
+    }
+  }, 600000); // 10分ごと
   
   // 開始
   mainLoop().catch(console.error);

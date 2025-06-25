@@ -81,13 +81,13 @@ class TaskQueue extends EventEmitter {
       throw new Error(`Queue is full (${totalSize}/${this.maxQueueSize})`);
     }
     
-    // Issue重複チェック（キュー内）
-    if (task.type === 'issue' && task.issueNumber) {
-      const pendingIssues = this.getPendingIssues();
-      if (pendingIssues.includes(task.issueNumber)) {
-        console.log(`⚠️  Issue #${task.issueNumber} は既にキューに存在するためスキップ`);
-        throw new Error(`Issue #${task.issueNumber} は既にキューに存在します`);
-      }
+    // 汎用的な重複チェック
+    if (this.hasDuplicateTask(task)) {
+      const taskDesc = task.type === 'issue' ? `Issue #${task.issueNumber}` : 
+                       task.type === 'comment' ? `Comment on Issue #${task.issueNumber}` : 
+                       `Task ${task.id}`;
+      console.log(`⚠️  ${taskDesc} は既にキューまたは実行中のためスキップ`);
+      throw new Error(`${taskDesc} は既に処理中です`);
     }
     
     // IssueLockManagerが設定されている場合、既にロックされているかチェック
@@ -228,6 +228,54 @@ class TaskQueue extends EventEmitter {
   getQueueSize() {
     return Object.values(this.queues)
       .reduce((total, queue) => total + queue.length, 0);
+  }
+
+  /**
+   * タスクがキューに存在するかチェック
+   */
+  isTaskInQueue(taskId) {
+    for (const queue of Object.values(this.queues)) {
+      if (queue.some(task => task.id === taskId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 同じIssue/Commentのタスクが存在するかチェック
+   */
+  hasDuplicateTask(task) {
+    // Issue番号でチェック
+    if (task.type === 'issue' && task.issueNumber) {
+      for (const queue of Object.values(this.queues)) {
+        if (queue.some(t => t.type === 'issue' && t.issueNumber === task.issueNumber)) {
+          return true;
+        }
+      }
+      // 実行中のタスクもチェック
+      for (const runningInfo of this.runningTasks.values()) {
+        if (runningInfo.processInfo && runningInfo.processInfo.issueNumber === task.issueNumber) {
+          return true;
+        }
+      }
+    }
+    
+    // コメントタスクの重複チェック
+    if (task.type === 'comment' && task.issueNumber && task.comment && task.comment.id) {
+      for (const queue of Object.values(this.queues)) {
+        if (queue.some(t => 
+          t.type === 'comment' && 
+          t.issueNumber === task.issueNumber && 
+          t.comment && 
+          t.comment.id === task.comment.id
+        )) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 
   /**
