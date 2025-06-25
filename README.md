@@ -267,6 +267,8 @@ For issues with `task:dogfooding` label:
 ## 📚 Documentation
 
 - [Installation Guide](docs/INSTALL.md) ([English](docs/INSTALL_en.md))
+- [Configuration Guide](docs/configuration/README.md)
+- [Multi-Project Executor Configuration](docs/configuration/multi-project-executor.md)
 - [Quick Start Guide](docs/guides/quick-start.md)
 - [Setup Guide](docs/setup-guide.md)
 - [Minimal Implementation Guide](docs/minimal-implementation-guide.md)

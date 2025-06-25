@@ -1,5 +1,7 @@
 # Multi-Project Executor Configuration
 
+*日本語版は[こちら](./configuration/multi-project-executor.md)*
+
 ## Overview
 
 The multi-project-executor.sh script manages PoppoBuilder execution across multiple projects with built-in duplicate prevention, timeout mechanisms, and health monitoring.
