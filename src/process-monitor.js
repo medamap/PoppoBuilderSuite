@@ -1,9 +1,32 @@
 /**
  * プロセス監視システム
  * システムヘルスの監視とアラート機能を提供
+ * 
+ * @typedef {Object} MonitoringMetrics
+ * @property {number} processCount - 実行中のプロセス数
+ * @property {number} queueSize - キューサイズ
+ * @property {number} lockAttempts - ロック試行回数
+ * @property {number} lockFailures - ロック失敗回数
+ * @property {number} taskAttempts - タスク実行試行回数
+ * @property {number} taskErrors - タスクエラー回数
+ * @property {number} memoryUsage - メモリ使用率（0-1）
+ * @property {number} cpuUsage - CPU使用率（0-1）
+ * @property {number|null} lastCheck - 最終チェック時刻
+ * 
+ * @typedef {Object} MonitoringThresholds
+ * @property {number} processCount - プロセス数の閾値
+ * @property {number} queueSize - キューサイズの閾値
+ * @property {number} lockFailureRate - ロック失敗率の閾値
+ * @property {number} errorRate - エラー率の閾値
+ * @property {number} memoryUsage - メモリ使用率の閾値
+ * @property {number} cpuUsage - CPU使用率の閾値
  */
 const os = require('os');
 const { EventEmitter } = require('events');
+
+// 定数定義
+const HISTORY_MAX_SIZE = 100;
+const CPU_MEASUREMENT_DELAY = 100;
 
 class ProcessMonitor extends EventEmitter {
   constructor(options = {}) {
@@ -38,13 +61,8 @@ class ProcessMonitor extends EventEmitter {
     };
     
     // 履歴データ（トレンド分析用）
-    this.history = {
-      processCount: [],
-      queueSize: [],
-      errorRate: [],
-      memoryUsage: [],
-      cpuUsage: []
-    };
+    const historyMetrics = ['processCount', 'queueSize', 'errorRate', 'memoryUsage', 'cpuUsage'];
+    this.history = Object.fromEntries(historyMetrics.map(metric => [metric, []]));
     
     // アラート管理
     this.lastAlerts = new Map(); // alertType -> timestamp
@@ -60,6 +78,15 @@ class ProcessMonitor extends EventEmitter {
     
     // 監視インターバル
     this.monitoringInterval = null;
+    
+    // CPU使用率キャッシュ
+    this._lastCpuMeasurement = null;
+    
+    // レート計算キャッシュ
+    this._cachedRates = {
+      errorRate: 0,
+      lockFailureRate: 0
+    };
   }
 
   /**
@@ -110,6 +137,12 @@ class ProcessMonitor extends EventEmitter {
       
       // 履歴に追加
       this.updateHistory();
+      
+      // レート計算をキャッシュ
+      this._cachedRates = {
+        errorRate: this.calculateErrorRate(),
+        lockFailureRate: this.calculateLockFailureRate()
+      };
       
       // 閾値チェック
       this.checkThresholds();
@@ -177,9 +210,15 @@ class ProcessMonitor extends EventEmitter {
   }
 
   /**
-   * CPU使用率を取得
+   * CPU使用率を取得（キャッシュ付き）
    */
   async getCpuUsage() {
+    // キャッシュチェック（1秒以内の測定値は再利用）
+    if (this._lastCpuMeasurement && 
+        Date.now() - this._lastCpuMeasurement.timestamp < 1000) {
+      return this._lastCpuMeasurement.usage;
+    }
+    
     return new Promise((resolve) => {
       const startMeasure = this.cpuAverage();
       
@@ -188,8 +227,16 @@ class ProcessMonitor extends EventEmitter {
         const idleDiff = endMeasure.idle - startMeasure.idle;
         const totalDiff = endMeasure.total - startMeasure.total;
         const usage = 1 - (idleDiff / totalDiff);
-        resolve(Math.min(1, Math.max(0, usage)));
-      }, 100);
+        const normalizedUsage = Math.min(1, Math.max(0, usage));
+        
+        // キャッシュに保存
+        this._lastCpuMeasurement = { 
+          usage: normalizedUsage, 
+          timestamp: Date.now() 
+        };
+        
+        resolve(normalizedUsage);
+      }, CPU_MEASUREMENT_DELAY);
     });
   }
 
@@ -218,17 +265,15 @@ class ProcessMonitor extends EventEmitter {
    * 履歴を更新
    */
   updateHistory() {
-    const maxHistorySize = 100;
-    
     // 各メトリクスの履歴に追加
-    this.addToHistory('processCount', this.metrics.processCount, maxHistorySize);
-    this.addToHistory('queueSize', this.metrics.queueSize, maxHistorySize);
-    this.addToHistory('memoryUsage', this.metrics.memoryUsage, maxHistorySize);
-    this.addToHistory('cpuUsage', this.metrics.cpuUsage, maxHistorySize);
+    this.addToHistory('processCount', this.metrics.processCount, HISTORY_MAX_SIZE);
+    this.addToHistory('queueSize', this.metrics.queueSize, HISTORY_MAX_SIZE);
+    this.addToHistory('memoryUsage', this.metrics.memoryUsage, HISTORY_MAX_SIZE);
+    this.addToHistory('cpuUsage', this.metrics.cpuUsage, HISTORY_MAX_SIZE);
     
     // エラー率を計算して追加
     const errorRate = this.calculateErrorRate();
-    this.addToHistory('errorRate', errorRate, maxHistorySize);
+    this.addToHistory('errorRate', errorRate, HISTORY_MAX_SIZE);
   }
 
   /**
@@ -287,13 +332,13 @@ class ProcessMonitor extends EventEmitter {
       },
       {
         name: 'LOCK_FAILURE_RATE_HIGH',
-        condition: this.calculateLockFailureRate() > this.config.thresholds.lockFailureRate,
-        message: `Lock failure rate (${(this.calculateLockFailureRate() * 100).toFixed(1)}%) exceeds threshold (${this.config.thresholds.lockFailureRate * 100}%)`
+        condition: this._cachedRates.lockFailureRate > this.config.thresholds.lockFailureRate,
+        message: `Lock failure rate (${(this._cachedRates.lockFailureRate * 100).toFixed(1)}%) exceeds threshold (${this.config.thresholds.lockFailureRate * 100}%)`
       },
       {
         name: 'ERROR_RATE_HIGH',
-        condition: this.calculateErrorRate() > this.config.thresholds.errorRate,
-        message: `Error rate (${(this.calculateErrorRate() * 100).toFixed(1)}%) exceeds threshold (${this.config.thresholds.errorRate * 100}%)`
+        condition: this._cachedRates.errorRate > this.config.thresholds.errorRate,
+        message: `Error rate (${(this._cachedRates.errorRate * 100).toFixed(1)}%) exceeds threshold (${this.config.thresholds.errorRate * 100}%)`
       },
       {
         name: 'MEMORY_USAGE_HIGH',

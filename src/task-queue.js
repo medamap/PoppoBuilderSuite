@@ -43,14 +43,16 @@ class TaskQueue extends EventEmitter {
     };
     
     // 優先度ごとの統計を初期化
-    Object.values(this.PRIORITY_LEVELS).forEach(level => {
-      this.stats.byPriority[level] = {
-        enqueued: 0,
-        processed: 0,
-        failed: 0,
-        averageWaitTime: 0
-      };
+    const createPriorityStats = () => ({
+      enqueued: 0,
+      processed: 0,
+      failed: 0,
+      averageWaitTime: 0
     });
+    
+    this.stats.byPriority = Object.fromEntries(
+      Object.values(this.PRIORITY_LEVELS).map(level => [level, createPriorityStats()])
+    );
   }
 
   /**
