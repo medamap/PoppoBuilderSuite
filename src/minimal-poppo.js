@@ -940,7 +940,6 @@ async function processQueuedTasks() {
       if (task.type === 'issue') {
         processIssue(task.issue).then(() => {
           taskQueue.completeTask(task.id, true);
-          rateLimiter.resetRetryState(task.id);
           retryManager.clearRetryInfo(task.id);
         }).catch((error) => {
           console.error(`タスク ${task.id} エラー:`, error.message);
@@ -952,7 +951,6 @@ async function processQueuedTasks() {
       } else if (task.type === 'comment') {
         processComment(task.issue, task.comment).then(() => {
           taskQueue.completeTask(task.id, true);
-          rateLimiter.resetRetryState(task.id);
           retryManager.clearRetryInfo(task.id);
         }).catch((error) => {
           console.error(`コメントタスク ${task.id} エラー:`, error.message);

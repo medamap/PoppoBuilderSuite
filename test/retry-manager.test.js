@@ -9,7 +9,13 @@ describe('RetryManager', () => {
       maxRetries: 3,
       baseDelay: 100,
       maxDelay: 5000,
-      backoffFactor: 2
+      backoffFactor: 2,
+      logger: { // Mock logger to suppress console output
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        debug: () => {}
+      }
     });
   });
 

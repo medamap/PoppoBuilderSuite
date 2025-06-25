@@ -10,16 +10,6 @@ class EnhancedRateLimiter {
     this.claudeRateLimiter = new RateLimiter();
     this.githubRateLimiter = new GitHubRateLimiter();
     
-    // バックオフ設定
-    this.backoffConfig = {
-      initialDelay: config.initialBackoffDelay || 1000,    // 初期遅延: 1秒
-      maxDelay: config.maxBackoffDelay || 300000,          // 最大遅延: 5分
-      multiplier: config.backoffMultiplier || 2,           // 遅延倍率
-      jitter: config.backoffJitter || 0.1                  // ジッター（0-10%）
-    };
-    
-    // リトライ状態
-    this.retryState = new Map(); // taskId -> { retryCount, nextDelay }
   }
 
   /**
@@ -40,58 +30,6 @@ class EnhancedRateLimiter {
     return { limited: false };
   }
 
-  /**
-   * エクスポネンシャルバックオフの計算
-   */
-  calculateBackoff(taskId) {
-    if (!this.retryState.has(taskId)) {
-      this.retryState.set(taskId, { retryCount: 0, nextDelay: this.backoffConfig.initialDelay });
-    }
-    
-    const state = this.retryState.get(taskId);
-    state.retryCount++;
-    
-    // 次回の遅延を計算
-    let delay = state.nextDelay;
-    
-    // ジッターを追加（ランダムな変動を加える）
-    const jitterRange = delay * this.backoffConfig.jitter;
-    const jitter = (Math.random() - 0.5) * 2 * jitterRange;
-    delay = Math.round(delay + jitter);
-    
-    // 次回用の遅延を更新
-    state.nextDelay = Math.min(
-      state.nextDelay * this.backoffConfig.multiplier,
-      this.backoffConfig.maxDelay
-    );
-    
-    return {
-      delay,
-      retryCount: state.retryCount,
-      shouldRetry: state.retryCount <= 5 // 最大5回まで
-    };
-  }
-
-  /**
-   * タスクのリトライ状態をリセット
-   */
-  resetRetryState(taskId) {
-    this.retryState.delete(taskId);
-  }
-
-  /**
-   * バックオフ待機
-   */
-  async waitWithBackoff(taskId, reason = 'rate limit') {
-    const backoff = this.calculateBackoff(taskId);
-    
-    if (!backoff.shouldRetry) {
-      throw new Error(`Maximum retry attempts reached for task ${taskId}`);
-    }
-    
-    console.log(`⏳ バックオフ待機 (${reason}): ${backoff.delay}ms (リトライ ${backoff.retryCount}/5)`);
-    await new Promise(resolve => setTimeout(resolve, backoff.delay));
-  }
 
   /**
    * レート制限情報の取得
@@ -105,11 +43,7 @@ class EnhancedRateLimiter {
     
     return {
       github: githubInfo,
-      claude: claudeInfo,
-      retryStates: Array.from(this.retryState.entries()).map(([taskId, state]) => ({
-        taskId,
-        ...state
-      }))
+      claude: claudeInfo
     };
   }
 

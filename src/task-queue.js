@@ -244,6 +244,7 @@ class TaskQueue extends EventEmitter {
 
   /**
    * 同じIssue/Commentのタスクが存在するかチェック
+   * キューと実行中の両方をチェックする包括的なメソッド
    */
   hasDuplicateTask(task) {
     // Issue番号でチェック
@@ -334,7 +335,8 @@ class TaskQueue extends EventEmitter {
   }
 
   /**
-   * 保留中のIssue番号の配列を取得（重複チェック用）
+   * キュー内の保留中のIssue番号リストを取得
+   * （下位互換性のために保持）
    */
   getPendingIssues() {
     const issueNumbers = [];
